@@ -1,13 +1,13 @@
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { credit-card } from "lucide-react";
+import { CreditCard } from "lucide-react";
 
 const AdminCredits = () => {
   return (
     <div className="space-y-6 max-w-2xl mx-auto animate-fade-in">
       <Card>
         <CardHeader className="flex flex-row items-center gap-3">
-          <credit-card className="h-6 w-6 text-primary" />
+          <CreditCard className="h-6 w-6 text-primary" />
           <div>
             <CardTitle>Tín dụng</CardTitle>
             <CardDescription>Quản lý tín dụng và giao dịch trong hệ thống</CardDescription>

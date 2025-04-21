@@ -11,7 +11,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import AdminLogin from "./pages/AdminLogin";
 import { DashboardLayout, Dashboard, CreateContent, Credits, Connections, Settings, Subscriptions } from "./pages/dashboard";
-import { AdminLayout, AdminDashboard, AdminUsers } from "./pages/admin";
+import { AdminLayout, AdminDashboard, AdminUsers, AdminCredits, AdminSubscriptions, AdminSettings } from "./pages/admin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -44,6 +44,9 @@ const App = () => (
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<AdminDashboard />} />
               <Route path="users" element={<AdminUsers />} />
+              <Route path="credits" element={<AdminCredits />} />
+              <Route path="subscriptions" element={<AdminSubscriptions />} />
+              <Route path="settings" element={<AdminSettings />} />
             </Route>
             
             {/* 404 Route */}

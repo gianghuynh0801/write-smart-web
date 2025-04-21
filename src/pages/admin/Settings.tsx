@@ -1,13 +1,13 @@
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { settings } from "lucide-react";
+import { Settings } from "lucide-react";
 
 const AdminSettings = () => {
   return (
     <div className="space-y-6 max-w-2xl mx-auto animate-fade-in">
       <Card>
         <CardHeader className="flex flex-row items-center gap-3">
-          <settings className="h-6 w-6 text-primary" />
+          <Settings className="h-6 w-6 text-primary" />
           <div>
             <CardTitle>Cấu hình hệ thống</CardTitle>
             <CardDescription>Quản lý cấu hình, tùy chỉnh hệ thống dành cho admin</CardDescription>
