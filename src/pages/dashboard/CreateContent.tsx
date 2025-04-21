@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +27,8 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { generateContent } from "@/utils/webhookService";
+import dynamic from "react-quill";
+import RichTextEditor from "@/components/RichTextEditor";
 
 const verticalTabs = [
   {
@@ -84,7 +85,7 @@ const CreateContent = () => {
 
   const [openDialog, setOpenDialog] = useState(false);
   const [editableContent, setEditableContent] = useState("");
-  const [savedContent, setSavedContent] = useState(""); // Cho nút lưu
+  const [savedContent, setSavedContent] = useState("");
 
   const handleAddSubKeyword = () => {
     const trimmed = subKeywordInput.trim();
@@ -188,7 +189,6 @@ const CreateContent = () => {
     }
   };
 
-  // Handler cho nút Lưu
   const handleSave = () => {
     setSavedContent(editableContent);
     toast({
@@ -197,9 +197,7 @@ const CreateContent = () => {
     });
   };
 
-  // Handler cho nút Đăng bài viết (chỉ console log)
   const handlePublish = () => {
-    // Ở đây bạn có thể tích hợp API đăng bài viết lên WordPress hoặc nơi khác
     console.log("Nội dung sẽ đăng:", editableContent);
     toast({
       title: "Đăng bài viết",
@@ -422,7 +420,6 @@ const CreateContent = () => {
         </Button>
       </div>
 
-      {/* Dialog hiển thị nội dung + chức năng lưu, đăng, editor */}
       <Dialog open={openDialog} onOpenChange={setOpenDialog}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
@@ -431,14 +428,11 @@ const CreateContent = () => {
               Soạn thảo, lưu nháp hoặc đăng bài viết từ AI:
             </DialogDescription>
           </DialogHeader>
-          {/* Đơn giản dùng textarea, có thể thay bằng rich text editor nếu bạn muốn nâng cấp */}
-          <textarea
+          <RichTextEditor
             value={editableContent}
-            onChange={(e) => setEditableContent(e.target.value)}
-            rows={18}
-            className="w-full p-3 border rounded text-sm bg-background resize-y focus:outline-accent focus:border-primary"
+            onChange={setEditableContent}
             placeholder="Nội dung bài viết ..."
-            style={{ minHeight: 200 }}
+            className="mb-2"
           />
           <div className="flex justify-end gap-2 mt-3">
             <Button variant="outline" onClick={handleSave}>
@@ -460,4 +454,3 @@ const CreateContent = () => {
 };
 
 export default CreateContent;
-
