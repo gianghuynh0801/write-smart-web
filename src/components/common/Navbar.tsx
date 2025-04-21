@@ -1,103 +1,53 @@
-
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Link, useLocation } from "react-router-dom";
+import React, { useState } from "react";
 import { Menu, X } from "lucide-react";
+import LanguageSwitcher from "./LanguageSwitcher";
+import { t } from "@/utils/i18n";
+
+const scrollToSection = (id: string) => {
+  const el = document.getElementById(id);
+  if (el) {
+    el.scrollIntoView({ behavior: "smooth" });
+  }
+};
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const location = useLocation();
-  
-  // Kiểm tra xem có đang ở trang chủ không
-  const isHomePage = location.pathname === "/";
-  
-  // Tạo liên kết dựa trên vị trí hiện tại
-  const getLink = (section: string) => {
-    return isHomePage ? `#${section}` : `/#${section}`;
+
+  const toggleMenu = () => {
+    setIsMenuOpen(!isMenuOpen);
   };
 
   return (
-    <nav className="bg-white py-4 border-b border-gray-100 sticky top-0 z-50">
-      <div className="container flex justify-between items-center">
-        <Link to="/" className="text-2xl font-bold text-primary">
-          WriteSmart
-        </Link>
-        
-        {/* Desktop Menu */}
-        <div className="hidden md:flex items-center gap-8">
-          <Link to="/" className="text-gray-700 hover:text-primary transition-colors">
-            Trang chủ
-          </Link>
-          <a href={getLink("pricing")} className="text-gray-700 hover:text-primary transition-colors">
-            Bảng giá
+    <nav className="bg-white shadow">
+      <div className="container flex items-center justify-between h-16">
+        <div className="flex items-center gap-6">
+          <a href="/" className="font-bold text-primary text-xl">
+            {t("app.name")}
           </a>
-          <a href={getLink("features")} className="text-gray-700 hover:text-primary transition-colors">
-            Tính năng
-          </a>
-          <a href={getLink("contact")} className="text-gray-700 hover:text-primary transition-colors">
-            Liên hệ
-          </a>
+          <ul className="hidden md:flex gap-4">
+            <li>
+              <button className="bg-transparent hover:underline px-2" onClick={() => scrollToSection("features")}>
+                {t("nav.features")}
+              </button>
+            </li>
+            <li>
+              <button className="bg-transparent hover:underline px-2" onClick={() => scrollToSection("pricing")}>
+                {t("nav.pricing")}
+              </button>
+            </li>
+            <li>
+              <button className="bg-transparent hover:underline px-2" onClick={() => scrollToSection("contact")}>
+                {t("nav.contact")}
+              </button>
+            </li>
+          </ul>
         </div>
-        
-        <div className="hidden md:flex items-center gap-4">
-          <Link to="/login">
-            <Button variant="outline">Đăng nhập</Button>
-          </Link>
-          <Link to="/register">
-            <Button>Đăng ký</Button>
-          </Link>
+        <div className="flex items-center gap-3">
+          <LanguageSwitcher />
+          <a href="/login" className="btn btn-sm btn-outline-primary">{t("nav.login")}</a>
+          <a href="/register" className="btn btn-sm btn-primary">{t("nav.register")}</a>
         </div>
-        
-        {/* Mobile Menu Toggle */}
-        <button 
-          className="md:hidden text-gray-700"
-          onClick={() => setIsMenuOpen(!isMenuOpen)}
-        >
-          {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
       </div>
-      
-      {/* Mobile Menu */}
-      {isMenuOpen && (
-        <div className="md:hidden container mt-4 pb-4 flex flex-col gap-4">
-          <Link 
-            to="/"
-            className="text-gray-700 py-2 border-b border-gray-100"
-            onClick={() => setIsMenuOpen(false)}
-          >
-            Trang chủ
-          </Link>
-          <a 
-            href={getLink("pricing")}
-            className="text-gray-700 py-2 border-b border-gray-100"
-            onClick={() => setIsMenuOpen(false)}
-          >
-            Bảng giá
-          </a>
-          <a 
-            href={getLink("features")}
-            className="text-gray-700 py-2 border-b border-gray-100"
-            onClick={() => setIsMenuOpen(false)}
-          >
-            Tính năng
-          </a>
-          <a 
-            href={getLink("contact")}
-            className="text-gray-700 py-2 border-b border-gray-100"
-            onClick={() => setIsMenuOpen(false)}
-          >
-            Liên hệ
-          </a>
-          <div className="flex flex-col gap-2 mt-2">
-            <Link to="/login" onClick={() => setIsMenuOpen(false)}>
-              <Button variant="outline" className="w-full">Đăng nhập</Button>
-            </Link>
-            <Link to="/register" onClick={() => setIsMenuOpen(false)}>
-              <Button className="w-full">Đăng ký</Button>
-            </Link>
-          </div>
-        </div>
-      )}
     </nav>
   );
 };

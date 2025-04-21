@@ -15,11 +15,11 @@ const Index = () => {
       <Navbar />
       <main className="flex-grow">
         <Hero />
-        <Features />
-        <Pricing />
+        <div id="features"><Features /></div>
+        <div id="pricing"><Pricing /></div>
         <Testimonials />
         <FAQ />
-        <Contact />
+        <div id="contact"><Contact /></div>
         <CTA />
       </main>
       <Footer />

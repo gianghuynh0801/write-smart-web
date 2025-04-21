@@ -1,4 +1,3 @@
-
 // Utility for i18n support
 // This is a simple implementation and in a real app you would use a library like i18next
 
@@ -33,6 +32,10 @@ const translations: Translations = {
   'nav.features': {
     vi: 'Tính năng',
     en: 'Features'
+  },
+  'nav.contact': {
+    vi: 'Liên hệ',
+    en: 'Contact'
   },
   'nav.login': {
     vi: 'Đăng nhập',
