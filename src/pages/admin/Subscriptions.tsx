@@ -1,13 +1,13 @@
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { package as PackageIcon } from "lucide-react";
+import { Package } from "lucide-react";
 
 const AdminSubscriptions = () => {
   return (
     <div className="space-y-6 max-w-2xl mx-auto animate-fade-in">
       <Card>
         <CardHeader className="flex flex-row items-center gap-3">
-          <PackageIcon className="h-6 w-6 text-primary" />
+          <Package className="h-6 w-6 text-primary" />
           <div>
             <CardTitle>Gói đăng ký</CardTitle>
             <CardDescription>Quản lý các gói đăng ký của người dùng</CardDescription>
