@@ -28,8 +28,8 @@ export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (storedLang === "vi" || storedLang === "en") {
       setLang(storedLang);
     } else {
-      initializeI18n();
-      setLocaleState(getLocale());
+      // Always default to Vietnamese if no preference is stored
+      setLang("vi");
     }
     // eslint-disable-next-line
   }, []);

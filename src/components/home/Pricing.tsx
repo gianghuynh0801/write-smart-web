@@ -2,13 +2,14 @@
 import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
 import { Link } from "react-router-dom";
+import { t } from "@/utils/i18n";
 
 const pricingPlans = [
   {
-    name: "Gói Cơ bản",
+    name: "pricing.basic",
     price: "199.000",
-    period: "tháng",
-    description: "Dành cho người mới bắt đầu",
+    period: "pricing.month",
+    description: "pricing.basic_desc",
     features: [
       "10 bài viết mỗi tháng",
       "Tối đa 1.000 từ mỗi bài",
@@ -16,14 +17,14 @@ const pricingPlans = [
       "Kết nối 1 tài khoản WordPress",
       "Hỗ trợ qua email"
     ],
-    cta: "Chọn gói Cơ bản",
+    cta: "pricing.select_basic",
     popular: false
   },
   {
-    name: "Gói Chuyên nghiệp",
+    name: "pricing.professional",
     price: "499.000",
-    period: "tháng",
-    description: "Dành cho doanh nghiệp nhỏ",
+    period: "pricing.month",
+    description: "pricing.professional_desc",
     features: [
       "30 bài viết mỗi tháng",
       "Tối đa 2.000 từ mỗi bài",
@@ -32,14 +33,14 @@ const pricingPlans = [
       "Phân tích nội dung",
       "Hỗ trợ ưu tiên"
     ],
-    cta: "Chọn gói Chuyên nghiệp",
+    cta: "pricing.select_professional",
     popular: true
   },
   {
-    name: "Gói Doanh nghiệp",
+    name: "pricing.enterprise",
     price: "999.000",
-    period: "tháng",
-    description: "Dành cho doanh nghiệp lớn",
+    period: "pricing.month",
+    description: "pricing.enterprise_desc",
     features: [
       "100 bài viết mỗi tháng",
       "Không giới hạn số từ",
@@ -49,7 +50,7 @@ const pricingPlans = [
       "Hỗ trợ 24/7",
       "API tích hợp"
     ],
-    cta: "Chọn gói Doanh nghiệp",
+    cta: "pricing.select_enterprise",
     popular: false
   }
 ];
@@ -58,9 +59,9 @@ const Pricing = () => {
   return (
     <div id="pricing" className="container py-16">
       <div className="text-center max-w-3xl mx-auto mb-12">
-        <h2 className="text-3xl font-bold mb-4">Bảng giá dịch vụ</h2>
+        <h2 className="text-3xl font-bold mb-4">{t("pricing.title")}</h2>
         <p className="text-gray-600 text-lg">
-          Lựa chọn gói dịch vụ phù hợp với nhu cầu của bạn
+          {t("pricing.description")}
         </p>
       </div>
       
@@ -74,21 +75,21 @@ const Pricing = () => {
           >
             {plan.popular && (
               <div className="bg-primary text-white text-center py-1.5 text-sm font-medium">
-                Phổ biến nhất
+                {t("pricing.most_popular")}
               </div>
             )}
             <div className="p-6">
-              <h3 className="text-xl font-bold mb-1">{plan.name}</h3>
-              <p className="text-gray-500 mb-4">{plan.description}</p>
+              <h3 className="text-xl font-bold mb-1">{t(plan.name)}</h3>
+              <p className="text-gray-500 mb-4">{t(plan.description)}</p>
               <div className="mb-4">
                 <span className="text-3xl font-bold">{plan.price}đ</span>
-                <span className="text-gray-500">/{plan.period}</span>
+                <span className="text-gray-500">/{t(plan.period)}</span>
               </div>
               <Link to="/register">
                 <Button 
                   className={`w-full ${!plan.popular && 'bg-gray-800 hover:bg-gray-700'}`}
                 >
-                  {plan.cta}
+                  {t(plan.cta)}
                 </Button>
               </Link>
               <div className="mt-6 space-y-3">

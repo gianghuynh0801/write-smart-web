@@ -4,6 +4,7 @@ import { useI18n } from "@/context/I18nContext";
 import { Globe } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
+import { t } from "@/utils/i18n";
 
 const languages = [
   { code: "vi", label: "Tiếng Việt" },
@@ -34,7 +35,7 @@ const LanguageSwitcher = () => {
               className="justify-start w-full"
               onClick={() => setLang(item.code as "vi" | "en")}
             >
-              {item.label}
+              {t(`lang.${item.code}`)}
               {locale === item.code && (
                 <span className="ml-1 text-xs text-primary-500">✓</span>
               )}
