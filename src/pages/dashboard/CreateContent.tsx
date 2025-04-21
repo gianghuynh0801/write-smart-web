@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,16 +28,16 @@ import {
   Pencil,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils"; // for utility class merging
+import { cn } from "@/lib/utils";
 
 const illustrationImages = [
-  "https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?auto=format&fit=crop&w=600&q=80", // gray laptop
-  "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?auto=format&fit=crop&w=600&q=80", // monitor java
-  "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=600&q=80", // woman laptop
-  "https://images.unsplash.com/photo-1531297484001-80022131f5a1?auto=format&fit=crop&w=600&q=80", // code
-  "https://images.unsplash.com/photo-1487058792275-0ad4aaf24ca7?auto=format&fit=crop&w=600&q=80", // colorful code
-  "https://images.unsplash.com/photo-1500673922987-e212871fec22?auto=format&fit=crop&w=600&q=80", // yellow lights
-  "https://images.unsplash.com/photo-1501854140801-50d01698950b?auto=format&fit=crop&w=600&q=80", // mountains
+  "https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?auto=format&fit=crop&w=600&q=80",
+  "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?auto=format&fit=crop&w=600&q=80",
+  "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=600&q=80",
+  "https://images.unsplash.com/photo-1531297484001-80022131f5a1?auto=format&fit=crop&w=600&q=80",
+  "https://images.unsplash.com/photo-1487058792275-0ad4aaf24ca7?auto=format&fit=crop&w=600&q=80",
+  "https://images.unsplash.com/photo-1500673922987-e212871fec22?auto=format&fit=crop&w=600&q=80",
+  "https://images.unsplash.com/photo-1501854140801-50d01698950b?auto=format&fit=crop&w=600&q=80",
 ];
 
 function getRandomImage() {
@@ -84,7 +83,6 @@ const verticalTabs = [
 ];
 
 const CreateContent = () => {
-  // Các state cho form tổng thể
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedContent, setGeneratedContent] = useState("");
   const [formData, setFormData] = useState({
@@ -94,19 +92,16 @@ const CreateContent = () => {
     tone: "professional",
     language: "vietnamese",
   });
-  // State cho tab dọc & ảnh minh hoạ
   const [activeTab, setActiveTab] = useState(verticalTabs[0].value);
   const [illustrationUrl, setIllustrationUrl] = useState(getRandomImage());
   const { toast } = useToast();
 
-  // State cho từng trường từ khoá
   const [mainKeyword, setMainKeyword] = useState("");
   const [subKeywords, setSubKeywords] = useState<string[]>([]);
   const [relatedKeywords, setRelatedKeywords] = useState<string[]>([]);
   const [subKeywordInput, setSubKeywordInput] = useState("");
   const [relatedKeywordInput, setRelatedKeywordInput] = useState("");
 
-  // ... giữ nguyên các hàm handleChange, handleSelectChange, handleSubmit
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -121,7 +116,7 @@ const CreateContent = () => {
 
     if (!formData.topic) {
       toast({
-        title: "Chủ đề trống",
+        title: "Chủ đ��� trống",
         description: "Vui lòng nhập chủ đề cho bài viết của bạn.",
         variant: "destructive",
       });
@@ -129,7 +124,7 @@ const CreateContent = () => {
     }
 
     setIsGenerating(true);
-    setGeneratedContent(""); // Reset previous content
+    setGeneratedContent("");
 
     try {
       setTimeout(() => {
@@ -193,7 +188,6 @@ ${formData.topic} không phải là một nỗ lực một lần, mà là một 
     }
   };
 
-  // --- Handlers cho keywords tab:
   const handleAddSubKeyword = () => {
     if (subKeywordInput.trim() && !subKeywords.includes(subKeywordInput.trim())) {
       setSubKeywords([...subKeywords, subKeywordInput.trim()]);
@@ -216,21 +210,18 @@ ${formData.topic} không phải là một nỗ lực một lần, mà là một 
     setRelatedKeywords(relatedKeywords.filter((item) => item !== keyword));
   };
 
-  // --- UI --- //
   return (
     <div className="w-full min-h-screen py-8 px-2 md:px-10 flex flex-col bg-background">
       <h1 className="text-2xl font-bold mb-1">Tạo nội dung</h1>
       <p className="text-gray-500 mb-6">Tạo bài viết chuẩn SEO với công nghệ AI</p>
       
       <div className="flex flex-col md:flex-row gap-6">
-        {/* Main content with tabs */}
         <Tabs 
           orientation="vertical" 
           value={activeTab} 
           onValueChange={setActiveTab}
           className="flex flex-col md:flex-row gap-6"
         >
-          {/* Vertical TabsList */}
           <TabsList className="flex flex-col h-auto w-56 bg-muted/70 p-1.5 rounded-xl shadow">
             {verticalTabs.map((tab) => (
               <TabsTrigger
@@ -247,11 +238,8 @@ ${formData.topic} không phải là một nỗ lực một lần, mà là một 
             ))}
           </TabsList>
 
-          {/* Content area + Illustration */}
           <div className="flex flex-1 flex-col md:flex-row gap-6">
-            {/* Tab content area */}
             <div className="flex-1">
-              {/* Keywords Tab Content */}
               <TabsContent value="keywords" className="mt-0 animate-fade-in">
                 <div className="mb-6">
                   <h2 className="text-lg font-semibold mb-1 flex items-center gap-2">
@@ -263,7 +251,6 @@ ${formData.topic} không phải là một nỗ lực một lần, mà là một 
                 </div>
 
                 <form className="space-y-6 max-w-xl">
-                  {/* Từ khoá chính */}
                   <div className="space-y-2">
                     <Label htmlFor="main-keyword">Từ khoá chính <span className="text-destructive">*</span></Label>
                     <Input
@@ -279,7 +266,6 @@ ${formData.topic} không phải là một nỗ lực một lần, mà là một 
                     </p>
                   </div>
                   
-                  {/* Từ khoá phụ & thêm mới */}
                   <div className="space-y-2">
                     <Label htmlFor="sub-keyword">Từ khoá phụ</Label>
                     <div className="flex gap-2">
@@ -315,11 +301,10 @@ ${formData.topic} không phải là một nỗ lực một lần, mà là một 
                       ))}
                     </div>
                     <p className="text-xs text-muted-foreground ml-1">
-                      Chúng tôi sẽ ép các từ khoá phụ này vào bài viết.
+                      Chúng tôi sẽ ép các từ khoá phụ này vào bài viết. Đảm bảo các từ khóa có liên quan đến chủ đề của bài viết và không chứa lỗi đánh máy.
                     </p>
                   </div>
                   
-                  {/* Từ khoá liên quan & thêm mới */}
                   <div className="space-y-2">
                     <Label htmlFor="related-keyword">Từ khoá liên quan</Label>
                     <div className="flex gap-2">
@@ -355,95 +340,17 @@ ${formData.topic} không phải là một nỗ lực một lần, mà là một 
                       ))}
                     </div>
                     <p className="text-xs text-muted-foreground ml-1">
-                      Chúng tôi sẽ ép các từ khoá liên quan này vào bài viết.
+                      Chúng tôi sẽ ép các từ khoá liên quan này vào bài viết. Đảm bảo các từ khóa có liên quan đến chủ đề của bài viết và không chứa lỗi đánh máy.
                     </p>
                   </div>
                 </form>
               </TabsContent>
-
-              {/* Outline Tab Content */}
-              <TabsContent value="outline" className="mt-0 animate-fade-in">
-                <div>
-                  <h2 className="text-lg font-semibold mb-2 flex items-center gap-2">
-                    <LayoutList className="h-5 w-5 text-primary" /> Outline bài viết
-                  </h2>
-                  <Textarea placeholder="Xây dựng các mục lớn, mục phụ cho bài viết (VD: Giới thiệu, Các bước thực hiện...)" className="min-h-[90px]" />
-                </div>
-              </TabsContent>
-
-              {/* Content Tab Content */}
-              <TabsContent value="content" className="mt-0 animate-fade-in">
-                <div>
-                  <h2 className="text-lg font-semibold mb-2 flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-primary" /> Nội dung chi tiết
-                  </h2>
-                  <Textarea placeholder="Bài viết, đoạn văn, ví dụ..." className="min-h-[90px]" />
-                </div>
-              </TabsContent>
-
-              {/* Knowledge Tab Content */}
-              <TabsContent value="knowledge" className="mt-0 animate-fade-in">
-                <div>
-                  <h2 className="text-lg font-semibold mb-2 flex items-center gap-2">
-                    <Book className="h-5 w-5 text-primary" /> Kiến thức nền tảng
-                  </h2>
-                  <Textarea placeholder="Ghi chú background/kiến thức liên quan chủ đề..." className="min-h-[90px]" />
-                </div>
-              </TabsContent>
-
-              {/* Format Tab Content */}
-              <TabsContent value="format" className="mt-0 animate-fade-in">
-                <div>
-                  <h2 className="text-lg font-semibold mb-2 flex items-center gap-2">
-                    <Text className="h-5 w-5 text-primary" /> Định dạng bài viết
-                  </h2>
-                  <Textarea placeholder="Bảng, gạch đầu dòng, đoạn văn ngắn/dài..." className="min-h-[90px]" />
-                </div>
-              </TabsContent>
-
-              {/* Links Tab Content */}
-              <TabsContent value="links" className="mt-0 animate-fade-in">
-                <div>
-                  <h2 className="text-lg font-semibold mb-2 flex items-center gap-2">
-                    <LinkIcon className="h-5 w-5 text-primary" /> Liên kết
-                  </h2>
-                  <Textarea placeholder="Đính kèm các link hoặc trích dẫn ngoài..." className="min-h-[90px]" />
-                </div>
-              </TabsContent>
-
-              {/* Images Tab Content */}
-              <TabsContent value="images" className="mt-0 animate-fade-in">
-                <div>
-                  <h2 className="text-lg font-semibold mb-2 flex items-center gap-2">
-                    <Image className="h-5 w-5 text-primary" /> Hình ảnh minh hoạ
-                  </h2>
-                  <Textarea placeholder="Chọn/đính kèm hình ảnh cho bài viết..." className="min-h-[90px]" />
-                </div>
-              </TabsContent>
-            </div>
-
-            {/* Illustration image - fixed on the right */}
-            <div className="w-60 hidden lg:block flex-shrink-0">
-              <div className="sticky top-24">
-                <div className="w-60 h-60 rounded-2xl overflow-hidden shadow-lg border">
-                  <img 
-                    src={illustrationUrl} 
-                    alt="Ảnh minh hoạ bài viết" 
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <p className="mt-2 text-xs text-muted-foreground text-center">
-                  Ảnh minh hoạ tự động từ Unsplash
-                </p>
-              </div>
             </div>
           </div>
         </Tabs>
       </div>
 
-      {/* Giữ nguyên phần bên dưới: form tổng thể tạo bài viết & kết quả */}
       <div className="mt-10 w-full grid md:grid-cols-2 gap-8">
-        {/* Form nhập chủ đề, độ dài, giọng điệu, ngôn ngữ, nút tạo bài v.v. */}
         <div>
           <form onSubmit={handleSubmit}>
             <div className="space-y-4 bg-card border rounded-xl shadow px-6 py-8">
@@ -527,7 +434,6 @@ ${formData.topic} không phải là một nỗ lực một lần, mà là một 
             </div>
           </form>
         </div>
-        {/* Kết quả bài viết đã tạo */}
         <div>
           <div className={`${!generatedContent && 'hidden'}`}>
             <div className="bg-card border rounded-xl shadow px-6 py-6 mb-4">
@@ -553,45 +459,6 @@ ${formData.topic} không phải là một nỗ lực một lần, mà là một 
                 )}
               </div>
             </div>
-            {/* Tabs cho xuất bản/lưu... giữ nguyên, không thay đổi */}
-            {generatedContent && (
-              <div className="bg-card border rounded-xl shadow px-6 py-4">
-                <Tabs defaultValue="wordpress" className="w-full">
-                  <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="wordpress">
-                      <Globe className="mr-2 h-4 w-4" />
-                      WordPress
-                    </TabsTrigger>
-                    <TabsTrigger value="facebook">
-                      <Facebook className="mr-2 h-4 w-4" />
-                      Facebook
-                    </TabsTrigger>
-                    <TabsTrigger value="save">
-                      <FileText className="mr-2 h-4 w-4" />
-                      Lưu
-                    </TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="wordpress" className="pt-4">
-                    <Button className="w-full">Đăng lên WordPress</Button>
-                    <p className="text-xs text-gray-500 mt-2 text-center">
-                      Bạn cần kết nối WordPress trước khi đăng bài
-                    </p>
-                  </TabsContent>
-                  <TabsContent value="facebook" className="pt-4">
-                    <Button className="w-full">Đăng lên Facebook</Button>
-                    <p className="text-xs text-gray-500 mt-2 text-center">
-                      Bạn cần kết nối Facebook trước khi đăng bài
-                    </p>
-                  </TabsContent>
-                  <TabsContent value="save" className="pt-4">
-                    <Button className="w-full">Lưu bài viết</Button>
-                    <p className="text-xs text-gray-500 mt-2 text-center">
-                      Lưu bài viết này vào thư viện của bạn để sử dụng sau
-                    </p>
-                  </TabsContent>
-                </Tabs>
-              </div>
-            )}
           </div>
         </div>
       </div>
