@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,8 +6,20 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Send, Shuffle, FileText, Facebook, Globe } from "lucide-react";
+import { Loader2, Send, Shuffle, FileText, Facebook, Globe, Image } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+const illustrationImages = [
+  "https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?auto=format&fit=crop&w=600&q=80",
+  "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?auto=format&fit=crop&w=600&q=80",
+  "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=600&q=80",
+  "https://images.unsplash.com/photo-1531297484001-80022131f5a1?auto=format&fit=crop&w=600&q=80",
+  "https://images.unsplash.com/photo-1487058792275-0ad4aaf24ca7?auto=format&fit=crop&w=600&q=80",
+];
+
+function getRandomImage() {
+  return illustrationImages[Math.floor(Math.random() * illustrationImages.length)];
+}
 
 const CreateContent = () => {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -20,6 +31,7 @@ const CreateContent = () => {
     tone: "professional",
     language: "vietnamese"
   });
+  const [illustrationUrl, setIllustrationUrl] = useState(getRandomImage());
   const { toast } = useToast();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -47,18 +59,7 @@ const CreateContent = () => {
     setGeneratedContent(""); // Reset previous content
     
     try {
-      // Simulate content generation with n8n webhook
-      // In a real implementation, you would call your n8n webhook here
-      // const response = await fetch("your-n8n-webhook-url", {
-      //   method: "POST",
-      //   headers: { "Content-Type": "application/json" },
-      //   body: JSON.stringify(formData)
-      // });
-      // const data = await response.json();
-      
-      // Simulate API delay
       setTimeout(() => {
-        // Sample generated content
         const sampleContent = `
 # ${formData.topic}
 
@@ -100,6 +101,25 @@ ${formData.topic} không phải là một nỗ lực một lần, mà là một 
     }
   };
 
+  const handleRandomTopic = () => {
+    const randomTopics = [
+      "Cách tối ưu SEO cho website",
+      "Chiến lược content marketing hiệu quả",
+      "Hướng dẫn xây dựng thương hiệu cá nhân",
+      "Các xu hướng digital marketing năm 2023"
+    ];
+    const randomTopic = randomTopics[Math.floor(Math.random() * randomTopics.length)];
+    setFormData(prev => ({ ...prev, topic: randomTopic }));
+    setIllustrationUrl(getRandomImage());
+  };
+
+  const handleTopicInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    handleChange(e);
+    if (e.target.value.trim() === "") {
+      setIllustrationUrl(getRandomImage());
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -111,6 +131,21 @@ ${formData.topic} không phải là một nỗ lực một lần, mà là một 
       
       <div className="grid md:grid-cols-2 gap-8">
         <Card>
+          <div className="w-full h-[220px] md:h-[250px] flex items-center justify-center bg-[#F3F3F3] rounded-t-lg relative overflow-hidden mb-0">
+            {illustrationUrl ? (
+              <img
+                src={illustrationUrl}
+                alt="Ảnh minh hoạ bài viết"
+                className="object-cover w-full h-full rounded-t-lg transition-all duration-300"
+                loading="lazy"
+              />
+            ) : (
+              <div className="flex items-center justify-center w-full h-full text-muted-foreground">
+                <Image className="w-10 h-10" />
+              </div>
+            )}
+            <div className="absolute inset-0 bg-black/10 pointer-events-none rounded-t-lg" aria-hidden="true" />
+          </div>
           <CardHeader>
             <CardTitle>Thông tin bài viết</CardTitle>
             <CardDescription>
@@ -126,7 +161,7 @@ ${formData.topic} không phải là một nỗ lực một lần, mà là một 
                   name="topic"
                   placeholder="Nhập chủ đề bài viết"
                   value={formData.topic}
-                  onChange={handleChange}
+                  onChange={handleTopicInputChange}
                 />
               </div>
               
@@ -198,17 +233,7 @@ ${formData.topic} không phải là một nỗ lực một lần, mà là một 
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => {
-                  // Random topic generator would go here
-                  const randomTopics = [
-                    "Cách tối ưu SEO cho website",
-                    "Chiến lược content marketing hiệu quả",
-                    "Hướng dẫn xây dựng thương hiệu cá nhân",
-                    "Các xu hướng digital marketing năm 2023"
-                  ];
-                  const randomTopic = randomTopics[Math.floor(Math.random() * randomTopics.length)];
-                  setFormData(prev => ({ ...prev, topic: randomTopic }));
-                }}
+                onClick={handleRandomTopic}
               >
                 <Shuffle className="mr-2 h-4 w-4" />
                 Gợi ý ngẫu nhiên
