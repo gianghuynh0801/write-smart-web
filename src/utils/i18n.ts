@@ -1,4 +1,3 @@
-
 type Locale = 'vi' | 'en';
 
 interface Translations {
@@ -282,15 +281,12 @@ export const getLocale = (): Locale => {
 };
 
 export const translate = (key: string, placeholders?: Record<string, string>): string => {
-  // Ensure we always use the current locale
-  const locale = getLocale();
-  
   if (!translations[key]) {
     console.warn(`Translation missing for key: ${key}`);
     return key;
   }
   
-  let text = translations[key][locale] || translations[key]['vi'];
+  let text = translations[key][currentLocale] || translations[key]['vi'];
   
   if (placeholders) {
     Object.entries(placeholders).forEach(([placeholder, value]) => {
@@ -316,4 +312,3 @@ export const initializeI18n = () => {
   }
   console.log("I18n initialized with locale:", currentLocale);
 };
-

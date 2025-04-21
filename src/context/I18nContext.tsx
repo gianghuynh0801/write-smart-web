@@ -14,7 +14,7 @@ const I18nContext = createContext<I18nContextType>({
 });
 
 export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [locale, setLocaleState] = useState<"vi" | "en">("vi");
+  const [locale, setLocaleState] = useState<"vi" | "en">(getLocale());
 
   useEffect(() => {
     // Initialize i18n based on browser language or localStorage
@@ -44,4 +44,3 @@ export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children
 };
 
 export const useI18n = () => useContext(I18nContext);
-

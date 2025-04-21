@@ -3,12 +3,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Mail, Phone } from "lucide-react";
 import { t } from "@/utils/i18n";
+import { useI18n } from "@/context/I18nContext";
 
 const Contact = () => {
   const { toast } = useToast();
+  const { locale } = useI18n();
+  const [currentLocale, setCurrentLocale] = useState(locale);
+  
+  // Đảm bảo component được cập nhật khi ngôn ngữ thay đổi
+  useEffect(() => {
+    setCurrentLocale(locale);
+  }, [locale]);
+  
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -25,8 +34,10 @@ const Contact = () => {
     e.preventDefault();
     // Gọi API hoặc gửi email ở đây, hiện tại chỉ hiển thị thông báo
     toast({
-      title: "Đã nhận thông tin",
-      description: "Chúng tôi sẽ liên hệ với bạn trong thời gian sớm nhất.",
+      title: currentLocale === "vi" ? "Đã nhận thông tin" : "Information received",
+      description: currentLocale === "vi" 
+        ? "Chúng tôi sẽ liên hệ với bạn trong thời gian sớm nhất." 
+        : "We will contact you as soon as possible.",
     });
 
     // Reset form

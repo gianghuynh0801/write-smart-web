@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Accordion,
   AccordionContent,
@@ -57,6 +57,12 @@ const faqs: FAQItem[] = [
 
 const FAQ = () => {
   const { locale } = useI18n();
+  const [currentLocale, setCurrentLocale] = useState(locale);
+  
+  // Đảm bảo component được cập nhật khi ngôn ngữ thay đổi
+  useEffect(() => {
+    setCurrentLocale(locale);
+  }, [locale]);
   
   return (
     <div className="container py-16">
@@ -72,10 +78,10 @@ const FAQ = () => {
           {faqs.map((faq, index) => (
             <AccordionItem key={index} value={`item-${index}`}>
               <AccordionTrigger className="text-left">
-                {locale === "vi" ? faq.questionVI : faq.questionEN}
+                {currentLocale === "vi" ? faq.questionVI : faq.questionEN}
               </AccordionTrigger>
               <AccordionContent>
-                {locale === "vi" ? faq.answerVI : faq.answerEN}
+                {currentLocale === "vi" ? faq.answerVI : faq.answerEN}
               </AccordionContent>
             </AccordionItem>
           ))}

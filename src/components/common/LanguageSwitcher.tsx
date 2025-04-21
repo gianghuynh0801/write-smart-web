@@ -32,6 +32,11 @@ const LanguageSwitcher = () => {
     });
     
     console.log(`Language changed to: ${lang}`);
+    
+    // Force a page reload to ensure all components update
+    setTimeout(() => {
+      window.location.reload();
+    }, 500); // Delay reload to allow toast to show
   };
   
   return (
