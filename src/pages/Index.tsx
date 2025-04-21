@@ -7,6 +7,7 @@ import Pricing from "@/components/home/Pricing";
 import Testimonials from "@/components/home/Testimonials";
 import FAQ from "@/components/home/FAQ";
 import CTA from "@/components/home/CTA";
+import Contact from "@/components/home/Contact";
 
 const Index = () => {
   return (
@@ -18,6 +19,7 @@ const Index = () => {
         <Pricing />
         <Testimonials />
         <FAQ />
+        <Contact />
         <CTA />
       </main>
       <Footer />

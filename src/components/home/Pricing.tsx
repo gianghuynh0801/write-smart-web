@@ -56,7 +56,7 @@ const pricingPlans = [
 
 const Pricing = () => {
   return (
-    <div className="container py-16">
+    <div id="pricing" className="container py-16">
       <div className="text-center max-w-3xl mx-auto mb-12">
         <h2 className="text-3xl font-bold mb-4">Bảng giá dịch vụ</h2>
         <p className="text-gray-600 text-lg">

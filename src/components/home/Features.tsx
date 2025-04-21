@@ -36,7 +36,7 @@ const features = [
 
 const Features = () => {
   return (
-    <div className="bg-gray-50 py-16">
+    <div id="features" className="bg-gray-50 py-16">
       <div className="container">
         <div className="text-center max-w-3xl mx-auto mb-12">
           <h2 className="text-3xl font-bold mb-4">Tính năng nổi bật</h2>

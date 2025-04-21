@@ -1,11 +1,20 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const location = useLocation();
+  
+  // Kiểm tra xem có đang ở trang chủ không
+  const isHomePage = location.pathname === "/";
+  
+  // Tạo liên kết dựa trên vị trí hiện tại
+  const getLink = (section: string) => {
+    return isHomePage ? `#${section}` : `/#${section}`;
+  };
 
   return (
     <nav className="bg-white py-4 border-b border-gray-100 sticky top-0 z-50">
@@ -19,15 +28,15 @@ const Navbar = () => {
           <Link to="/" className="text-gray-700 hover:text-primary transition-colors">
             Trang chủ
           </Link>
-          <Link to="/pricing" className="text-gray-700 hover:text-primary transition-colors">
+          <a href={getLink("pricing")} className="text-gray-700 hover:text-primary transition-colors">
             Bảng giá
-          </Link>
-          <Link to="/features" className="text-gray-700 hover:text-primary transition-colors">
+          </a>
+          <a href={getLink("features")} className="text-gray-700 hover:text-primary transition-colors">
             Tính năng
-          </Link>
-          <Link to="/contact" className="text-gray-700 hover:text-primary transition-colors">
+          </a>
+          <a href={getLink("contact")} className="text-gray-700 hover:text-primary transition-colors">
             Liên hệ
-          </Link>
+          </a>
         </div>
         
         <div className="hidden md:flex items-center gap-4">
@@ -58,27 +67,27 @@ const Navbar = () => {
           >
             Trang chủ
           </Link>
-          <Link 
-            to="/pricing"
+          <a 
+            href={getLink("pricing")}
             className="text-gray-700 py-2 border-b border-gray-100"
             onClick={() => setIsMenuOpen(false)}
           >
             Bảng giá
-          </Link>
-          <Link 
-            to="/features"
+          </a>
+          <a 
+            href={getLink("features")}
             className="text-gray-700 py-2 border-b border-gray-100"
             onClick={() => setIsMenuOpen(false)}
           >
             Tính năng
-          </Link>
-          <Link 
-            to="/contact"
+          </a>
+          <a 
+            href={getLink("contact")}
             className="text-gray-700 py-2 border-b border-gray-100"
             onClick={() => setIsMenuOpen(false)}
           >
             Liên hệ
-          </Link>
+          </a>
           <div className="flex flex-col gap-2 mt-2">
             <Link to="/login" onClick={() => setIsMenuOpen(false)}>
               <Button variant="outline" className="w-full">Đăng nhập</Button>
