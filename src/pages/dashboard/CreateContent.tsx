@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,10 +21,12 @@ import {
   Plus,
   Tag,
   List,
+  Save,
+  FileUp,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { generateContent } from "@/utils/webhookService";
 
 const verticalTabs = [
@@ -81,6 +84,7 @@ const CreateContent = () => {
 
   const [openDialog, setOpenDialog] = useState(false);
   const [editableContent, setEditableContent] = useState("");
+  const [savedContent, setSavedContent] = useState(""); // Cho nút lưu
 
   const handleAddSubKeyword = () => {
     const trimmed = subKeywordInput.trim();
@@ -182,6 +186,25 @@ const CreateContent = () => {
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  // Handler cho nút Lưu
+  const handleSave = () => {
+    setSavedContent(editableContent);
+    toast({
+      title: "Đã lưu nháp",
+      description: "Nội dung bài viết đã được lưu vào bộ nhớ tạm.",
+    });
+  };
+
+  // Handler cho nút Đăng bài viết (chỉ console log)
+  const handlePublish = () => {
+    // Ở đây bạn có thể tích hợp API đăng bài viết lên WordPress hoặc nơi khác
+    console.log("Nội dung sẽ đăng:", editableContent);
+    toast({
+      title: "Đăng bài viết",
+      description: "Đã gửi nội dung lên hệ thống (demo - log ra console).",
+    });
   };
 
   return (
@@ -399,19 +422,36 @@ const CreateContent = () => {
         </Button>
       </div>
 
+      {/* Dialog hiển thị nội dung + chức năng lưu, đăng, editor */}
       <Dialog open={openDialog} onOpenChange={setOpenDialog}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Bài viết đã tạo ({mainKeyword})</DialogTitle>
+            <DialogDescription>
+              Soạn thảo, lưu nháp hoặc đăng bài viết từ AI:
+            </DialogDescription>
           </DialogHeader>
+          {/* Đơn giản dùng textarea, có thể thay bằng rich text editor nếu bạn muốn nâng cấp */}
           <textarea
             value={editableContent}
             onChange={(e) => setEditableContent(e.target.value)}
             rows={18}
-            className="w-full p-3 border rounded text-sm bg-background resize-y"
+            className="w-full p-3 border rounded text-sm bg-background resize-y focus:outline-accent focus:border-primary"
+            placeholder="Nội dung bài viết ..."
+            style={{ minHeight: 200 }}
           />
           <div className="flex justify-end gap-2 mt-3">
-            <Button onClick={() => setOpenDialog(false)}>Đóng</Button>
+            <Button variant="outline" onClick={handleSave}>
+              <Save className="w-4 h-4 mr-1" />
+              Lưu bài viết
+            </Button>
+            <Button variant="default" onClick={handlePublish}>
+              <FileUp className="w-4 h-4 mr-1" />
+              Đăng bài viết
+            </Button>
+            <Button onClick={() => setOpenDialog(false)}>
+              Đóng
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -420,3 +460,4 @@ const CreateContent = () => {
 };
 
 export default CreateContent;
+
