@@ -2,6 +2,7 @@
 import { Star } from "lucide-react";
 import { useI18n } from "@/context/I18nContext";
 import { t } from "@/utils/i18n";
+import { useEffect, useState } from "react";
 
 interface TestimonialItem {
   nameVI: string;
@@ -49,6 +50,12 @@ const testimonials: TestimonialItem[] = [
 
 const Testimonials = () => {
   const { locale } = useI18n();
+  const [currentLocale, setCurrentLocale] = useState(locale);
+  
+  // This effect ensures the component rerenders when the language changes
+  useEffect(() => {
+    setCurrentLocale(locale);
+  }, [locale]);
   
   return (
     <div className="bg-gray-50 py-16">
@@ -69,12 +76,12 @@ const Testimonials = () => {
               <div className="flex items-center mb-4">
                 <img 
                   src={testimonial.avatar} 
-                  alt={locale === "vi" ? testimonial.nameVI : testimonial.nameEN}
+                  alt={currentLocale === "vi" ? testimonial.nameVI : testimonial.nameEN}
                   className="w-12 h-12 rounded-full mr-4"
                 />
                 <div>
-                  <h4 className="font-bold">{locale === "vi" ? testimonial.nameVI : testimonial.nameEN}</h4>
-                  <p className="text-gray-500 text-sm">{locale === "vi" ? testimonial.roleVI : testimonial.roleEN}</p>
+                  <h4 className="font-bold">{currentLocale === "vi" ? testimonial.nameVI : testimonial.nameEN}</h4>
+                  <p className="text-gray-500 text-sm">{currentLocale === "vi" ? testimonial.roleVI : testimonial.roleEN}</p>
                 </div>
               </div>
               <div className="flex mb-4">
@@ -86,7 +93,7 @@ const Testimonials = () => {
                   />
                 ))}
               </div>
-              <p className="text-gray-600">{locale === "vi" ? testimonial.commentVI : testimonial.commentEN}</p>
+              <p className="text-gray-600">{currentLocale === "vi" ? testimonial.commentVI : testimonial.commentEN}</p>
             </div>
           ))}
         </div>

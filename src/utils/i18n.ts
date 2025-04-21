@@ -265,7 +265,7 @@ const translations: Translations = {
   'lang.en': { vi: "Tiếng Anh", en: "English" },
 };
 
-// Use the LOCAL_STORAGE_KEYS constant from localStorageService
+// Default to Vietnamese
 let currentLocale: Locale = 'vi';
 
 export const setLocale = (locale: Locale) => {
@@ -274,7 +274,11 @@ export const setLocale = (locale: Locale) => {
 };
 
 export const getLocale = (): Locale => {
-  return currentLocale;
+  const storedLang = localStorage.getItem('writesmart_language');
+  if (storedLang === 'en') {
+    return 'en';
+  }
+  return 'vi';
 };
 
 export const translate = (key: string, placeholders?: Record<string, string>): string => {

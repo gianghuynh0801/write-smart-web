@@ -14,22 +14,22 @@ const I18nContext = createContext<I18nContextType>({
 });
 
 export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [locale, setLocaleState] = useState<"vi" | "en">(getLocale());
+  const [locale, setLocaleState] = useState<"vi" | "en">("vi");
 
   useEffect(() => {
     // Initialize i18n based on browser language or localStorage
-    initializeI18n();
     const storedLang = localStorage.getItem(LOCAL_STORAGE_KEYS.LANGUAGE);
-    if (storedLang === "vi" || storedLang === "en") {
-      setLang(storedLang);
+    
+    if (storedLang === "en") {
+      setLang("en");
     } else {
-      // Default to Vietnamese if no preference is stored
+      // Default to Vietnamese if no preference is stored or invalid value
       setLang("vi");
     }
-    // eslint-disable-next-line
   }, []);
 
   const setLang = (lang: "vi" | "en") => {
+    console.log("Setting language to:", lang);
     setLocale(lang);
     setLocaleState(lang);
     // Store in localStorage to remember user's choice
