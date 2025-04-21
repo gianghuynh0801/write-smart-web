@@ -63,6 +63,9 @@ const verticalTabs = [
   },
 ];
 
+const SUB_KEY_LIMIT = 3;
+const RELATED_KEY_LIMIT = 3;
+
 const CreateContent = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedContent, setGeneratedContent] = useState("");
@@ -161,10 +164,22 @@ ${formData.topic} không phải là một nỗ lực một lần, mà là một 
   };
 
   const handleAddSubKeyword = () => {
-    if (subKeywordInput.trim() && !subKeywords.includes(subKeywordInput.trim())) {
-      setSubKeywords([...subKeywords, subKeywordInput.trim()]);
+    const trimmed = subKeywordInput.trim();
+    if (!trimmed) return;
+    if (subKeywords.includes(trimmed)) {
       setSubKeywordInput("");
+      return;
     }
+    if (subKeywords.length >= SUB_KEY_LIMIT) {
+      toast({
+        title: "Đã đạt giới hạn",
+        description: "Bạn chỉ có thể thêm tối đa 3 từ khoá phụ.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setSubKeywords([...subKeywords, trimmed]);
+    setSubKeywordInput("");
   };
 
   const handleRemoveSubKeyword = (keyword: string) => {
@@ -172,10 +187,22 @@ ${formData.topic} không phải là một nỗ lực một lần, mà là một 
   };
 
   const handleAddRelatedKeyword = () => {
-    if (relatedKeywordInput.trim() && !relatedKeywords.includes(relatedKeywordInput.trim())) {
-      setRelatedKeywords([...relatedKeywords, relatedKeywordInput.trim()]);
+    const trimmed = relatedKeywordInput.trim();
+    if (!trimmed) return;
+    if (relatedKeywords.includes(trimmed)) {
       setRelatedKeywordInput("");
+      return;
     }
+    if (relatedKeywords.length >= RELATED_KEY_LIMIT) {
+      toast({
+        title: "Đã đạt giới hạn",
+        description: "Bạn chỉ có thể thêm tối đa 3 từ khoá liên quan.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setRelatedKeywords([...relatedKeywords, trimmed]);
+    setRelatedKeywordInput("");
   };
 
   const handleRemoveRelatedKeyword = (keyword: string) => {
@@ -186,7 +213,6 @@ ${formData.topic} không phải là một nỗ lực một lần, mà là một 
     <div className="w-full min-h-screen py-8 px-2 md:px-10 flex flex-col bg-background">
       <h1 className="text-2xl font-bold mb-1">Tạo nội dung</h1>
       <p className="text-gray-500 mb-6">Tạo bài viết chuẩn SEO với công nghệ AI</p>
-      {/* Đưa form bao quanh Tabs và nút */}
       <form className="w-full" onSubmit={handleSubmit}>
         <div className="flex flex-col md:flex-row gap-6">
           <Tabs 
@@ -254,8 +280,11 @@ ${formData.topic} không phải là một nỗ lực một lần, mà là một 
                               handleAddSubKeyword();
                             }
                           }}
+                          disabled={subKeywords.length >= SUB_KEY_LIMIT}
                         />
-                        <Button variant="ghost" type="button" onClick={handleAddSubKeyword} className="px-2">
+                        <Button variant="ghost" type="button" onClick={handleAddSubKeyword} className="px-2"
+                          disabled={subKeywords.length >= SUB_KEY_LIMIT}
+                        >
                           <Plus className="h-4 w-4" />
                           Thêm mới
                         </Button>
@@ -293,8 +322,11 @@ ${formData.topic} không phải là một nỗ lực một lần, mà là một 
                               handleAddRelatedKeyword();
                             }
                           }}
+                          disabled={relatedKeywords.length >= RELATED_KEY_LIMIT}
                         />
-                        <Button variant="ghost" type="button" onClick={handleAddRelatedKeyword} className="px-2">
+                        <Button variant="ghost" type="button" onClick={handleAddRelatedKeyword} className="px-2"
+                          disabled={relatedKeywords.length >= RELATED_KEY_LIMIT}
+                        >
                           <Plus className="h-4 w-4" />
                           Thêm mới
                         </Button>
@@ -382,7 +414,6 @@ ${formData.topic} không phải là một nỗ lực một lần, mà là một 
             </div>
           </Tabs>
         </div>
-        {/* Nút tạo bài viết, tách ra ngoài Tabs */}
         <div className="mt-8 flex justify-end w-full">
           <Button type="submit" className="flex items-center gap-2" disabled={isGenerating}>
             {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
