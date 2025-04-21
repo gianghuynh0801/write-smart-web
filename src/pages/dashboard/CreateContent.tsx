@@ -221,39 +221,38 @@ ${formData.topic} không phải là một nỗ lực một lần, mà là một 
     <div className="w-full min-h-screen py-8 px-2 md:px-10 flex flex-col bg-background">
       <h1 className="text-2xl font-bold mb-1">Tạo nội dung</h1>
       <p className="text-gray-500 mb-6">Tạo bài viết chuẩn SEO với công nghệ AI</p>
-      <div className="flex gap-6">
-        {/* Sidebar Tabs */}
-        <Tabs
-          value={activeTab}
+      
+      <div className="flex flex-col md:flex-row gap-6">
+        {/* Main content with tabs */}
+        <Tabs 
+          orientation="vertical" 
+          value={activeTab} 
           onValueChange={setActiveTab}
-          orientation="vertical"
-          className="flex"
+          className="flex flex-col md:flex-row gap-6"
         >
-          {/* Tabs Navigation (Vertical Sidebar) */}
-          <TabsList className="flex flex-col w-44 bg-muted/70 border p-1 rounded-xl shadow">
+          {/* Vertical TabsList */}
+          <TabsList className="flex flex-col h-auto w-56 bg-muted/70 p-1.5 rounded-xl shadow">
             {verticalTabs.map((tab) => (
               <TabsTrigger
                 key={tab.value}
                 value={tab.value}
                 className={cn(
-                  "flex flex-row items-center px-4 py-3 rounded-lg gap-2 text-base transition-all mb-1 text-left hover:bg-accent",
-                  activeTab === tab.value
-                    ? "bg-background text-primary font-semibold"
-                    : ""
+                  "flex items-center justify-start gap-2 mb-1 px-4 py-3 text-left text-base",
+                  activeTab === tab.value ? "bg-background text-primary font-medium" : ""
                 )}
               >
-                <tab.icon className="mr-2 h-5 w-5" />
-                {tab.label}
+                <tab.icon className="h-5 w-5" />
+                <span>{tab.label}</span>
               </TabsTrigger>
             ))}
           </TabsList>
 
-          {/* Tab Content + Minh hoạ */}
-          <div className="flex-1 flex flex-col md:flex-row gap-8 bg-transparent p-0">
-            {/* Main Content */}
-            <div className="flex-1 flex flex-col">
-              {/* Tab Nội dung */}
-              <TabsContent value="keywords" className="w-full animate-fade-in">
+          {/* Content area + Illustration */}
+          <div className="flex flex-1 flex-col md:flex-row gap-6">
+            {/* Tab content area */}
+            <div className="flex-1">
+              {/* Keywords Tab Content */}
+              <TabsContent value="keywords" className="mt-0 animate-fade-in">
                 <div className="mb-6">
                   <h2 className="text-lg font-semibold mb-1 flex items-center gap-2">
                     <Key className="h-5 w-5 text-primary" /> Từ khoá cho bài viết
@@ -262,6 +261,7 @@ ${formData.topic} không phải là một nỗ lực một lần, mà là một 
                     Hệ thống sẽ ép các từ khoá này vào phần ai tạo. Đảm bảo các từ khóa có liên quan đến chủ đề của bài viết.
                   </p>
                 </div>
+
                 <form className="space-y-6 max-w-xl">
                   {/* Từ khoá chính */}
                   <div className="space-y-2">
@@ -278,6 +278,7 @@ ${formData.topic} không phải là một nỗ lực một lần, mà là một 
                       Bài viết sẽ tập trung vào từ khoá này.
                     </p>
                   </div>
+                  
                   {/* Từ khoá phụ & thêm mới */}
                   <div className="space-y-2">
                     <Label htmlFor="sub-keyword">Từ khoá phụ</Label>
@@ -317,6 +318,7 @@ ${formData.topic} không phải là một nỗ lực một lần, mà là một 
                       Chúng tôi sẽ ép các từ khoá phụ này vào bài viết.
                     </p>
                   </div>
+                  
                   {/* Từ khoá liên quan & thêm mới */}
                   <div className="space-y-2">
                     <Label htmlFor="related-keyword">Từ khoá liên quan</Label>
@@ -359,67 +361,81 @@ ${formData.topic} không phải là một nỗ lực một lần, mà là một 
                 </form>
               </TabsContent>
 
-              {/* Các tab khác giữ nguyên nội dung mô tả và placeholder */}
-              <TabsContent value="outline" className="w-full animate-fade-in">
+              {/* Outline Tab Content */}
+              <TabsContent value="outline" className="mt-0 animate-fade-in">
                 <div>
                   <h2 className="text-lg font-semibold mb-2 flex items-center gap-2">
                     <LayoutList className="h-5 w-5 text-primary" /> Outline bài viết
                   </h2>
-                  <Textarea placeholder="Xây dựng các mục lớn, mục phụ cho bài viết (VD: Giới thiệu, Các bước thực hiện...)" disabled className="min-h-[90px]" />
+                  <Textarea placeholder="Xây dựng các mục lớn, mục phụ cho bài viết (VD: Giới thiệu, Các bước thực hiện...)" className="min-h-[90px]" />
                 </div>
               </TabsContent>
-              <TabsContent value="content" className="w-full animate-fade-in">
+
+              {/* Content Tab Content */}
+              <TabsContent value="content" className="mt-0 animate-fade-in">
                 <div>
                   <h2 className="text-lg font-semibold mb-2 flex items-center gap-2">
                     <FileText className="h-5 w-5 text-primary" /> Nội dung chi tiết
                   </h2>
-                  <Textarea placeholder="Bài viết, đoạn văn, ví dụ..." disabled className="min-h-[90px]" />
+                  <Textarea placeholder="Bài viết, đoạn văn, ví dụ..." className="min-h-[90px]" />
                 </div>
               </TabsContent>
-              <TabsContent value="knowledge" className="w-full animate-fade-in">
+
+              {/* Knowledge Tab Content */}
+              <TabsContent value="knowledge" className="mt-0 animate-fade-in">
                 <div>
                   <h2 className="text-lg font-semibold mb-2 flex items-center gap-2">
                     <Book className="h-5 w-5 text-primary" /> Kiến thức nền tảng
                   </h2>
-                  <Textarea placeholder="Ghi chú background/kiến thức liên quan chủ đề..." disabled className="min-h-[90px]" />
+                  <Textarea placeholder="Ghi chú background/kiến thức liên quan chủ đề..." className="min-h-[90px]" />
                 </div>
               </TabsContent>
-              <TabsContent value="format" className="w-full animate-fade-in">
+
+              {/* Format Tab Content */}
+              <TabsContent value="format" className="mt-0 animate-fade-in">
                 <div>
                   <h2 className="text-lg font-semibold mb-2 flex items-center gap-2">
                     <Text className="h-5 w-5 text-primary" /> Định dạng bài viết
                   </h2>
-                  <Textarea placeholder="Bảng, gạch đầu dòng, đoạn văn ngắn/dài..." disabled className="min-h-[90px]" />
+                  <Textarea placeholder="Bảng, gạch đầu dòng, đoạn văn ngắn/dài..." className="min-h-[90px]" />
                 </div>
               </TabsContent>
-              <TabsContent value="links" className="w-full animate-fade-in">
+
+              {/* Links Tab Content */}
+              <TabsContent value="links" className="mt-0 animate-fade-in">
                 <div>
                   <h2 className="text-lg font-semibold mb-2 flex items-center gap-2">
                     <LinkIcon className="h-5 w-5 text-primary" /> Liên kết
                   </h2>
-                  <Textarea placeholder="Đính kèm các link hoặc trích dẫn ngoài..." disabled className="min-h-[90px]" />
+                  <Textarea placeholder="Đính kèm các link hoặc trích dẫn ngoài..." className="min-h-[90px]" />
                 </div>
               </TabsContent>
-              <TabsContent value="images" className="w-full animate-fade-in">
+
+              {/* Images Tab Content */}
+              <TabsContent value="images" className="mt-0 animate-fade-in">
                 <div>
                   <h2 className="text-lg font-semibold mb-2 flex items-center gap-2">
                     <Image className="h-5 w-5 text-primary" /> Hình ảnh minh hoạ
                   </h2>
-                  <Textarea placeholder="Chọn/đính kèm hình ảnh cho bài viết..." disabled className="min-h-[90px]" />
+                  <Textarea placeholder="Chọn/đính kèm hình ảnh cho bài viết..." className="min-h-[90px]" />
                 </div>
               </TabsContent>
             </div>
-            {/* Ảnh minh hoạ bên phải, luôn hiển thị, bo góc đẹp */}
-            <div className="w-60 flex-shrink-0 hidden md:flex flex-col items-center">
-              <div className="w-56 h-56 rounded-2xl overflow-hidden shadow-xl bg-gray-100 border animate-fade-in">
-                <img
-                  src={illustrationUrl}
-                  alt="Ảnh minh hoạ bài viết"
-                  className="object-cover w-full h-full"
-                  loading="lazy"
-                />
+
+            {/* Illustration image - fixed on the right */}
+            <div className="w-60 hidden lg:block flex-shrink-0">
+              <div className="sticky top-24">
+                <div className="w-60 h-60 rounded-2xl overflow-hidden shadow-lg border">
+                  <img 
+                    src={illustrationUrl} 
+                    alt="Ảnh minh hoạ bài viết" 
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground text-center">
+                  Ảnh minh hoạ tự động từ Unsplash
+                </p>
               </div>
-              <p className="mt-2 text-xs text-muted-foreground text-center">Ảnh minh hoạ tự động từ Unsplash</p>
             </div>
           </div>
         </Tabs>
@@ -584,4 +600,3 @@ ${formData.topic} không phải là một nỗ lực một lần, mà là một 
 };
 
 export default CreateContent;
-
