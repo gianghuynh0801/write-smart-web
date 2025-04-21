@@ -3,6 +3,7 @@ import { Outlet } from "react-router-dom";
 import Sidebar from "@/components/dashboard/Sidebar";
 import { Link } from "react-router-dom";
 import { Home } from "lucide-react";
+import LanguageSwitcher from "@/components/common/LanguageSwitcher";
 
 const DashboardLayout = () => {
   return (
@@ -19,6 +20,7 @@ const DashboardLayout = () => {
               </Link>
             </div>
             <div className="flex items-center gap-4">
+              <LanguageSwitcher />
               {/* Add additional header elements here like notifications */}
             </div>
           </div>
