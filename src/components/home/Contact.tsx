@@ -55,7 +55,7 @@ const Contact = () => {
           {/* Form section */}
           <div className="md:col-span-7">
             <Card>
-              <CardContent className="p-6">
+              <CardContent className="pt-6 p-6">
                 <h3 className="text-xl font-bold mb-6">{t('form.button')}</h3>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
@@ -122,16 +122,16 @@ const Contact = () => {
           {/* Contact info section */}
           <div className="md:col-span-5">
             <Card className="h-full">
-              <CardContent className="p-6 h-full flex flex-col justify-between">
+              <CardContent className="pt-6 p-6 h-full flex flex-col">
                 <div>
                   <h3 className="text-xl font-bold mb-6">{t('info.title')}</h3>
                   <div className="space-y-6">
                     <div className="flex items-start">
-                      <div className="bg-primary/10 p-2 rounded-full mr-4">
+                      <div className="bg-primary/10 p-2 rounded-full mr-4 flex-shrink-0">
                         <Mail className="text-primary" size={20} />
                       </div>
                       <div>
-                        <p className="font-medium">{t('info.email')}</p>
+                        <p className="font-medium">Email</p>
                         <a href="mailto:info@writesmart.vn" className="text-gray-600 hover:text-primary">
                           info@writesmart.vn
                         </a>
@@ -139,11 +139,11 @@ const Contact = () => {
                     </div>
                     
                     <div className="flex items-start">
-                      <div className="bg-primary/10 p-2 rounded-full mr-4">
+                      <div className="bg-primary/10 p-2 rounded-full mr-4 flex-shrink-0">
                         <Phone className="text-primary" size={20} />
                       </div>
                       <div>
-                        <p className="font-medium">{t('info.phone')}</p>
+                        <p className="font-medium">Số điện thoại</p>
                         <a href="tel:+84912345678" className="text-gray-600 hover:text-primary">
                           0912 345 678
                         </a>
@@ -151,7 +151,7 @@ const Contact = () => {
                     </div>
                     
                     <div className="flex items-start">
-                      <div className="bg-primary/10 p-2 rounded-full mr-4">
+                      <div className="bg-primary/10 p-2 rounded-full mr-4 flex-shrink-0">
                         <MapPin className="text-primary" size={20} />
                       </div>
                       <div>
@@ -166,14 +166,14 @@ const Contact = () => {
 
                 <div className="mt-8 pt-6 border-t border-gray-100">
                   <div className="flex items-start">
-                    <div className="bg-primary/10 p-2 rounded-full mr-4">
+                    <div className="bg-primary/10 p-2 rounded-full mr-4 flex-shrink-0">
                       <Clock className="text-primary" size={20} />
                     </div>
                     <div>
-                      <h4 className="font-medium mb-2">{t('info.workingHours')}</h4>
-                      <p className="text-gray-600">{t('info.workingDays.weekdays')}</p>
-                      <p className="text-gray-600">{t('info.workingDays.saturday')}</p>
-                      <p className="text-gray-600">{t('info.workingDays.sunday')}</p>
+                      <h4 className="font-medium mb-2">Giờ làm việc</h4>
+                      <p className="text-gray-600">Thứ 2 - Thứ 6: 8:00 - 17:30</p>
+                      <p className="text-gray-600">Thứ 7: 8:00 - 12:00</p>
+                      <p className="text-gray-600">Chủ nhật: Nghỉ</p>
                     </div>
                   </div>
                 </div>
