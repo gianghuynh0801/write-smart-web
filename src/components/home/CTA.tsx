@@ -23,10 +23,9 @@ const CTA = () => {
               </Button>
             </Link>
             <Link to="/contact">
-              <Button 
-                size="lg" 
-                variant="outline" 
-                className="border-white text-white hover:bg-violet-600 w-full sm:w-auto border-2"
+              <Button
+                size="lg"
+                className="bg-violet-600 text-white hover:bg-violet-700 w-full sm:w-auto border-2 border-violet-600"
               >
                 {t('common:contactUs')}
               </Button>
