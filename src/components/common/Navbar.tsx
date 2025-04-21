@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { useTranslation } from "react-i18next";
@@ -15,12 +15,24 @@ const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { t } = useTranslation();
 
+  // State để áp dụng hiệu ứng shadow khi sticky
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 8);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
   };
 
   return (
-    <nav className="bg-white shadow">
+    <nav className={`bg-white transition-all duration-300 z-30 sticky top-0 w-full ${scrolled ? "shadow-lg animate-fade-in" : "shadow-sm"} animate-fade-in`}>
       <div className="container flex items-center justify-between h-16">
         <div className="flex items-center gap-6">
           <a href="/" className="font-bold text-primary text-xl">

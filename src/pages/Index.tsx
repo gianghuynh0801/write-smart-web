@@ -8,6 +8,7 @@ import Testimonials from "@/components/home/Testimonials";
 import FAQ from "@/components/home/FAQ";
 import CTA from "@/components/home/CTA";
 import Contact from "@/components/home/Contact";
+import BackToTop from "@/components/common/BackToTop";
 
 const Index = () => {
   return (
@@ -23,6 +24,7 @@ const Index = () => {
         <CTA />
       </main>
       <Footer />
+      <BackToTop />
     </div>
   );
 };
