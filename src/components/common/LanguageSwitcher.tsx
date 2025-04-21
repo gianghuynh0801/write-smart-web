@@ -32,9 +32,6 @@ const LanguageSwitcher = () => {
     });
     
     console.log(`Language changed to: ${lang}`);
-    
-    // Force a page reload to ensure all components update
-    window.location.reload();
   };
   
   return (
