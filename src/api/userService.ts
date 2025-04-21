@@ -2,7 +2,7 @@
 import { User, UserFormValues } from "@/types/user";
 
 // Mock data - trong môi trường thực tế, thay thế bằng API calls
-const users = [
+const users: User[] = [
   { 
     id: 1, 
     name: "Nguyễn Văn A", 
@@ -196,7 +196,7 @@ export const updateUser = async (id: number, userData: UserFormValues): Promise<
   const index = users.findIndex(user => user.id === id);
   if (index === -1) throw new Error("Không tìm thấy người dùng");
   
-  const updatedUser = {
+  const updatedUser: User = {
     ...users[index],
     ...userData
   };

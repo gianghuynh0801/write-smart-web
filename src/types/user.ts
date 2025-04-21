@@ -7,7 +7,7 @@ export interface User {
   subscription: string;
   status: "active" | "inactive";
   registeredAt: string;
-  avatar?: string;
+  avatar: string;  // Đã chuyển thành bắt buộc
   role: "user" | "admin" | "editor";
 }
 
