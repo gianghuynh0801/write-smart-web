@@ -25,7 +25,8 @@ const CTA = () => {
             <Link to="/contact">
               <Button
                 size="lg"
-                className="bg-violet-600 text-white hover:bg-violet-700 w-full sm:w-auto border-2 border-violet-600"
+                className="w-full sm:w-auto border-2 border-white text-white"
+                style={{ backgroundColor: '#ac90ee' }}
               >
                 {t('common:contactUs')}
               </Button>
@@ -38,4 +39,3 @@ const CTA = () => {
 };
 
 export default CTA;
-
