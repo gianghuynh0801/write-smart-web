@@ -1,3 +1,4 @@
+
 // Utility for working with n8n webhooks for content generation
 
 interface ContentGenerationParams {
@@ -50,7 +51,28 @@ export const generateContent = async (
       throw new Error(`HTTP error: ${response.status} - ${response.statusText}`);
     }
     
-    const data = await response.json();
+    // Kiểm tra nếu response có nội dung trước khi parse JSON
+    const responseText = await response.text();
+    if (!responseText || responseText.trim() === '') {
+      console.log('Empty response received from webhook');
+      return {
+        status: 'success',
+        content: 'Server returned an empty response. Content was not generated.',
+      };
+    }
+    
+    // Thử parse JSON từ text response
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (jsonError) {
+      console.error('Invalid JSON response:', responseText);
+      return {
+        status: 'error',
+        error: 'Server trả về định dạng không hợp lệ. Vui lòng thử lại sau.',
+      };
+    }
+    
     console.log('Response data:', data);
     
     return {
