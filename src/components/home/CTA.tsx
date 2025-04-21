@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 
 const CTA = () => {
   const { t } = useTranslation(['common', 'cta']);
-  
+
   return (
     <div className="bg-primary py-16">
       <div className="container">
@@ -14,7 +14,8 @@ const CTA = () => {
             {t('cta:title')}
           </h2>
           <p className="text-xl mb-8 opacity-90">
-            {t('cta:description')}
+            {/* Viết lại câu mô tả dài hơn */}
+            Đăng ký miễn phí ngay hôm nay để trải nghiệm mọi tính năng vượt trội, bắt đầu tạo nên những nội dung xuất sắc, chuyên nghiệp cho website, mạng xã hội của bạn và mở rộng khả năng tiếp cận khách hàng nhanh chóng hơn bao giờ hết!
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <Link to="/register">
@@ -22,15 +23,7 @@ const CTA = () => {
                 {t('common:registerFree')}
               </Button>
             </Link>
-            <Link to="/contact">
-              <Button
-                size="lg"
-                className="w-full sm:w-auto border-2 border-white text-white"
-                style={{ backgroundColor: '#ac90ee' }}
-              >
-                {t('common:contactUs')}
-              </Button>
-            </Link>
+            {/* Đã bỏ nút Liên hệ với chúng tôi */}
           </div>
         </div>
       </div>

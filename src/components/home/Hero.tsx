@@ -22,11 +22,11 @@ const Hero = () => {
                 {t('common:tryFree')}
               </Button>
             </Link>
-            <Link to="#features">
+            <a href="#pricing">
               <Button size="lg" variant="outline" className="w-full sm:w-auto">
                 {t('common:getStarted')}
               </Button>
-            </Link>
+            </a>
           </div>
           <p className="text-sm text-gray-500">
             {t('common:noCredit')}
