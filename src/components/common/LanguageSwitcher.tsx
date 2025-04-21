@@ -13,6 +13,12 @@ const languages = [
 
 const LanguageSwitcher = () => {
   const { locale, setLang } = useI18n();
+  
+  const handleLanguageChange = (lang: "vi" | "en") => {
+    setLang(lang);
+    console.log(`Language changed to: ${lang}`);
+  };
+  
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -33,7 +39,7 @@ const LanguageSwitcher = () => {
               key={item.code}
               variant={locale === item.code ? "secondary" : "ghost"}
               className="justify-start w-full"
-              onClick={() => setLang(item.code as "vi" | "en")}
+              onClick={() => handleLanguageChange(item.code as "vi" | "en")}
             >
               {t(`lang.${item.code}`)}
               {locale === item.code && (

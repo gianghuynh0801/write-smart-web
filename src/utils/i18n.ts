@@ -7,7 +7,7 @@ interface Translations {
   };
 }
 
-// Chú ý: key nào có tiếng Việt thì phải có tiếng Anh tương ứng!
+// All translations must have both Vietnamese and English versions!
 const translations: Translations = {
   // Common
   'app.name': { vi: 'WriteSmart', en: 'WriteSmart' },
@@ -254,21 +254,23 @@ const translations: Translations = {
     en: "Contact for consultation"
   },
 
-  // Dashboard (giữ nguyên)
+  // Dashboard
   'dashboard.overview': { vi: 'Tổng quan', en: 'Overview' },
   'dashboard.create': { vi: 'Tạo nội dung', en: 'Create Content' },
   'dashboard.credits': { vi: 'Tín dụng', en: 'Credits' },
   'dashboard.subscriptions': { vi: 'Gói đăng ký', en: 'Subscriptions' },
 
-  // Thông báo Language 
+  // Language notification
   'lang.vi': { vi: "Tiếng Việt", en: "Vietnamese" },
   'lang.en': { vi: "Tiếng Anh", en: "English" },
 };
 
+// Use the LOCAL_STORAGE_KEYS constant from localStorageService
 let currentLocale: Locale = 'vi';
 
 export const setLocale = (locale: Locale) => {
   currentLocale = locale;
+  console.log(`Locale set to: ${locale}`);
 };
 
 export const getLocale = (): Locale => {
@@ -291,12 +293,13 @@ export const translate = (key: string, placeholders?: Record<string, string>): s
 
 export const t = translate;
 
-// Initialize with browser language
+// Initialize with browser language or stored preference
 export const initializeI18n = () => {
-  const browserLang = navigator.language.substring(0, 2);
-  if (browserLang === 'en') {
+  const storedLang = localStorage.getItem('writesmart_language');
+  if (storedLang === 'en') {
     setLocale('en');
   } else {
+    // Default to Vietnamese
     setLocale('vi');
   }
 };
