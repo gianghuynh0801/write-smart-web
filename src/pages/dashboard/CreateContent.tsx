@@ -73,18 +73,15 @@ const CreateContent = () => {
   const [activeTab, setActiveTab] = useState(verticalTabs[0].value);
   const { toast } = useToast();
 
-  // các trường của tab "Từ khoá"
   const [mainKeyword, setMainKeyword] = useState("");
   const [subKeywords, setSubKeywords] = useState<string[]>([]);
   const [relatedKeywords, setRelatedKeywords] = useState<string[]>([]);
   const [subKeywordInput, setSubKeywordInput] = useState("");
   const [relatedKeywordInput, setRelatedKeywordInput] = useState("");
 
-  // Dialog popup state
   const [openDialog, setOpenDialog] = useState(false);
   const [editableContent, setEditableContent] = useState("");
 
-  // Xử lý thêm từ khoá phụ
   const handleAddSubKeyword = () => {
     const trimmed = subKeywordInput.trim();
     if (!trimmed) return;
@@ -104,12 +101,10 @@ const CreateContent = () => {
     setSubKeywordInput("");
   };
 
-  // Xử lý xoá từ khoá phụ
   const handleRemoveSubKeyword = (keyword: string) => {
     setSubKeywords(subKeywords.filter((item) => item !== keyword));
   };
 
-  // Xử lý thêm từ khoá liên quan
   const handleAddRelatedKeyword = () => {
     const trimmed = relatedKeywordInput.trim();
     if (!trimmed) return;
@@ -129,16 +124,13 @@ const CreateContent = () => {
     setRelatedKeywordInput("");
   };
 
-  // Xử lý xoá từ khoá liên quan
   const handleRemoveRelatedKeyword = (keyword: string) => {
     setRelatedKeywords(relatedKeywords.filter((item) => item !== keyword));
   };
 
-  // Xử lý bấm "Tạo bài viết"
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // validate bắt buộc với từ khoá chính
     if (!mainKeyword) {
       toast({
         title: "Thiếu từ khoá chính",
@@ -152,15 +144,15 @@ const CreateContent = () => {
     setGeneratedContent("");
     setEditableContent("");
     try {
-      // Chỉ gửi các trường của tab "Từ khoá" sang backend.
       const params = {
         topic: mainKeyword,
         keywords: [mainKeyword, ...subKeywords, ...relatedKeywords].join(", "),
-        // Nếu backend có nhận các field phụ, có thể bổ sung thêm
       };
 
-      // Giả lập tạo bài viết thông qua webhookService/generateContent
-      const resp = await generateContent(params);
+      const resp = await generateContent(
+        params,
+        "https://workflow.matbao.support/webhook-test/80808e9c-a56a-4b4f-83da-7710fae0bda7"
+      );
       if (resp.status === "success" && resp.content) {
         setGeneratedContent(resp.content);
         setEditableContent(resp.content);
@@ -191,7 +183,6 @@ const CreateContent = () => {
     <div className="w-full min-h-screen py-8 px-2 md:px-10 flex flex-col bg-background">
       <h1 className="text-2xl font-bold mb-1">Tạo nội dung</h1>
       <p className="text-gray-500 mb-6">Tạo bài viết chuẩn SEO với công nghệ AI</p>
-      {/* Không bao quanh Tabs bởi form */}
       <div className="flex flex-col md:flex-row gap-6">
         <Tabs 
           orientation="vertical" 
@@ -247,7 +238,6 @@ const CreateContent = () => {
                     <Label htmlFor="sub-keyword">Từ khoá phụ</Label>
                     {Array.from({ length: subKeywords.length + (subKeywords.length < SUB_KEY_LIMIT ? 1 : 0) }).map((_, idx) => (
                       <div className="flex gap-2 mt-2" key={idx}>
-                        {/* Input cho dòng mới hoặc các dòng đã thêm */}
                         {idx < subKeywords.length ? (
                           <span className="inline-flex items-center px-3 py-1 rounded-full bg-secondary text-secondary-foreground text-xs">
                             <Tag className="w-3 h-3 mr-1" />
@@ -397,7 +387,6 @@ const CreateContent = () => {
           </div>
         </Tabs>
       </div>
-      {/* Tách Nút tạo bài viết ra khỏi Tabs, nằm dưới cùng */}
       <div className="mt-8 flex justify-end w-full">
         <Button onClick={handleSubmit} className="flex items-center gap-2" disabled={isGenerating}>
           {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
@@ -405,7 +394,6 @@ const CreateContent = () => {
         </Button>
       </div>
 
-      {/* Hiển thị Dialog Pop-up khi có nội dung */}
       <Dialog open={openDialog} onOpenChange={setOpenDialog}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
@@ -419,7 +407,6 @@ const CreateContent = () => {
           />
           <div className="flex justify-end gap-2 mt-3">
             <Button onClick={() => setOpenDialog(false)}>Đóng</Button>
-            {/* Có thể bổ sung nút "Lưu" sau (tuỳ yêu cầu) */}
           </div>
         </DialogContent>
       </Dialog>
