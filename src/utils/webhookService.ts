@@ -1,4 +1,3 @@
-
 // Utility for working with n8n webhooks for content generation
 
 interface ContentGenerationParams {
@@ -24,6 +23,13 @@ export const generateContent = async (
       throw new Error('No webhook URL provided');
     }
     
+    console.log('Sending request to webhook:', webhookUrl);
+    console.log('Request params:', params);
+    
+    // Set timeout to prevent infinite waiting
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 seconds timeout
+    
     const response = await fetch(webhookUrl, {
       method: 'POST',
       headers: {
@@ -33,22 +39,47 @@ export const generateContent = async (
         ...params,
         timestamp: new Date().toISOString(),
       }),
+      signal: controller.signal,
+      mode: 'cors', // Explicitly set CORS mode
     });
     
+    clearTimeout(timeoutId);
+    
     if (!response.ok) {
-      throw new Error(`HTTP error: ${response.status}`);
+      console.error('HTTP error response:', response.status, response.statusText);
+      throw new Error(`HTTP error: ${response.status} - ${response.statusText}`);
     }
     
     const data = await response.json();
+    console.log('Response data:', data);
+    
     return {
       status: 'success',
-      content: data.content,
+      content: data.content || 'Content generated successfully, but empty response received.',
     };
   } catch (error) {
+    // Check for specific network errors
+    if (error instanceof TypeError && error.message === 'Failed to fetch') {
+      console.error('Network error - Failed to fetch:', error);
+      return {
+        status: 'error',
+        error: 'Không thể kết nối tới webhook URL. Vui lòng kiểm tra kết nối mạng và URL webhook.'
+      };
+    }
+    
+    // Check for timeout
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      console.error('Request timeout:', error);
+      return {
+        status: 'error',
+        error: 'Yêu cầu quá thời gian chờ. Vui lòng thử lại sau.'
+      };
+    }
+    
     console.error('Error calling webhook:', error);
     return {
       status: 'error',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: error instanceof Error ? error.message : 'Lỗi không xác định khi gọi webhook',
     };
   }
 };

@@ -149,10 +149,13 @@ const CreateContent = () => {
         keywords: [mainKeyword, ...subKeywords, ...relatedKeywords].join(", "),
       };
 
+      console.log("Gửi yêu cầu tạo nội dung với params:", params);
+      
       const resp = await generateContent(
         params,
         "https://workflow.matbao.support/webhook-test/80808e9c-a56a-4b4f-83da-7710fae0bda7"
       );
+      
       if (resp.status === "success" && resp.content) {
         setGeneratedContent(resp.content);
         setEditableContent(resp.content);
@@ -167,11 +170,13 @@ const CreateContent = () => {
           description: resp.error || "Đã xảy ra lỗi khi tạo nội dung!",
           variant: "destructive",
         });
+        console.error("Lỗi từ webhook:", resp.error);
       }
     } catch (error) {
+      console.error("Lỗi exception:", error);
       toast({
         title: "Lỗi",
-        description: "Đã xảy ra lỗi khi gọi backend.",
+        description: error instanceof Error ? error.message : "Đã xảy ra lỗi khi gọi webhook.",
         variant: "destructive",
       });
     } finally {
