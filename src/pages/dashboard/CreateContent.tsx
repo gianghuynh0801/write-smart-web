@@ -1,8 +1,8 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Tabs,
   TabsContent,
@@ -14,9 +14,6 @@ import {
   Send,
   Shuffle,
   FileText,
-  Facebook,
-  Globe,
-  Image,
   Key,
   LayoutList,
   Book,
@@ -25,24 +22,9 @@ import {
   Plus,
   Tag,
   List,
-  Pencil,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-
-const illustrationImages = [
-  "https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?auto=format&fit=crop&w=600&q=80",
-  "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?auto=format&fit=crop&w=600&q=80",
-  "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=600&q=80",
-  "https://images.unsplash.com/photo-1531297484001-80022131f5a1?auto=format&fit=crop&w=600&q=80",
-  "https://images.unsplash.com/photo-1487058792275-0ad4aaf24ca7?auto=format&fit=crop&w=600&q=80",
-  "https://images.unsplash.com/photo-1500673922987-e212871fec22?auto=format&fit=crop&w=600&q=80",
-  "https://images.unsplash.com/photo-1501854140801-50d01698950b?auto=format&fit=crop&w=600&q=80",
-];
-
-function getRandomImage() {
-  return illustrationImages[Math.floor(Math.random() * illustrationImages.length)];
-}
 
 const verticalTabs = [
   {
@@ -78,7 +60,7 @@ const verticalTabs = [
   {
     value: "images",
     label: "Hình ảnh",
-    icon: Image,
+    icon: LinkIcon,
   },
 ];
 
@@ -93,7 +75,6 @@ const CreateContent = () => {
     language: "vietnamese",
   });
   const [activeTab, setActiveTab] = useState(verticalTabs[0].value);
-  const [illustrationUrl, setIllustrationUrl] = useState(getRandomImage());
   const { toast } = useToast();
 
   const [mainKeyword, setMainKeyword] = useState("");
@@ -116,7 +97,7 @@ const CreateContent = () => {
 
     if (!formData.topic) {
       toast({
-        title: "Chủ đ��� trống",
+        title: "Chủ đề trống",
         description: "Vui lòng nhập chủ đề cho bài viết của bạn.",
         variant: "destructive",
       });
@@ -178,14 +159,6 @@ ${formData.topic} không phải là một nỗ lực một lần, mà là một 
     const randomTopic =
       randomTopics[Math.floor(Math.random() * randomTopics.length)];
     setFormData((prev) => ({ ...prev, topic: randomTopic }));
-    setIllustrationUrl(getRandomImage());
-  };
-
-  const handleTopicInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    handleChange(e);
-    if (e.target.value.trim() === "") {
-      setIllustrationUrl(getRandomImage());
-    }
   };
 
   const handleAddSubKeyword = () => {
@@ -350,90 +323,7 @@ ${formData.topic} không phải là một nỗ lực một lần, mà là một 
         </Tabs>
       </div>
 
-      <div className="mt-10 w-full grid md:grid-cols-2 gap-8">
-        <div>
-          <form onSubmit={handleSubmit}>
-            <div className="space-y-4 bg-card border rounded-xl shadow px-6 py-8">
-              <div className="space-y-2">
-                <Label htmlFor="topic">Chủ đề</Label>
-                <Input
-                  id="topic"
-                  name="topic"
-                  placeholder="Nhập chủ đề bài viết"
-                  value={formData.topic}
-                  onChange={handleTopicInputChange}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="length">Độ dài</Label>
-                  <select
-                    id="length"
-                    name="length"
-                    className="input w-full border border-input rounded-md px-3 py-2 text-sm"
-                    value={formData.length}
-                    onChange={e => handleSelectChange("length", e.target.value)}
-                  >
-                    <option value="short">Ngắn (500 từ)</option>
-                    <option value="medium">Trung bình (1000 từ)</option>
-                    <option value="long">Dài (2000 từ)</option>
-                  </select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="tone">Giọng điệu</Label>
-                  <select
-                    id="tone"
-                    name="tone"
-                    className="input w-full border border-input rounded-md px-3 py-2 text-sm"
-                    value={formData.tone}
-                    onChange={e => handleSelectChange("tone", e.target.value)}
-                  >
-                    <option value="professional">Chuyên nghiệp</option>
-                    <option value="casual">Thân thiện</option>
-                    <option value="formal">Trang trọng</option>
-                    <option value="persuasive">Thuyết phục</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="language">Ngôn ngữ</Label>
-                <select
-                  id="language"
-                  name="language"
-                  className="input w-full border border-input rounded-md px-3 py-2 text-sm"
-                  value={formData.language}
-                  onChange={e => handleSelectChange("language", e.target.value)}
-                >
-                  <option value="vietnamese">Tiếng Việt</option>
-                  <option value="english">Tiếng Anh</option>
-                </select>
-              </div>
-
-              <div className="flex justify-between items-center pt-2">
-                <Button type="button" variant="outline" onClick={handleRandomTopic}>
-                  <Shuffle className="mr-2 h-4 w-4" />
-                  Gợi ý ngẫu nhiên
-                </Button>
-                <Button type="submit" disabled={isGenerating}>
-                  {isGenerating ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Đang tạo...
-                    </>
-                  ) : (
-                    <>
-                      <Send className="mr-2 h-4 w-4" />
-                      Tạo bài viết
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-          </form>
-        </div>
+      <div className="mt-10 w-full grid md:grid-cols-1 gap-8">
         <div>
           <div className={`${!generatedContent && 'hidden'}`}>
             <div className="bg-card border rounded-xl shadow px-6 py-6 mb-4">
@@ -467,3 +357,4 @@ ${formData.topic} không phải là một nỗ lực một lần, mà là một 
 };
 
 export default CreateContent;
+
