@@ -46,7 +46,7 @@ const Testimonials = () => {
   ];
 
   return (
-    <div className="bg-gray-50 py-16">
+    <div className="bg-gray-50 py-16 animate-fade-in">
       <div className="container">
         <div className="text-center max-w-3xl mx-auto mb-12">
           <h2 className="text-3xl font-bold mb-4">{t('title')}</h2>
@@ -59,7 +59,8 @@ const Testimonials = () => {
           {testimonials.map((testimonial, index) => (
             <div 
               key={index} 
-              className="bg-white p-6 rounded-lg shadow-sm border border-gray-100"
+              className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 hover-scale animate-fade-in"
+              style={{ animationDelay: `${index * 120}ms`, animationFillMode: "both" }}
             >
               <div className="flex items-center mb-4">
                 <img 

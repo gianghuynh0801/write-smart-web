@@ -10,7 +10,7 @@ const Pricing = () => {
   const plans = ['basic', 'pro', 'business'];
   
   return (
-    <div id="pricing" className="container py-16">
+    <div id="pricing" className="container py-16 animate-fade-in">
       <div className="text-center max-w-3xl mx-auto mb-12">
         <h2 className="text-3xl font-bold mb-4">{t('title')}</h2>
         <p className="text-gray-600 text-lg">
@@ -26,7 +26,8 @@ const Pricing = () => {
               key={index} 
               className={`bg-white rounded-lg border ${
                 isPopular ? 'border-primary shadow-lg' : 'border-gray-200'
-              } overflow-hidden`}
+              } overflow-hidden hover-scale animate-fade-in`}
+              style={{ animationDelay: `${index * 120}ms`, animationFillMode: "both" }}
             >
               {isPopular && (
                 <div className="bg-primary text-white text-center py-1.5 text-sm font-medium">

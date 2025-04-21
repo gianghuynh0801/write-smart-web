@@ -23,7 +23,7 @@ const Features = () => {
   const { t } = useTranslation('features');
   
   return (
-    <div id="features" className="bg-gray-50 py-16">
+    <div id="features" className="bg-gray-50 py-16 animate-fade-in">
       <div className="container">
         <div className="text-center max-w-3xl mx-auto mb-12">
           <h2 className="text-3xl font-bold mb-4">{t('title')}</h2>
@@ -36,7 +36,8 @@ const Features = () => {
           {featureIcons.map(({ index, icon: Icon }) => (
             <div 
               key={index} 
-              className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
+              className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-shadow hover-scale animate-fade-in"
+              style={{ animationDelay: `${index * 80}ms`, animationFillMode: "both" }}
             >
               <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 text-primary mb-4">
                 <Icon size={24} />

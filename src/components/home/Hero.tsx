@@ -7,7 +7,7 @@ const Hero = () => {
   const { t } = useTranslation(['common', 'hero']);
   
   return (
-    <div className="container py-16 md:py-24">
+    <div className="container py-16 md:py-24 animate-fade-in">
       <div className="grid md:grid-cols-2 gap-8 items-center">
         <div className="space-y-6">
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight">

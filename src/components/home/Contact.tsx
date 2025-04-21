@@ -42,7 +42,7 @@ const Contact = () => {
   };
 
   return (
-    <div id="contact" className="bg-gray-50 py-16">
+    <div id="contact" className="bg-gray-50 py-16 animate-fade-in">
       <div className="container">
         <div className="text-center max-w-3xl mx-auto mb-12">
           <h2 className="text-3xl font-bold mb-4">{t('title')}</h2>
@@ -54,7 +54,7 @@ const Contact = () => {
         <div className="grid md:grid-cols-12 gap-8 max-w-5xl mx-auto">
           {/* Form section */}
           <div className="md:col-span-7">
-            <Card>
+            <Card className="animate-fade-in">
               <CardContent className="pt-6 p-6">
                 <h3 className="text-xl font-bold mb-6">{t('form.button')}</h3>
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -121,7 +121,7 @@ const Contact = () => {
 
           {/* Contact info section */}
           <div className="md:col-span-5">
-            <Card className="h-full">
+            <Card className="h-full animate-fade-in">
               <CardContent className="pt-6 p-6 h-full flex flex-col">
                 <div>
                   <h3 className="text-xl font-bold mb-6">{t('info.title')}</h3>
