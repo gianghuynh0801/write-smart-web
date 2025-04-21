@@ -22,7 +22,7 @@ const Hero = () => {
                 {t('common:tryFree')}
               </Button>
             </Link>
-            <Link to="/features">
+            <Link to="#features">
               <Button size="lg" variant="outline" className="w-full sm:w-auto">
                 {t('common:getStarted')}
               </Button>
