@@ -1,6 +1,8 @@
 
 import React, { useState } from "react";
 import { Menu, X } from "lucide-react";
+import LanguageSwitcher from "./LanguageSwitcher";
+import { useTranslation } from "react-i18next";
 
 const scrollToSection = (id: string) => {
   const el = document.getElementById(id);
@@ -11,6 +13,7 @@ const scrollToSection = (id: string) => {
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { t } = useTranslation();
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -26,24 +29,25 @@ const Navbar = () => {
           <ul className="hidden md:flex gap-4">
             <li>
               <button className="bg-transparent hover:underline px-2" onClick={() => scrollToSection("features")}>
-                Tính năng
+                {t('common:features')}
               </button>
             </li>
             <li>
               <button className="bg-transparent hover:underline px-2" onClick={() => scrollToSection("pricing")}>
-                Bảng giá
+                {t('common:pricing')}
               </button>
             </li>
             <li>
               <button className="bg-transparent hover:underline px-2" onClick={() => scrollToSection("contact")}>
-                Liên hệ
+                {t('common:contact')}
               </button>
             </li>
           </ul>
         </div>
         <div className="flex items-center gap-3">
-          <a href="/login" className="btn btn-sm btn-outline-primary">Đăng nhập</a>
-          <a href="/register" className="btn btn-sm btn-primary">Đăng ký</a>
+          <LanguageSwitcher />
+          <a href="/login" className="btn btn-sm btn-outline-primary">{t('common:login')}</a>
+          <a href="/register" className="btn btn-sm btn-primary">{t('common:register')}</a>
         </div>
       </div>
     </nav>
