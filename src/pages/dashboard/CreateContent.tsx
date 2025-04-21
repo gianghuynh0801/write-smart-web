@@ -223,7 +223,7 @@ ${formData.topic} không phải là một nỗ lực một lần, mà là một 
                   </p>
                 </div>
 
-                <form className="space-y-6 max-w-xl">
+                <form className="space-y-6 max-w-xl" onSubmit={handleSubmit}>
                   <div className="space-y-2">
                     <Label htmlFor="main-keyword">Từ khoá chính <span className="text-destructive">*</span></Label>
                     <Input
@@ -315,6 +315,13 @@ ${formData.topic} không phải là một nỗ lực một lần, mà là một 
                     <p className="text-xs text-muted-foreground ml-1">
                       Chúng tôi sẽ ép các từ khoá liên quan này vào bài viết. Đảm bảo các từ khóa có liên quan đến chủ đề của bài viết và không chứa lỗi đánh máy.
                     </p>
+                  </div>
+
+                  <div className="mt-6 flex justify-end">
+                    <Button type="submit" className="flex items-center gap-2" disabled={isGenerating} >
+                      {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                      Tạo bài viết
+                    </Button>
                   </div>
                 </form>
               </TabsContent>
