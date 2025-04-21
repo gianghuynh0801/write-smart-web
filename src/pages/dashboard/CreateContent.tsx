@@ -3,23 +3,116 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Send, Shuffle, FileText, Facebook, Globe, Image } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import {
+  Loader2,
+  Send,
+  Shuffle,
+  FileText,
+  Facebook,
+  Globe,
+  Image,
+  Key,
+  LayoutList,
+  Book,
+  Text,
+  Link,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const illustrationImages = [
-  "https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?auto=format&fit=crop&w=600&q=80",
-  "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?auto=format&fit=crop&w=600&q=80",
-  "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=600&q=80",
-  "https://images.unsplash.com/photo-1531297484001-80022131f5a1?auto=format&fit=crop&w=600&q=80",
-  "https://images.unsplash.com/photo-1487058792275-0ad4aaf24ca7?auto=format&fit=crop&w=600&q=80",
+  "https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?auto=format&fit=crop&w=600&q=80", // gray laptop
+  "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?auto=format&fit=crop&w=600&q=80", // monitor java
+  "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=600&q=80", // woman laptop
+  "https://images.unsplash.com/photo-1531297484001-80022131f5a1?auto=format&fit=crop&w=600&q=80", // code
+  "https://images.unsplash.com/photo-1487058792275-0ad4aaf24ca7?auto=format&fit=crop&w=600&q=80", // colorful code
+  "https://images.unsplash.com/photo-1500673922987-e212871fec22?auto=format&fit=crop&w=600&q=80", // yellow lights
+  "https://images.unsplash.com/photo-1501854140801-50d01698950b?auto=format&fit=crop&w=600&q=80", // mountains
 ];
 
 function getRandomImage() {
   return illustrationImages[Math.floor(Math.random() * illustrationImages.length)];
 }
+
+// Tab config
+const contentTabs = [
+  {
+    value: "keywords",
+    label: "Từ khoá",
+    icon: Key,
+    description: "Danh sách các từ khoá chính giúp tối ưu nội dung SEO.",
+    image: "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?auto=format&fit=crop&w=600&q=80",
+    placeholder: "Nhập các từ khoá liên quan chủ đề bài viết."
+  },
+  {
+    value: "outline",
+    label: "Outline",
+    icon: LayoutList,
+    description: "Cấu trúc/đề cương tổng quan của bài viết.",
+    image: "https://images.unsplash.com/photo-1487058792275-0ad4aaf24ca7?auto=format&fit=crop&w=600&q=80",
+    placeholder: "Xây dựng các mục lớn, mục phụ cho bài viết."
+  },
+  {
+    value: "content",
+    label: "Nội dung",
+    icon: FileText,
+    description: "Phần nội dung chi tiết sẽ được sinh ra bởi AI.",
+    image: "https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?auto=format&fit=crop&w=600&q=80",
+    placeholder: "Bài viết, đoạn văn, ví dụ, thông tin..."
+  },
+  {
+    value: "knowledge",
+    label: "Kiến thức",
+    icon: Book,
+    description: "Thông tin nền tảng và kiến thức liên quan chủ đề.",
+    image: "https://images.unsplash.com/photo-1531297484001-80022131f5a1?auto=format&fit=crop&w=600&q=80",
+    placeholder: "Notes/background cho AI tham chiếu."
+  },
+  {
+    value: "format",
+    label: "Định dạng",
+    icon: Text,
+    description: "Lựa chọn định dạng hiển thị mong muốn.",
+    image: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=600&q=80",
+    placeholder: "Bảng, gạch đầu dòng, đoạn văn ngắn/dài..."
+  },
+  {
+    value: "links",
+    label: "Liên kết",
+    icon: Link,
+    description: "Các liên kết tham khảo hoặc liên kết nội bộ.",
+    image: "https://images.unsplash.com/photo-1500673922987-e212871fec22?auto=format&fit=crop&w=600&q=80",
+    placeholder: "Đính kèm các link hoặc trích dẫn ngoài."
+  },
+  {
+    value: "images",
+    label: "Hình ảnh",
+    icon: Image,
+    description: "Các hình ảnh minh hoạ theo chủ đề.",
+    image: "https://images.unsplash.com/photo-1501854140801-50d01698950b?auto=format&fit=crop&w=600&q=80",
+    placeholder: "Chọn/đính kèm hình ảnh cho bài viết."
+  }
+];
 
 const CreateContent = () => {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -29,23 +122,24 @@ const CreateContent = () => {
     keywords: "",
     length: "medium",
     tone: "professional",
-    language: "vietnamese"
+    language: "vietnamese",
   });
   const [illustrationUrl, setIllustrationUrl] = useState(getRandomImage());
+  const [activeTab, setActiveTab] = useState(contentTabs[0].value);
   const { toast } = useToast();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSelectChange = (name: string, value: string) => {
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.topic) {
       toast({
         title: "Chủ đề trống",
@@ -54,10 +148,10 @@ const CreateContent = () => {
       });
       return;
     }
-    
+
     setIsGenerating(true);
     setGeneratedContent(""); // Reset previous content
-    
+
     try {
       setTimeout(() => {
         const sampleContent = `
@@ -82,7 +176,7 @@ Khi người dùng tìm kiếm thông tin trên Google hoặc các công cụ t�
 
 ${formData.topic} không phải là một nỗ lực một lần, mà là một quá trình liên tục cần được giám sát và điều chỉnh theo thời gian. Bằng cách áp dụng các nguyên tắc và chiến lược được nêu trong bài viết này, bạn có thể cải thiện đáng kể khả năng hiển thị trực tuyến của mình và thu hút nhiều khách hàng tiềm năng hơn.
         `;
-        
+
         setGeneratedContent(sampleContent);
         toast({
           title: "Tạo nội dung thành công!",
@@ -90,7 +184,6 @@ ${formData.topic} không phải là một nỗ lực một lần, mà là một 
         });
         setIsGenerating(false);
       }, 3000);
-      
     } catch (error) {
       toast({
         title: "Lỗi",
@@ -106,10 +199,11 @@ ${formData.topic} không phải là một nỗ lực một lần, mà là một 
       "Cách tối ưu SEO cho website",
       "Chiến lược content marketing hiệu quả",
       "Hướng dẫn xây dựng thương hiệu cá nhân",
-      "Các xu hướng digital marketing năm 2023"
+      "Các xu hướng digital marketing năm 2023",
     ];
-    const randomTopic = randomTopics[Math.floor(Math.random() * randomTopics.length)];
-    setFormData(prev => ({ ...prev, topic: randomTopic }));
+    const randomTopic =
+      randomTopics[Math.floor(Math.random() * randomTopics.length)];
+    setFormData((prev) => ({ ...prev, topic: randomTopic }));
     setIllustrationUrl(getRandomImage());
   };
 
@@ -118,8 +212,9 @@ ${formData.topic} không phải là một nỗ lực một lần, mà là một 
     if (e.target.value.trim() === "") {
       setIllustrationUrl(getRandomImage());
     }
-  }
+  };
 
+  // --- UI Render
   return (
     <div className="space-y-6">
       <div>
@@ -128,8 +223,9 @@ ${formData.topic} không phải là một nỗ lực một lần, mà là một 
           Tạo bài viết chuẩn SEO với công nghệ AI
         </p>
       </div>
-      
+
       <div className="grid md:grid-cols-2 gap-8">
+        {/* Card "Thông tin bài viết" với Tabs và minh hoạ */}
         <Card>
           <div className="w-full h-[220px] md:h-[250px] flex items-center justify-center bg-[#F3F3F3] rounded-t-lg relative overflow-hidden mb-0">
             {illustrationUrl ? (
@@ -151,6 +247,43 @@ ${formData.topic} không phải là một nỗ lực một lần, mà là một 
             <CardDescription>
               Nhập thông tin chi tiết để tạo bài viết
             </CardDescription>
+            {/* Tabs section */}
+            <div className="pt-4">
+              <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <TabsList className="w-full grid grid-cols-7 bg-muted/90 border p-1 rounded-lg mb-3">
+                  {contentTabs.map((tab) => (
+                    <TabsTrigger key={tab.value} value={tab.value} className="flex flex-col items-center px-2 py-2 hover:bg-primary/10 hover:text-primary rounded-md transition-all">
+                      <tab.icon className="mb-1 h-5 w-5" />
+                      <span className="text-xs font-medium">{tab.label}</span>
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+                {contentTabs.map((tab) => (
+                  <TabsContent key={tab.value} value={tab.value}>
+                    <div className="flex flex-col md:flex-row gap-4 items-start">
+                      <div className="flex-shrink-0 md:w-40 w-full mb-2 md:mb-0">
+                        <img
+                          src={tab.image}
+                          alt={`Hình minh hoạ cho ${tab.label}`}
+                          className="rounded-lg w-full h-28 object-cover shadow hover-scale"
+                          loading="lazy"
+                        />
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600 mb-2">{tab.description}</p>
+                        <div>
+                          <Textarea
+                            placeholder={tab.placeholder}
+                            className="min-h-[80px]"
+                            disabled
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </TabsContent>
+                ))}
+              </Tabs>
+            </div>
           </CardHeader>
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
@@ -164,7 +297,7 @@ ${formData.topic} không phải là một nỗ lực một lần, mà là một 
                   onChange={handleTopicInputChange}
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="keywords">Từ khóa</Label>
                 <Input
@@ -175,13 +308,15 @@ ${formData.topic} không phải là một nỗ lực một lần, mà là một 
                   onChange={handleChange}
                 />
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="length">Độ dài</Label>
                   <Select
                     defaultValue={formData.length}
-                    onValueChange={(value) => handleSelectChange("length", value)}
+                    onValueChange={(value) =>
+                      handleSelectChange("length", value)
+                    }
                   >
                     <SelectTrigger id="length">
                       <SelectValue placeholder="Chọn độ dài" />
@@ -193,12 +328,14 @@ ${formData.topic} không phải là một nỗ lực một lần, mà là một 
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="tone">Giọng điệu</Label>
                   <Select
                     defaultValue={formData.tone}
-                    onValueChange={(value) => handleSelectChange("tone", value)}
+                    onValueChange={(value) =>
+                      handleSelectChange("tone", value)
+                    }
                   >
                     <SelectTrigger id="tone">
                       <SelectValue placeholder="Chọn giọng điệu" />
@@ -212,12 +349,14 @@ ${formData.topic} không phải là một nỗ lực một lần, mà là một 
                   </Select>
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="language">Ngôn ngữ</Label>
                 <Select
                   defaultValue={formData.language}
-                  onValueChange={(value) => handleSelectChange("language", value)}
+                  onValueChange={(value) =>
+                    handleSelectChange("language", value)
+                  }
                 >
                   <SelectTrigger id="language">
                     <SelectValue placeholder="Chọn ngôn ngữ" />
@@ -230,11 +369,7 @@ ${formData.topic} không phải là một nỗ lực một lần, mà là một 
               </div>
             </CardContent>
             <CardFooter className="flex justify-between">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleRandomTopic}
-              >
+              <Button type="button" variant="outline" onClick={handleRandomTopic}>
                 <Shuffle className="mr-2 h-4 w-4" />
                 Gợi ý ngẫu nhiên
               </Button>
