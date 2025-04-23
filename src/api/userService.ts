@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { User, UserFormValues } from "@/types/user";
 
@@ -188,16 +187,8 @@ async function handleSubscriptionChange(userId: string, subscriptionName: string
       }
     }
     
-    // Define the interface for RPC parameters
-    interface CreateUserSubscriptionParams {
-      p_user_id: string;
-      p_subscription_id: number;
-      p_start_date: string;
-      p_end_date: string;
-      p_status: string;
-    }
-
-    const rpcParams: CreateUserSubscriptionParams = {
+    // Use any type for RPC parameters since we don't have proper type definitions
+    const rpcParams: any = {
       p_user_id: userId,
       p_subscription_id: subscriptionId,
       p_start_date: startDate,
@@ -208,7 +199,7 @@ async function handleSubscriptionChange(userId: string, subscriptionName: string
     // Use type assertion with the defined interface to satisfy TypeScript
     const { error } = await supabase.rpc(
       'create_user_subscription',
-      rpcParams as any  // Use type assertion to bypass TypeScript's type checking for RPC
+      rpcParams
     );
     
     if (error) {
