@@ -1,51 +1,114 @@
 
+import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Package } from "lucide-react";
+import { Package, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
-const PaymentHistoryCard = () => (
-  <Card>
-    <CardHeader>
-      <CardTitle>Lịch sử thanh toán</CardTitle>
-      <CardDescription>
-        Lịch sử các giao dịch thanh toán gói đăng ký của bạn
-      </CardDescription>
-    </CardHeader>
-    <CardContent>
-      <div className="rounded-md border">
-        <div className="grid grid-cols-4 p-4 font-medium border-b bg-gray-50">
-          <div>Hóa đơn</div>
-          <div>Ngày</div>
-          <div>Số tiền</div>
-          <div>Trạng thái</div>
-        </div>
-        <div className="divide-y">
-          {[
-            { id: "INV-001", date: "15/04/2023", amount: "499.000đ", status: "Thành công" },
-            { id: "INV-002", date: "15/03/2023", amount: "499.000đ", status: "Thành công" },
-            { id: "INV-003", date: "15/02/2023", amount: "499.000đ", status: "Thành công" }
-          ].map((invoice, i) => (
-            <div key={i} className="grid grid-cols-4 p-4">
-              <div className="font-medium">{invoice.id}</div>
-              <div className="text-gray-500">{invoice.date}</div>
-              <div>{invoice.amount}</div>
-              <div>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                  {invoice.status}
-                </span>
-              </div>
+interface PaymentHistory {
+  id: number;
+  amount: number;
+  status: string;
+  payment_at: string;
+  description: string | null;
+}
+
+const PaymentHistoryCard = () => {
+  const [payments, setPayments] = useState<PaymentHistory[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+  
+  useEffect(() => {
+    const fetchPaymentHistory = async () => {
+      setIsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('payment_history')
+          .select('*')
+          .order('payment_at', { ascending: false })
+          .limit(3);
+
+        if (error) throw error;
+        setPayments(data || []);
+      } catch (error: any) {
+        console.error("Error fetching payment history:", error);
+        toast({
+          title: "Lỗi",
+          description: "Không thể tải lịch sử thanh toán",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPaymentHistory();
+  }, [toast]);
+  
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('vi-VN');
+  };
+  
+  const formatAmount = (amount: number) => {
+    return amount.toLocaleString() + 'đ';
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Lịch sử thanh toán</CardTitle>
+        <CardDescription>
+          Lịch sử các giao dịch thanh toán gói đăng ký của bạn
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="flex justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : (
+          <div className="rounded-md border">
+            <div className="grid grid-cols-4 p-4 font-medium border-b bg-gray-50">
+              <div>Hóa đơn</div>
+              <div>Ngày</div>
+              <div>Số tiền</div>
+              <div>Trạng thái</div>
             </div>
-          ))}
-        </div>
-      </div>
-    </CardContent>
-    <CardFooter>
-      <Button variant="outline" className="w-full md:w-auto">
-        <Package className="mr-2 h-4 w-4" />
-        Xem tất cả hóa đơn
-      </Button>
-    </CardFooter>
-  </Card>
-);
+            <div className="divide-y">
+              {payments.length > 0 ? (
+                payments.map((payment) => (
+                  <div key={payment.id} className="grid grid-cols-4 p-4">
+                    <div className="font-medium">INV-{payment.id.toString().padStart(3, '0')}</div>
+                    <div className="text-gray-500">{formatDate(payment.payment_at)}</div>
+                    <div>{formatAmount(payment.amount)}</div>
+                    <div>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        payment.status === 'success' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {payment.status === 'success' ? 'Thành công' : payment.status}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="p-8 text-center text-gray-500">
+                  Không có dữ liệu thanh toán
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </CardContent>
+      <CardFooter>
+        <Button variant="outline" className="w-full md:w-auto">
+          <Package className="mr-2 h-4 w-4" />
+          Xem tất cả hóa đơn
+        </Button>
+      </CardFooter>
+    </Card>
+  );
+};
 
 export default PaymentHistoryCard;

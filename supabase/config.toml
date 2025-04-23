@@ -1,1 +1,11 @@
+
 project_id = "ctegtqmkxkbqhwlqukfd"
+
+[functions.begin_transaction]
+verify_jwt = true
+
+[functions.commit_transaction]
+verify_jwt = true
+
+[functions.rollback_transaction]
+verify_jwt = true

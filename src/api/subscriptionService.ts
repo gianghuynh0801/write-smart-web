@@ -1,0 +1,229 @@
+
+import { supabase } from "@/integrations/supabase/client";
+
+// Fetch all subscription plans
+export const fetchSubscriptionPlans = async () => {
+  const { data, error } = await supabase
+    .from('subscriptions')
+    .select('*')
+    .order('price', { ascending: true });
+    
+  if (error) throw new Error(`Error fetching subscription plans: ${error.message}`);
+  return data || [];
+};
+
+// Fetch current user subscription
+export const fetchUserSubscription = async (userId: string) => {
+  // First try to get the active subscription from user_subscriptions table
+  const { data, error } = await supabase
+    .from('user_subscriptions')
+    .select(`
+      id,
+      start_date,
+      end_date,
+      status,
+      subscriptions:subscription_id (
+        id,
+        name,
+        price,
+        period,
+        features
+      )
+    `)
+    .eq('user_id', userId)
+    .eq('status', 'active')
+    .single();
+  
+  if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
+    console.error("Error fetching user subscription:", error);
+    throw new Error(`Error fetching subscription: ${error.message}`);
+  }
+
+  // If subscription found in user_subscriptions
+  if (data) {
+    return {
+      plan: data.subscriptions?.name || "Không có",
+      planId: data.subscriptions?.id,
+      status: data.status,
+      startDate: data.start_date,
+      endDate: data.end_date,
+      price: data.subscriptions?.price || 0,
+      usageArticles: 8, // This would come from a usage tracking system
+      totalArticles: 30 // This should be extracted from features or a separate limit table
+    };
+  }
+
+  // Fallback to user.subscription field (legacy or simplified approach)
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('subscription')
+    .eq('id', userId)
+    .single();
+  
+  if (userError) {
+    console.error("Error fetching user data:", userError);
+    throw new Error(`Error fetching user data: ${userError.message}`);
+  }
+
+  // Get subscription plan details
+  if (userData?.subscription) {
+    const { data: planData } = await supabase
+      .from('subscriptions')
+      .select('*')
+      .eq('name', userData.subscription)
+      .maybeSingle();
+
+    if (planData) {
+      return {
+        plan: planData.name,
+        planId: planData.id,
+        status: "active",
+        startDate: new Date().toISOString().split('T')[0],
+        endDate: new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0], // 30 days from now
+        price: planData.price,
+        usageArticles: 8,
+        totalArticles: 30
+      };
+    }
+  }
+
+  // Fallback to no subscription
+  return {
+    plan: "Không có",
+    planId: null,
+    status: "inactive",
+    startDate: "",
+    endDate: "",
+    price: 0,
+    usageArticles: 0,
+    totalArticles: 0
+  };
+};
+
+// Update user subscription
+export const updateUserSubscription = async (userId: string, planId: number) => {
+  // Get the plan details
+  const { data: planData, error: planError } = await supabase
+    .from('subscriptions')
+    .select('*')
+    .eq('id', planId)
+    .single();
+  
+  if (planError) throw new Error(`Error fetching plan: ${planError.message}`);
+  
+  // Calculate subscription dates
+  const startDate = new Date().toISOString().split('T')[0];
+  const endDate = new Date();
+  endDate.setMonth(endDate.getMonth() + 1); // 1 month subscription
+  const endDateStr = endDate.toISOString().split('T')[0];
+  
+  // Check if user already has an active subscription
+  const { data: existingSubscription, error: subError } = await supabase
+    .from('user_subscriptions')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('status', 'active')
+    .maybeSingle();
+  
+  if (subError && subError.code !== 'PGRST116') {
+    throw new Error(`Error checking existing subscription: ${subError.message}`);
+  }
+  
+  // Start a transaction
+  const { error: transactionError } = await supabase.rpc('begin_transaction');
+  if (transactionError) throw new Error(`Transaction error: ${transactionError.message}`);
+  
+  try {
+    // If user has existing subscription, mark it as inactive
+    if (existingSubscription) {
+      const { error: updateError } = await supabase
+        .from('user_subscriptions')
+        .update({ status: 'inactive' })
+        .eq('id', existingSubscription.id);
+      
+      if (updateError) throw new Error(`Error updating old subscription: ${updateError.message}`);
+    }
+    
+    // Create new subscription
+    const { error: insertError } = await supabase
+      .from('user_subscriptions')
+      .insert({
+        user_id: userId,
+        subscription_id: planId,
+        start_date: startDate,
+        end_date: endDateStr,
+        status: 'active'
+      });
+    
+    if (insertError) throw new Error(`Error creating subscription: ${insertError.message}`);
+    
+    // Update user subscription reference (for backward compatibility)
+    const { error: userUpdateError } = await supabase
+      .from('users')
+      .update({ subscription: planData.name })
+      .eq('id', userId);
+    
+    if (userUpdateError) throw new Error(`Error updating user: ${userUpdateError.message}`);
+    
+    // Record payment
+    const { error: paymentError } = await supabase
+      .from('payment_history')
+      .insert({
+        user_id: userId,
+        amount: planData.price,
+        status: 'success',
+        description: `Thanh toán gói ${planData.name}`
+      });
+    
+    if (paymentError) throw new Error(`Error recording payment: ${paymentError.message}`);
+    
+    // Commit transaction
+    const { error: commitError } = await supabase.rpc('commit_transaction');
+    if (commitError) throw new Error(`Error committing transaction: ${commitError.message}`);
+    
+    return {
+      success: true,
+      message: `Đã nâng cấp lên gói ${planData.name}`
+    };
+  } catch (error) {
+    // Rollback transaction on error
+    await supabase.rpc('rollback_transaction');
+    throw error;
+  }
+};
+
+// Cancel user subscription
+export const cancelUserSubscription = async (userId: string) => {
+  // Find active subscription
+  const { data: subscription, error: findError } = await supabase
+    .from('user_subscriptions')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('status', 'active')
+    .maybeSingle();
+  
+  if (findError && findError.code !== 'PGRST116') {
+    throw new Error(`Error finding subscription: ${findError.message}`);
+  }
+  
+  if (!subscription) {
+    throw new Error("Không tìm thấy gói đăng ký hoạt động");
+  }
+  
+  // Mark subscription as canceled but still active until end date
+  const { error: updateError } = await supabase
+    .from('user_subscriptions')
+    .update({ 
+      status: 'canceled'
+    })
+    .eq('id', subscription.id);
+  
+  if (updateError) {
+    throw new Error(`Error canceling subscription: ${updateError.message}`);
+  }
+  
+  return {
+    success: true,
+    message: "Đã hủy gói đăng ký. Gói đăng ký của bạn sẽ còn hiệu lực đến ngày kết thúc hiện tại."
+  };
+};

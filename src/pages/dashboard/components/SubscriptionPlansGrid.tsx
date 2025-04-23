@@ -2,6 +2,7 @@
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
+import { useState } from "react";
 
 type PlanDB = {
   id: number;
@@ -9,16 +10,28 @@ type PlanDB = {
   price: number;
   period: string;
   description: string;
-  features: string;
+  features: string[];
 };
 
 interface GridProps {
   subscriptions: PlanDB[];
-  currentSubscription: { plan: string };
-  handleUpgrade: (planName: string) => void;
+  currentSubscription: { plan: string; planId: number | null };
+  handleUpgrade: (planId: number) => void;
 }
 
 const SubscriptionPlansGrid = ({ subscriptions, currentSubscription, handleUpgrade }: GridProps) => {
+  // Handle the case where features might be a JSON string instead of an array
+  const getFeatures = (features: any): string[] => {
+    if (!features) return [];
+    if (Array.isArray(features)) return features;
+    try {
+      return typeof features === 'string' ? JSON.parse(features) : features;
+    } catch (e) {
+      console.error("Error parsing features:", e);
+      return [];
+    }
+  };
+
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-medium">Tất cả gói đăng ký</h2>
@@ -48,11 +61,11 @@ const SubscriptionPlansGrid = ({ subscriptions, currentSubscription, handleUpgra
             </CardHeader>
             <CardContent className="pb-2">
               <div className="mb-4">
-                <span className="text-2xl font-bold">{plan.price.toLocaleString()}đ</span>
-                <span className="text-gray-500">/{plan.period}</span>
+                <span className="text-2xl font-bold">{plan.price === 0 ? "Miễn phí" : plan.price.toLocaleString() + "đ"}</span>
+                {plan.price > 0 && <span className="text-gray-500">/{plan.period}</span>}
               </div>
               <ul className="space-y-2 text-sm">
-                {JSON.parse(plan.features).map((feature: string, i: number) => (
+                {getFeatures(plan.features).map((feature: string, i: number) => (
                   <li key={i} className="flex items-start">
                     <Check size={16} className="text-green-500 mr-2 flex-shrink-0 mt-0.5" />
                     <span>{feature}</span>
@@ -69,7 +82,7 @@ const SubscriptionPlansGrid = ({ subscriptions, currentSubscription, handleUpgra
                 <Button
                   variant={plan.name === "Doanh nghiệp" ? "default" : "outline"}
                   className="w-full"
-                  onClick={() => handleUpgrade(plan.name)}
+                  onClick={() => handleUpgrade(plan.id)}
                 >
                   {currentSubscription.plan === "Doanh nghiệp"
                     ? "Hạ cấp xuống gói này"

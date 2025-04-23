@@ -5,111 +5,136 @@ import { supabase } from "@/integrations/supabase/client";
 import CurrentSubscriptionCard from "./components/CurrentSubscriptionCard";
 import SubscriptionPlansGrid from "./components/SubscriptionPlansGrid";
 import PaymentHistoryCard from "./components/PaymentHistoryCard";
+import { Loader2 } from "lucide-react";
+import { fetchSubscriptionPlans, fetchUserSubscription, updateUserSubscription, cancelUserSubscription } from "@/api/subscriptionService";
 
-// The old mock for available plans, still needed for current subscription info
-const subscriptionPlans = [
-  {
-    id: "basic",
-    name: "Gói Cơ bản",
-    price: "199.000",
-    period: "tháng",
-    description: "Dành cho người mới bắt đầu",
-    features: [
-      "10 bài viết mỗi tháng",
-      "Tối đa 1.000 từ mỗi bài",
-      "Tối ưu SEO cơ bản",
-      "Kết nối 1 tài khoản WordPress",
-      "Hỗ trợ qua email"
-    ]
-  },
-  {
-    id: "professional",
-    name: "Gói Chuyên nghiệp",
-    price: "499.000",
-    period: "tháng",
-    description: "Dành cho doanh nghiệp nhỏ",
-    features: [
-      "30 bài viết mỗi tháng",
-      "Tối đa 2.000 từ mỗi bài",
-      "Tối ưu SEO nâng cao",
-      "Kết nối 3 tài khoản mạng xã hội",
-      "Phân tích nội dung",
-      "Hỗ trợ ưu tiên"
-    ],
-    popular: true
-  },
-  {
-    id: "enterprise",
-    name: "Gói Doanh nghiệp",
-    price: "999.000",
-    period: "tháng",
-    description: "Dành cho doanh nghiệp lớn",
-    features: [
-      "100 bài viết mỗi tháng",
-      "Không giới hạn số từ",
-      "Tối ưu SEO cao cấp",
-      "Kết nối không giới hạn",
-      "Phân tích nội dung chi tiết",
-      "Hỗ trợ 24/7",
-      "API tích hợp"
-    ]
-  }
-];
+interface UserSubscription {
+  plan: string;
+  planId: number | null;
+  status: string;
+  startDate: string;
+  endDate: string;
+  price: number;
+  usageArticles: number;
+  totalArticles: number;
+}
 
 const Subscriptions = () => {
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
-  const [currentSubscription, setCurrentSubscription] = useState<{
-    plan: string;
-    status: string;
-    startDate: string;
-    endDate: string;
-    usageArticles: number;
-    totalArticles: number;
-  }>({
-    plan: "professional",
-    status: "active",
-    startDate: "15/04/2023",
-    endDate: "15/05/2023",
-    usageArticles: 8,
-    totalArticles: 30
+  const [currentSubscription, setCurrentSubscription] = useState<UserSubscription>({
+    plan: "Không có",
+    planId: null,
+    status: "inactive",
+    startDate: "",
+    endDate: "",
+    price: 0,
+    usageArticles: 0,
+    totalArticles: 0
   });
-
+  const [isLoading, setIsLoading] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
-    const fetchSubscriptions = async () => {
+    const loadData = async () => {
+      setIsLoading(true);
       try {
-        const { data, error } = await supabase
-          .from('subscriptions')
-          .select('*');
-
-        if (error) throw error;
-        setSubscriptions(data);
-      } catch (error) {
+        // Get the current user
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError) throw userError;
+        if (!user) throw new Error("Không tìm thấy người dùng, vui lòng đăng nhập lại");
+        
+        // Load subscription plans
+        const plans = await fetchSubscriptionPlans();
+        setSubscriptions(plans);
+        
+        // Load user subscription
+        const userSubscription = await fetchUserSubscription(user.id);
+        setCurrentSubscription(userSubscription);
+      } catch (error: any) {
+        console.error("Error loading subscription data:", error);
         toast({
           title: "Lỗi",
-          description: "Không thể tải danh sách gói đăng ký",
+          description: error.message || "Không thể tải thông tin gói đăng ký",
           variant: "destructive"
         });
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    fetchSubscriptions();
+    loadData();
   }, [toast]);
 
-  const handleUpgrade = (planId: string) => {
-    toast({
-      title: `Nâng cấp lên ${planId === "Doanh nghiệp" ? "Gói Doanh nghiệp" : "Gói Chuyên nghiệp"}`,
-      description: "Đang chuyển hướng đến trang thanh toán..."
-    });
+  const handleUpgrade = async (planId: number) => {
+    setIsUpdating(true);
+    try {
+      // Get the current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      if (!user) throw new Error("Không tìm thấy người dùng, vui lòng đăng nhập lại");
+      
+      // Update subscription
+      const result = await updateUserSubscription(user.id, planId);
+      
+      toast({
+        title: "Thành công",
+        description: result.message
+      });
+      
+      // Refresh user subscription data
+      const userSubscription = await fetchUserSubscription(user.id);
+      setCurrentSubscription(userSubscription);
+    } catch (error: any) {
+      console.error("Error upgrading subscription:", error);
+      toast({
+        title: "Lỗi",
+        description: error.message || "Có lỗi xảy ra khi nâng cấp gói đăng ký",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
-  const handleCancel = () => {
-    toast({
-      title: "Hủy gói đăng ký",
-      description: "Gói đăng ký của bạn sẽ còn hiệu lực đến ngày kết thúc hiện tại."
-    });
+  const handleCancel = async () => {
+    setIsUpdating(true);
+    try {
+      // Get the current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      if (!user) throw new Error("Không tìm thấy người dùng, vui lòng đăng nhập lại");
+      
+      // Cancel subscription
+      const result = await cancelUserSubscription(user.id);
+      
+      toast({
+        title: "Đã hủy gói đăng ký",
+        description: result.message
+      });
+      
+      // Refresh user subscription data
+      const userSubscription = await fetchUserSubscription(user.id);
+      setCurrentSubscription(userSubscription);
+    } catch (error: any) {
+      console.error("Error canceling subscription:", error);
+      toast({
+        title: "Lỗi",
+        description: error.message || "Có lỗi xảy ra khi hủy gói đăng ký",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUpdating(false);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -119,8 +144,15 @@ const Subscriptions = () => {
           Quản lý gói đăng ký và xem thông tin sử dụng
         </p>
       </div>
+      {isUpdating && (
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-white p-6 rounded-lg shadow-lg flex flex-col items-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+            <p>Đang xử lý...</p>
+          </div>
+        </div>
+      )}
       <CurrentSubscriptionCard
-        subscriptionPlans={subscriptionPlans}
         currentSubscription={currentSubscription}
         handleUpgrade={handleUpgrade}
         handleCancel={handleCancel}
