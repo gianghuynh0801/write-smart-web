@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { TabsContent } from "@/components/ui/tabs";
 import { FileText, Book, Text, Link as LinkIcon, Key, Image } from "lucide-react";
 import KeywordInputs from "./KeywordInputs";
