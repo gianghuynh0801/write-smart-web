@@ -1,9 +1,11 @@
+
 import { TabsContent } from "@/components/ui/tabs";
 import { FileText, Book, Text, Link as LinkIcon, Key, Image } from "lucide-react";
 import KeywordInputs from "./KeywordInputs";
 import ContentOutline from "./ContentOutline";
 import ContentSettings from "./ContentSettings";
 import KnowledgePanel from "./KnowledgePanel";
+import FormatSettings from "./FormatSettings";
 import { OutlineItem } from "./ContentOutline";
 import { useState } from "react";
 
@@ -156,7 +158,7 @@ const ContentTabPanels = ({
       <TabsContent value="images" className="mt-0 animate-fade-in">
         <div>
           <h2 className="text-lg font-semibold mb-1 flex items-center gap-2">
-            <LinkIcon className="h-5 w-5 text-primary" /> Hình ảnh cho bài viết
+            <Image className="h-5 w-5 text-primary" /> Hình ảnh cho bài viết
           </h2>
           <p className="text-sm text-muted-foreground mb-4">
             Hệ thống sẽ tạo hình ảnh cho bài viết của bạn.

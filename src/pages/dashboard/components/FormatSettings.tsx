@@ -1,7 +1,7 @@
 
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { bold, italic, list } from "lucide-react";
+import { Bold, Italic, List } from "lucide-react";
 
 interface FormatSettingsProps {
   bold: boolean;
@@ -25,7 +25,7 @@ const FormatSettings = ({
       <div className="flex items-center w-full gap-6 py-5">
         <div className="flex-1 min-w-0 space-y-1">
           <Label htmlFor="bold" className="text-base font-medium flex items-center gap-2">
-            <bold className="h-4 w-4" />
+            <Bold className="h-4 w-4" />
             In đậm
           </Label>
           <p className="text-sm text-muted-foreground">
@@ -42,7 +42,7 @@ const FormatSettings = ({
       <div className="flex items-center w-full gap-6 py-5">
         <div className="flex-1 min-w-0 space-y-1">
           <Label htmlFor="italic" className="text-base font-medium flex items-center gap-2">
-            <italic className="h-4 w-4" />
+            <Italic className="h-4 w-4" />
             In nghiêng
           </Label>
           <p className="text-sm text-muted-foreground">
@@ -59,7 +59,7 @@ const FormatSettings = ({
       <div className="flex items-center w-full gap-6 py-5">
         <div className="flex-1 min-w-0 space-y-1">
           <Label htmlFor="list" className="text-base font-medium flex items-center gap-2">
-            <list className="h-4 w-4" />
+            <List className="h-4 w-4" />
             Liệt kê
           </Label>
           <p className="text-sm text-muted-foreground">
