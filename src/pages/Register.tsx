@@ -3,10 +3,11 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Navbar from "@/components/common/Navbar";
 import Footer from "@/components/common/Footer";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const Register = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -17,6 +18,7 @@ const Register = () => {
     confirmPassword: ""
   });
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -45,34 +47,53 @@ const Register = () => {
       return;
     }
     
-    // Here would be the integration with Supabase Auth
     setIsLoading(true);
     try {
-      // Placeholder for Supabase Auth
-      // const { user, error } = await supabase.auth.signUp({ 
-      //   email: formData.email, 
-      //   password: formData.password,
-      //   options: {
-      //     data: { full_name: formData.name }
-      //   }
-      // });
+      // Register with Supabase Auth
+      const { data, error } = await supabase.auth.signUp({ 
+        email: formData.email, 
+        password: formData.password,
+        options: {
+          data: { 
+            full_name: formData.name 
+          }
+        }
+      });
       
-      // if (error) throw error;
+      if (error) throw error;
       
-      setTimeout(() => {
+      // If registration successful
+      if (data.user) {
+        // Insert into users table
+        const { error: profileError } = await supabase.from('users').insert([
+          { 
+            id: data.user.id,
+            name: formData.name,
+            email: formData.email,
+            status: 'active'
+          }
+        ]);
+        
+        if (profileError) throw profileError;
+        
         toast({
           title: "Đăng ký thành công!",
           description: "Vui lòng kiểm tra email để xác nhận tài khoản.",
         });
-        setIsLoading(false);
-      }, 1500);
-      
-    } catch (error) {
+        
+        // Delay navigation to give time for toast to show
+        setTimeout(() => {
+          navigate("/login");
+        }, 2000);
+      }
+    } catch (error: any) {
+      console.error("Registration error:", error);
       toast({
         title: "Lỗi",
-        description: "Đã có lỗi xảy ra khi đăng ký. Vui lòng thử lại sau.",
+        description: error.message || "Đã có lỗi xảy ra khi đăng ký. Vui lòng thử lại sau.",
         variant: "destructive"
       });
+    } finally {
       setIsLoading(false);
     }
   };
