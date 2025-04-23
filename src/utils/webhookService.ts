@@ -46,9 +46,9 @@ export const generateContent = async (
     console.log('Sending request to webhook:', webhookUrl);
     console.log('Request params:', params);
     
-    // Set timeout to prevent infinite waiting
+    // Thiết lập timeout 10 phút
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 seconds timeout
+    const timeoutId = setTimeout(() => controller.abort(), 600000); // 10 minutes = 600000ms
     
     const response = await fetch(webhookUrl, {
       method: 'POST',
@@ -60,7 +60,7 @@ export const generateContent = async (
         timestamp: new Date().toISOString(),
       }),
       signal: controller.signal,
-      mode: 'cors', // Explicitly set CORS mode
+      mode: 'cors', // Thiết lập CORS mode
     });
     
     clearTimeout(timeoutId);
@@ -70,7 +70,7 @@ export const generateContent = async (
       throw new Error(`HTTP error: ${response.status} - ${response.statusText}`);
     }
     
-    // Check if response has content before parsing JSON
+    // Kiểm tra nếu response có nội dung trước khi parse JSON
     const responseText = await response.text();
     if (!responseText || responseText.trim() === '') {
       console.log('Empty response received from webhook');
@@ -80,7 +80,7 @@ export const generateContent = async (
       };
     }
     
-    // Try to parse JSON from text response
+    // Thử parse JSON từ text response
     let data;
     try {
       data = JSON.parse(responseText);
@@ -99,7 +99,7 @@ export const generateContent = async (
       content: data.content || 'Content generated successfully, but empty response received.',
     };
   } catch (error) {
-    // Check for specific network errors
+    // Kiểm tra lỗi mạng
     if (error instanceof TypeError && error.message === 'Failed to fetch') {
       console.error('Network error - Failed to fetch:', error);
       return {
@@ -108,12 +108,12 @@ export const generateContent = async (
       };
     }
     
-    // Check for timeout
+    // Kiểm tra timeout
     if (error instanceof DOMException && error.name === 'AbortError') {
       console.error('Request timeout:', error);
       return {
         status: 'error',
-        error: 'Yêu cầu quá thời gian chờ. Vui lòng thử lại sau.'
+        error: 'Yêu cầu quá thời gian chờ (10 phút). Vui lòng thử lại sau.'
       };
     }
     
