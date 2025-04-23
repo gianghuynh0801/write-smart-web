@@ -187,6 +187,7 @@ async function handleSubscriptionChange(userId: string, subscriptionName: string
       }
     }
     
+    // Define the interface for RPC parameters
     interface CreateUserSubscriptionParams {
       p_user_id: string;
       p_subscription_id: number;
