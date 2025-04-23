@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,13 +63,16 @@ const Register = () => {
       
       // If registration successful
       if (data.user) {
-        // Insert into users table
+        // Insert into users table, phải truyền id đúng và bổ sung các trường cần thiết
         const { error: profileError } = await supabase.from('users').insert([
           { 
             id: data.user.id,
             name: formData.name,
             email: formData.email,
-            status: 'active'
+            credits: 0,
+            role: 'user',
+            status: 'active',
+            avatar: '' // Có thể thay đổi thành URL mặc định
           }
         ]);
         
