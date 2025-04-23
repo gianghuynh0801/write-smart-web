@@ -8,6 +8,7 @@ import ContentTabs from "./components/ContentTabs";
 import ContentTabPanels from "./components/ContentTabPanels";
 import PreviewDialog from "./components/PreviewDialog";
 import { OutlineItem } from "./components/ContentOutline";
+import FormatSettings from "./components/FormatSettings";
 
 const CreateContent = () => {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -29,6 +30,10 @@ const CreateContent = () => {
 
   const [webConnection, setWebConnection] = useState(true);
   const [reference, setReference] = useState("");
+
+  const [bold, setBold] = useState(true);
+  const [italic, setItalic] = useState(true);
+  const [useList, setUseList] = useState(true);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,7 +110,7 @@ const CreateContent = () => {
   return (
     <div className="w-full min-h-screen py-8 px-2 md:px-10 flex flex-col bg-background">
       <h1 className="text-2xl font-bold mb-1">Tạo nội dung</h1>
-      <p className="text-gray-500 mb-6">Tạo bài viết chuẩn SEO với công nghệ AI</p>
+      <p className="text-gray-500 mb-6">Tạo b��i viết chuẩn SEO với công nghệ AI</p>
       
       <div className="flex flex-col md:flex-row gap-6">
         <Tabs 

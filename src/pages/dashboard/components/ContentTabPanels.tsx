@@ -20,6 +20,12 @@ interface ContentTabPanelsProps {
   setWebConnection: (value: boolean) => void;
   reference: string;
   setReference: (value: string) => void;
+  bold: boolean;
+  setBold: (value: boolean) => void;
+  italic: boolean;
+  setItalic: (value: boolean) => void;
+  useList: boolean;
+  setUseList: (value: boolean) => void;
 }
 
 const ContentTabPanels = ({
@@ -35,6 +41,12 @@ const ContentTabPanels = ({
   setWebConnection,
   reference,
   setReference,
+  bold,
+  setBold,
+  italic,
+  setItalic,
+  useList,
+  setUseList,
 }: ContentTabPanelsProps) => {
   const [language, setLanguage] = useState("vi");
   const [country, setCountry] = useState("vn");
@@ -119,6 +131,14 @@ const ContentTabPanels = ({
           <p className="text-sm text-muted-foreground mb-4">
             Hệ thống sẽ định dạng cho bài viết của bạn.
           </p>
+          <FormatSettings
+            bold={bold}
+            setBold={setBold}
+            italic={italic}
+            setItalic={setItalic}
+            useList={useList}
+            setUseList={setUseList}
+          />
         </div>
       </TabsContent>
 
