@@ -1,12 +1,31 @@
-
 // Utility for working with n8n webhooks for content generation
 
 interface ContentGenerationParams {
-  topic: string;
-  keywords?: string;
-  length?: 'short' | 'medium' | 'long';
-  tone?: 'professional' | 'casual' | 'formal' | 'persuasive';
-  language?: 'vietnamese' | 'english';
+  keywords: {
+    main: string;
+    sub: string[];
+    related: string[];
+  };
+  outline: Array<{
+    heading: "H2" | "H3";
+    title: string;
+  }>;
+  knowledge: {
+    webConnection: boolean;
+    reference: string;
+  };
+  format: {
+    bold: boolean;
+    italic: boolean;
+    useList: boolean;
+  };
+  links: Array<{
+    keyword: string;
+    url: string;
+  }>;
+  images: {
+    size: string;
+  };
 }
 
 interface WebhookResponse {

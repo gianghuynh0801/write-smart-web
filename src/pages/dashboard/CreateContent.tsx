@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs } from "@/components/ui/tabs";
@@ -63,8 +64,31 @@ const CreateContent = () => {
     setEditableContent("");
     try {
       const params = {
-        topic: mainKeyword,
-        keywords: [mainKeyword, ...subKeywords, ...relatedKeywords].join(", "),
+        // Keywords tab
+        keywords: {
+          main: mainKeyword,
+          sub: subKeywords,
+          related: relatedKeywords,
+        },
+        // Outline tab
+        outline: outlineItems,
+        // Knowledge panel tab
+        knowledge: {
+          webConnection,
+          reference,
+        },
+        // Format tab
+        format: {
+          bold,
+          italic,
+          useList,
+        },
+        // Links tab
+        links: links,
+        // Images tab
+        images: {
+          size: imageSize,
+        }
       };
 
       console.log("Gửi yêu cầu tạo nội dung với params:", params);
