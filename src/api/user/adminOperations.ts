@@ -8,14 +8,15 @@ const createAdminClient = () => {
   const supabaseUrl = "https://ctegtqmkxkbqhwlqukfd.supabase.co";
   const supabaseServiceRoleKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0ZWd0cW1reGticWh3bHF1a2ZkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NTM5NzQ4NSwiZXhwIjoyMDYwOTczNDg1fQ.6Tmm3yDFU9z8jN45CJkjYsbd8J1irfap_kGyAj_TAWA";
   
-  // Use the service_role key to create a client that bypasses RLS
+  // Cấu hình client để tránh lỗi nhiều instance và đảm bảo hoạt động chính xác
   return createClient<Database>(
     supabaseUrl, 
     supabaseServiceRoleKey,
     {
       auth: {
         autoRefreshToken: false,
-        persistSession: false
+        persistSession: false,
+        storage: undefined
       }
     }
   );
