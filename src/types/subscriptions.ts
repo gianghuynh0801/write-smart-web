@@ -36,3 +36,6 @@ export interface UserRole {
   role: string;
   created_at?: string;
 }
+
+// Supabase PostgrestBuilder type assertion helpers
+export type SupabaseTable = 'subscriptions' | 'user_subscriptions' | 'payment_history' | 'user_roles';

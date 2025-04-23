@@ -106,7 +106,7 @@ export const updateUserSubscription = async (userId: string, planId: number) => 
       const { error: updateError } = await supabase
         .from('user_subscriptions')
         .update({ status: 'inactive' })
-        .eq('id', existingSubscription.id);
+        .eq('id', existingSubscription.id) as { error: any };
       
       if (updateError) throw new Error(`Error updating old subscription: ${updateError.message}`);
     }
@@ -120,7 +120,7 @@ export const updateUserSubscription = async (userId: string, planId: number) => 
         start_date: startDate,
         end_date: endDateStr,
         status: 'active'
-      });
+      }) as { error: any };
     
     if (insertError) throw new Error(`Error creating subscription: ${insertError.message}`);
     
@@ -132,7 +132,7 @@ export const updateUserSubscription = async (userId: string, planId: number) => 
         amount: planData.price,
         status: 'success',
         description: `Thanh toán gói ${planData.name}`
-      });
+      }) as { error: any };
     
     if (paymentError) throw new Error(`Error recording payment: ${paymentError.message}`);
     
@@ -169,7 +169,7 @@ export const cancelUserSubscription = async (userId: string) => {
     .update({ 
       status: 'canceled'
     })
-    .eq('id', subscription.id);
+    .eq('id', subscription.id) as { error: any };
   
   if (updateError) {
     throw new Error(`Error canceling subscription: ${updateError.message}`);
