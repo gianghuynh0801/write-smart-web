@@ -1,6 +1,6 @@
 
 import { TabsContent } from "@/components/ui/tabs";
-import { FileText, Book, Text, Link as LinkIcon } from "lucide-react";
+import { FileText, Book, Text, Link as LinkIcon, Key } from "lucide-react";
 import KeywordInputs from "./KeywordInputs";
 import ContentOutline from "./ContentOutline";
 import { OutlineItem } from "./ContentOutline";
