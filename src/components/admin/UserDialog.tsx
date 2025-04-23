@@ -81,8 +81,8 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
         description: error instanceof Error ? error.message : "Có lỗi xảy ra khi lưu thông tin",
         variant: "destructive"
       });
-    } finally {
-      setIsSaving(false);
+      // Không đóng dialog khi có lỗi xảy ra để người dùng có thể sửa và thử lại
+      setIsSaving(false); // Chỉ reset trạng thái isSaving khi có lỗi
     }
   };
   
@@ -91,6 +91,12 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
     // Chỉ đóng dialog khi không có tiến trình xử lý
     if (!isSaving) {
       onClose();
+    } else {
+      // Thông báo cho người dùng biết rằng đang có tiến trình xử lý
+      toast({
+        title: "Đang xử lý",
+        description: "Vui lòng đợi trong khi chúng tôi lưu thông tin của bạn",
+      });
     }
   };
   

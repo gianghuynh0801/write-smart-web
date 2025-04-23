@@ -1,7 +1,7 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { User, UserFormValues } from "@/types/user";
 import { handleSubscriptionChange } from "./userSubscription";
+import { createUserSubscriptionAsAdmin, getUserActiveSubscription } from "./adminOperations";
 
 // === MOCK DATA, chỉ sử dụng để insert vào DB nếu DB đang trống ===
 const mockUsers: User[] = [
@@ -90,8 +90,24 @@ export const getUserById = async (id: string | number): Promise<User | undefined
     .select("*")
     .eq("id", userId)
     .maybeSingle();
+  
   if (error) throw new Error("Không tìm thấy người dùng");
-  return data ? parseUser(data) : undefined;
+  if (!data) return undefined;
+  
+  // Get current subscription
+  const userWithSubscription = parseUser(data);
+  
+  try {
+    const subscriptionData = await getUserActiveSubscription(userId);
+    if (subscriptionData && subscriptionData.subscriptions) {
+      userWithSubscription.subscription = subscriptionData.subscriptions.name;
+    }
+  } catch (subError) {
+    console.error("Lỗi khi lấy thông tin gói đăng ký:", subError);
+    // Tiếp tục sử dụng dữ liệu người dùng mà không có thông tin gói đăng ký
+  }
+  
+  return userWithSubscription;
 };
 
 export const createUser = async (userData: UserFormValues): Promise<User> => {
@@ -110,15 +126,38 @@ export const createUser = async (userData: UserFormValues): Promise<User> => {
 
   if (error) throw new Error(error.message);
   
+  const createdUser = parseUser(data);
+  
   // Xử lý gói đăng ký sau khi tạo user
-  try {
-    await handleSubscriptionChange(newId, userData.subscription);
-  } catch (subError) {
-    console.error("Không thể cập nhật thông tin đăng ký:", subError);
-    // Vẫn tiếp tục vì đã tạo user thành công
+  if (userData.subscription && userData.subscription !== "Không có") {
+    try {
+      // Lấy thông tin gói đăng ký từ tên
+      const { data: subscriptionData } = await supabase
+        .from("subscriptions")
+        .select("id")
+        .eq("name", userData.subscription)
+        .maybeSingle();
+      
+      if (subscriptionData) {
+        // Tính toán thời gian bắt đầu và kết thúc gói
+        const startDate = new Date().toISOString().split('T')[0];
+        const endDate = new Date();
+        endDate.setMonth(endDate.getMonth() + 1); // Gói 1 tháng
+        const endDateStr = endDate.toISOString().split('T')[0];
+        
+        await createUserSubscriptionAsAdmin(
+          newId,
+          subscriptionData.id,
+          startDate,
+          endDateStr
+        );
+      }
+    } catch (subError) {
+      console.error("Không thể cập nhật thông tin đăng ký:", subError);
+      // Vẫn tiếp tục vì đã tạo user thành công
+    }
   }
   
-  const createdUser = parseUser(data);
   createdUser.subscription = userData.subscription; // Cập nhật trường subscription cho đối tượng trả về
   return createdUser;
 };
@@ -146,12 +185,36 @@ export const updateUser = async (id: string | number, userData: UserFormValues):
   // Kiểm tra nếu gói đăng ký đã thay đổi thì cập nhật
   if (currentUser && currentUser.subscription !== userData.subscription) {
     try {
-      const result = await handleSubscriptionChange(userId, userData.subscription);
-      console.log("Kết quả cập nhật gói đăng ký:", result);
-      updatedUser.subscription = userData.subscription; // Cập nhật trường subscription cho đối tượng trả về
+      // Lấy thông tin gói đăng ký từ tên
+      const { data: subscriptionData } = await supabase
+        .from("subscriptions")
+        .select("id")
+        .eq("name", userData.subscription)
+        .maybeSingle();
+      
+      if (subscriptionData) {
+        // Tính toán thời gian bắt đầu và kết thúc gói
+        const startDate = new Date().toISOString().split('T')[0];
+        const endDate = new Date();
+        endDate.setMonth(endDate.getMonth() + 1); // Gói 1 tháng
+        const endDateStr = endDate.toISOString().split('T')[0];
+        
+        const success = await createUserSubscriptionAsAdmin(
+          userId,
+          subscriptionData.id,
+          startDate,
+          endDateStr
+        );
+        
+        if (success) {
+          console.log(`Đã cập nhật gói đăng ký thành ${userData.subscription}`);
+          updatedUser.subscription = userData.subscription;
+        } else {
+          throw new Error("Không thể cập nhật gói đăng ký");
+        }
+      }
     } catch (subError) {
       console.error("Không thể cập nhật thông tin đăng ký:", subError);
-      // Vẫn tiếp tục vì đã cập nhật user thành công
       throw new Error(`Không thể cập nhật gói đăng ký: ${subError instanceof Error ? subError.message : String(subError)}`);
     }
   } else {

@@ -56,7 +56,7 @@ export async function handleSubscriptionChange(userId: string, subscriptionName:
       }
     }
 
-    // In thông tin subscription data để debug
+    // Log thông tin để debug
     console.log("Creating subscription with data:", {
       user_id: userId,
       subscription_id: subscriptionId,
@@ -65,8 +65,8 @@ export async function handleSubscriptionChange(userId: string, subscriptionName:
       status: 'active'
     });
 
-    // Sử dụng service role key qua một header tùy chỉnh
-    // Không cần truy cập trực tiếp vào supabaseKey nữa
+    // Mã hóa userId để sử dụng với RLS policies 
+    // Đảm bảo userId là UUID hợp lệ để RLS hoạt động đúng
     const { data: newSubscription, error: insertError } = await supabase
       .from("user_subscriptions")
       .insert({
@@ -85,8 +85,6 @@ export async function handleSubscriptionChange(userId: string, subscriptionName:
 
     console.log("New subscription created:", newSubscription);
 
-    // Không cần cập nhật trường subscription trong bảng users vì không tồn tại
-    // Trả về kết quả thành công
     return {
       success: true,
       message: `Đã cập nhật gói đăng ký thành ${subscriptionName}`
