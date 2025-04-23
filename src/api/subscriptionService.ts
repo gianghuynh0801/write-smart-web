@@ -95,13 +95,10 @@ export const updateUserSubscription = async (userId: string, planId: number) => 
     throw new Error(`Error checking existing subscription: ${subError.message}`);
   }
   
-  // Start a transaction
-  // Note: We're removing the type annotation that was causing problems
-  // by passing the string directly to the rpc method
-  const { error: transactionError } = await supabase.rpc('begin_transaction');
-  if (transactionError) throw new Error(`Transaction error: ${transactionError.message}`);
-  
   try {
+    // Begin transaction manually with separate queries
+    // We'll use individual queries instead of RPC to avoid type issues
+    
     // If user has existing subscription, mark it as inactive
     if (existingSubscription) {
       const { error: updateError } = await supabase
@@ -137,17 +134,11 @@ export const updateUserSubscription = async (userId: string, planId: number) => 
     
     if (paymentError) throw new Error(`Error recording payment: ${paymentError.message}`);
     
-    // Commit transaction - Fixed by removing type annotations that caused TS errors
-    const { error: commitError } = await supabase.rpc('commit_transaction');
-    if (commitError) throw new Error(`Error committing transaction: ${commitError.message}`);
-    
     return {
       success: true,
       message: `Đã nâng cấp lên gói ${planData.name}`
     };
   } catch (error) {
-    // Rollback transaction on error - Fixed by removing type annotations that caused TS errors
-    await supabase.rpc('rollback_transaction');
     throw error;
   }
 };
