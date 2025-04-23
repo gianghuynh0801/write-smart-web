@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { User, UserFormValues } from "@/types/user";
 
@@ -36,11 +35,9 @@ function parseUser(row: any): User {
 export const syncMockUsersToDbIfNeeded = async () => {
   const { count } = await supabase.from("users").select("id", { count: "exact", head: true });
   if ((count ?? 0) === 0) {
-    // Nếu DB chưa có user nào, insert hết mock vào
     const toInsert = mockUsers.map(u => ({
       ...u,
       created_at: u.registeredAt,
-      // Đảm bảo UUID cho id (nếu id string mới hợp lệ, dùng random uuid cho DEMO, còn production dùng uuid thực của supabase auth)
       id: crypto.randomUUID()
     }));
     await supabase.from("users").insert(toInsert as any);
@@ -61,12 +58,10 @@ export const fetchUsers = async (
     .select("*", { count: "exact" })
     .order("created_at", { ascending: false });
 
-  // Lọc trạng thái
   if (status !== "all") {
     query = query.eq("status", status);
   }
 
-  // Lọc tìm kiếm
   if (searchTerm) {
     query = query
       .or(
@@ -74,7 +69,6 @@ export const fetchUsers = async (
       );
   }
 
-  // Phân trang
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
   query = query.range(from, to);
@@ -90,7 +84,6 @@ export const fetchUsers = async (
 };
 
 export const getUserById = async (id: string | number): Promise<User | undefined> => {
-  // Chuyển đổi id thành string nếu đang là number
   const userId = String(id);
   
   const { data, error } = await supabase
@@ -103,7 +96,6 @@ export const getUserById = async (id: string | number): Promise<User | undefined
 };
 
 export const createUser = async (userData: UserFormValues): Promise<User> => {
-  // Tạo user với random uuid (dev), production cần map đúng auth id
   const newId = crypto.randomUUID();
   const { data, error } = await supabase.from("users").insert([
     {
@@ -123,13 +115,10 @@ export const createUser = async (userData: UserFormValues): Promise<User> => {
 };
 
 export const updateUser = async (id: string | number, userData: UserFormValues): Promise<User> => {
-  // Chuyển đổi id thành string nếu đang là number
   const userId = String(id);
   
-  // Lấy thông tin hiện tại của người dùng để giữ lại subscription (không cập nhật trực tiếp)
   const currentUser = await getUserById(userId);
   
-  // Chỉ cập nhật các trường có trong bảng users, bỏ qua trường subscription
   const { data, error } = await supabase
     .from("users")
     .update({
@@ -145,19 +134,14 @@ export const updateUser = async (id: string | number, userData: UserFormValues):
 
   if (error) throw new Error(error.message);
   
-  // Khi parse user, trả về giá trị subscription từ dữ liệu hiện tại
-  // (vì cột subscription không có trong bảng users)
   const updatedUser = parseUser(data);
-  updatedUser.subscription = userData.subscription; // Chỉ gán giá trị cho UI hiển thị
-  
-  // Nếu subscription thay đổi, cập nhật vào bảng user_subscriptions
+  updatedUser.subscription = userData.subscription;
+
   if (currentUser && currentUser.subscription !== userData.subscription) {
     try {
       await handleSubscriptionChange(userId, userData.subscription);
     } catch (subError) {
       console.error("Không thể cập nhật thông tin đăng ký:", subError);
-      // Ghi nhận lỗi nhưng không throw error ở đây, tránh làm gián đoạn luồng chính
-      // Thay vào đó, chỉ log lỗi để debug
     }
   }
   
@@ -167,7 +151,6 @@ export const updateUser = async (id: string | number, userData: UserFormValues):
 // Hàm xử lý việc thay đổi gói đăng ký
 async function handleSubscriptionChange(userId: string, subscriptionName: string) {
   try {
-    // Tìm ID của gói đăng ký dựa trên tên
     const { data: subscriptionData } = await supabase
       .from("subscriptions")
       .select("id")
@@ -181,7 +164,6 @@ async function handleSubscriptionChange(userId: string, subscriptionName: string
 
     const subscriptionId = subscriptionData.id;
     
-    // Kiểm tra xem người dùng đã có đăng ký nào chưa
     const { data: existingSubscription } = await supabase
       .from("user_subscriptions")
       .select("id, status")
@@ -189,14 +171,12 @@ async function handleSubscriptionChange(userId: string, subscriptionName: string
       .order("id", { ascending: false })
       .maybeSingle();
 
-    // Tính toán ngày bắt đầu và kết thúc
     const startDate = new Date().toISOString().split('T')[0];
     const endDate = new Date();
-    endDate.setMonth(endDate.getMonth() + 1); // 1 tháng
+    endDate.setMonth(endDate.getMonth() + 1);
     const endDateStr = endDate.toISOString().split('T')[0];
 
     if (existingSubscription) {
-      // Hủy đăng ký cũ nếu có - sử dụng await để đảm bảo hoàn thành trước khi tiếp tục
       const { error } = await supabase
         .from("user_subscriptions")
         .update({ status: "inactive" })
@@ -204,25 +184,20 @@ async function handleSubscriptionChange(userId: string, subscriptionName: string
         
       if (error) {
         console.error(`Lỗi khi hủy gói cũ: ${error.message}`);
-        // Không throw error ở đây để tránh gián đoạn luồng chính
       }
     }
     
-    // Fix TypeScript error: Use an object with properly typed parameters for the RPC call
-    // Instead of passing individual arguments, pass as a single parameters object
     const { error } = await supabase.rpc('create_user_subscription', {
       p_user_id: userId,
       p_subscription_id: subscriptionId,
       p_start_date: startDate,
       p_end_date: endDateStr,
       p_status: 'active'
-    });
+    } as any);
     
-    // Nếu RPC không tồn tại hoặc có lỗi, thử phương pháp khác - chỉ log lỗi
     if (error) {
       console.error(`Lỗi khi tạo gói mới qua RPC: ${error.message}`);
       
-      // Thử phương pháp insert trực tiếp nếu RPC không khả dụng
       try {
         const { error: insertError } = await supabase
           .from("user_subscriptions")
@@ -243,12 +218,10 @@ async function handleSubscriptionChange(userId: string, subscriptionName: string
     }
   } catch (error) {
     console.error("Lỗi xử lý thay đổi gói đăng ký:", error);
-    // Log lỗi nhưng không throw để tránh gián đoạn UI
   }
 }
 
 export const deleteUser = async (id: string | number): Promise<void> => {
-  // Chuyển đổi id thành string nếu đang là number
   const userId = String(id);
   
   const { error } = await supabase.from("users").delete().eq("id", userId);
@@ -256,10 +229,8 @@ export const deleteUser = async (id: string | number): Promise<void> => {
 };
 
 export const addUserCredits = async (id: string | number, amount: number): Promise<User> => {
-  // Chuyển đổi id thành string nếu đang là number
   const userId = String(id);
   
-  // Lấy user hiện tại
   const { data: currentData, error: getError } = await supabase.from("users").select("*").eq("id", userId).single();
   if (getError) throw new Error("Không tìm thấy người dùng");
   const newCredits = (currentData.credits ?? 0) + amount;
@@ -269,7 +240,6 @@ export const addUserCredits = async (id: string | number, amount: number): Promi
 };
 
 export const getSubscriptionOptions = async (): Promise<string[]> => {
-  // Nếu có table subscriptions thì đọc từ đó, không thì trả về mặc định
   const { data, error } = await supabase.from("subscriptions").select("name");
   if (error || !data) {
     return ["Không có", "Cơ bản", "Chuyên nghiệp", "Doanh nghiệp"];
