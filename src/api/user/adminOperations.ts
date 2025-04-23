@@ -1,18 +1,17 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { UserSubscription } from "@/types/subscriptions";
-import type { Database } from "@/integrations/supabase/types";
 
 // Create a separate admin client that can bypass RLS
 // This function creates an admin client that can bypass Row Level Security
 const createAdminClient = () => {
-  const supabaseUrl = "https://ctegtqmkxkbqhwlqukfd.supabase.co";
-  const supabaseServiceRoleKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0ZWd0cW1reGticWh3bHF1a2ZkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NTM5NzQ4NSwiZXhwIjoyMDYwOTczNDg1fQ.6Tmm3yDFU9z8jN45CJkjYsbd8J1irfap_kGyAj_TAWA";
+  const supabaseUrl = "https://lxhawtndkubaeljbaylp.supabase.co";
+  const supabaseServiceRoleKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx4aGF3dG5ka3ViYWVsamJheWxwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NTM5OTExMSwiZXhwIjoyMDYwOTc1MTExfQ.9hsOts4HHM4tvqp5JkESOLuAJLHNYOsME7O4ekOq4oE";
   
   console.log("Khởi tạo admin client với service role key");
   
   // Cấu hình client để tránh lỗi nhiều instance và đảm bảo hoạt động chính xác
-  return createClient<Database>(
+  return createClient(
     supabaseUrl, 
     supabaseServiceRoleKey,
     {
@@ -53,7 +52,7 @@ export const createUserSubscriptionAsAdmin = async (
       .from("user_subscriptions")
       .update({ status: "inactive" })
       .eq("user_id", userId)
-      .eq("status", "active") as { error: any };
+      .eq("status", "active");
       
     if (updateError) {
       console.error("Lỗi khi cập nhật gói đăng ký cũ:", updateError.message);
@@ -69,7 +68,7 @@ export const createUserSubscriptionAsAdmin = async (
         start_date: startDate,
         end_date: endDate,
         status: 'active'
-      }) as { error: any };
+      });
       
     if (insertError) {
       console.error("Lỗi khi tạo gói đăng ký mới:", insertError.message);
@@ -103,7 +102,7 @@ export const getUserActiveSubscription = async (userId: string) => {
       `)
       .eq("user_id", userId)
       .eq("status", "active")
-      .maybeSingle() as { data: UserSubscription | null, error: any };
+      .maybeSingle();
       
     if (error) {
       if (error.code !== 'PGRST116') { // PGRST116 = no rows returned
@@ -113,7 +112,7 @@ export const getUserActiveSubscription = async (userId: string) => {
     }
     
     console.log("Active subscription data:", data);
-    return data;
+    return data as UserSubscription | null;
   } catch (error) {
     console.error("Lỗi trong quá trình xử lý:", error);
     return null;

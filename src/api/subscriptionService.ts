@@ -1,16 +1,16 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { Subscription, UserSubscription, PaymentHistory } from "@/types/subscriptions";
+import { Subscription, UserSubscription } from "@/types/subscriptions";
 
 // Fetch all subscription plans
 export const fetchSubscriptionPlans = async (): Promise<Subscription[]> => {
   const { data, error } = await supabase
     .from('subscriptions')
     .select('*')
-    .order('price', { ascending: true }) as { data: Subscription[] | null, error: any };
+    .order('price', { ascending: true });
     
   if (error) throw new Error(`Error fetching subscription plans: ${error.message}`);
-  return data || [];
+  return data as Subscription[] || [];
 };
 
 // Fetch current user subscription
@@ -33,7 +33,7 @@ export const fetchUserSubscription = async (userId: string) => {
     `)
     .eq('user_id', userId)
     .eq('status', 'active')
-    .single() as { data: UserSubscription | null, error: any };
+    .single();
   
   if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
     console.error("Error fetching user subscription:", error);
@@ -42,13 +42,15 @@ export const fetchUserSubscription = async (userId: string) => {
 
   // If subscription found in user_subscriptions
   if (data) {
+    // Type assertion for the data
+    const typedData = data as unknown as UserSubscription;
     return {
-      plan: data.subscriptions?.name || "Không có",
-      planId: data.subscriptions?.id,
-      status: data.status,
-      startDate: data.start_date,
-      endDate: data.end_date,
-      price: data.subscriptions?.price || 0,
+      plan: typedData.subscriptions?.name || "Không có",
+      planId: typedData.subscriptions?.id,
+      status: typedData.status,
+      startDate: typedData.start_date,
+      endDate: typedData.end_date,
+      price: typedData.subscriptions?.price || 0,
       usageArticles: 8, // This would come from a usage tracking system
       totalArticles: 30 // This should be extracted from features or a separate limit table
     };
@@ -74,10 +76,13 @@ export const updateUserSubscription = async (userId: string, planId: number) => 
     .from('subscriptions')
     .select('*')
     .eq('id', planId)
-    .single() as { data: Subscription | null, error: any };
+    .single();
   
   if (planError) throw new Error(`Error fetching plan: ${planError.message}`);
   if (!planData) throw new Error("Plan not found");
+  
+  // Safely type the plan data
+  const typedPlanData = planData as unknown as Subscription;
   
   // Calculate subscription dates
   const startDate = new Date().toISOString().split('T')[0];
@@ -91,7 +96,7 @@ export const updateUserSubscription = async (userId: string, planId: number) => 
     .select('id')
     .eq('user_id', userId)
     .eq('status', 'active')
-    .maybeSingle() as { data: { id: string } | null, error: any };
+    .maybeSingle();
   
   if (subError && subError.code !== 'PGRST116') {
     throw new Error(`Error checking existing subscription: ${subError.message}`);
@@ -106,7 +111,7 @@ export const updateUserSubscription = async (userId: string, planId: number) => 
       const { error: updateError } = await supabase
         .from('user_subscriptions')
         .update({ status: 'inactive' })
-        .eq('id', existingSubscription.id) as { error: any };
+        .eq('id', existingSubscription.id);
       
       if (updateError) throw new Error(`Error updating old subscription: ${updateError.message}`);
     }
@@ -120,7 +125,7 @@ export const updateUserSubscription = async (userId: string, planId: number) => 
         start_date: startDate,
         end_date: endDateStr,
         status: 'active'
-      }) as { error: any };
+      });
     
     if (insertError) throw new Error(`Error creating subscription: ${insertError.message}`);
     
@@ -129,16 +134,16 @@ export const updateUserSubscription = async (userId: string, planId: number) => 
       .from('payment_history')
       .insert({
         user_id: userId,
-        amount: planData.price,
+        amount: typedPlanData.price,
         status: 'success',
-        description: `Thanh toán gói ${planData.name}`
-      }) as { error: any };
+        description: `Thanh toán gói ${typedPlanData.name}`
+      });
     
     if (paymentError) throw new Error(`Error recording payment: ${paymentError.message}`);
     
     return {
       success: true,
-      message: `Đã nâng cấp lên gói ${planData.name}`
+      message: `Đã nâng cấp lên gói ${typedPlanData.name}`
     };
   } catch (error) {
     throw error;
@@ -153,7 +158,7 @@ export const cancelUserSubscription = async (userId: string) => {
     .select('id')
     .eq('user_id', userId)
     .eq('status', 'active')
-    .maybeSingle() as { data: { id: string } | null, error: any };
+    .maybeSingle();
   
   if (findError && findError.code !== 'PGRST116') {
     throw new Error(`Error finding subscription: ${findError.message}`);
@@ -169,7 +174,7 @@ export const cancelUserSubscription = async (userId: string) => {
     .update({ 
       status: 'canceled'
     })
-    .eq('id', subscription.id) as { error: any };
+    .eq('id', subscription.id);
   
   if (updateError) {
     throw new Error(`Error canceling subscription: ${updateError.message}`);

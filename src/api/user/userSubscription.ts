@@ -24,7 +24,7 @@ export async function handleSubscriptionChange(userId: string, subscriptionName:
       .from("subscriptions")
       .select("id")
       .eq("name", subscriptionName)
-      .maybeSingle() as { data: Subscription | null, error: any };
+      .maybeSingle();
 
     if (subscriptionError) {
       console.error(`Lỗi khi tìm gói đăng ký: ${subscriptionError.message}`);
@@ -70,7 +70,8 @@ export async function handleSubscriptionChange(userId: string, subscriptionName:
     }
 
     console.log("Found subscription data:", subscriptionData);
-    const subscriptionId = subscriptionData.id;
+    const typedSubscriptionData = subscriptionData as unknown as Subscription;
+    const subscriptionId = typedSubscriptionData.id;
 
     // Calculate subscription dates
     const startDate = new Date().toISOString().split('T')[0];
@@ -105,7 +106,7 @@ export const getSubscriptionOptions = async (): Promise<string[]> => {
     const { data, error } = await supabase
       .from("subscriptions")
       .select("name")
-      .order('price', { ascending: true }) as { data: Subscription[] | null, error: any };
+      .order('price', { ascending: true });
       
     if (error) {
       console.error("Error fetching subscription options:", error.message);
@@ -114,7 +115,8 @@ export const getSubscriptionOptions = async (): Promise<string[]> => {
     }
     
     // Always ensure "Không có" (None) is an option
-    const options = data ? data.map(row => row.name) : [];
+    const typedData = data as unknown as Subscription[];
+    const options = typedData ? typedData.map(row => row.name) : [];
     if (!options.includes("Không có")) {
       options.unshift("Không có");
     }
