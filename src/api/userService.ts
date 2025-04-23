@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { User, UserFormValues } from "@/types/user";
 
@@ -126,13 +125,16 @@ export const updateUser = async (id: string | number, userData: UserFormValues):
   // Chuyển đổi id thành string nếu đang là number
   const userId = String(id);
   
+  // Lấy thông tin hiện tại của người dùng để giữ lại subscription (không cập nhật trực tiếp)
+  const currentUser = await getUserById(userId);
+  
+  // Chỉ cập nhật các trường có trong bảng users, bỏ qua trường subscription
   const { data, error } = await supabase
     .from("users")
     .update({
       name: userData.name,
       email: userData.email,
       credits: userData.credits,
-      subscription: userData.subscription,
       status: userData.status,
       role: userData.role
     })
@@ -141,8 +143,74 @@ export const updateUser = async (id: string | number, userData: UserFormValues):
     .single();
 
   if (error) throw new Error(error.message);
-  return parseUser(data);
+  
+  // Khi parse user, trả về giá trị subscription từ dữ liệu hiện tại
+  // (vì cột subscription không có trong bảng users)
+  const updatedUser = parseUser(data);
+  updatedUser.subscription = userData.subscription; // Chỉ gán giá trị cho UI hiển thị
+  
+  // Nếu subscription thay đổi, cập nhật vào bảng user_subscriptions (optional)
+  if (currentUser && currentUser.subscription !== userData.subscription) {
+    try {
+      await handleSubscriptionChange(userId, userData.subscription);
+    } catch (subError) {
+      console.error("Không thể cập nhật thông tin đăng ký:", subError);
+      // Không throw error vì việc cập nhật user đã thành công
+    }
+  }
+  
+  return updatedUser;
 };
+
+// Hàm xử lý việc thay đổi gói đăng ký
+async function handleSubscriptionChange(userId: string, subscriptionName: string) {
+  // Tìm ID của gói đăng ký dựa trên tên
+  const { data: subscriptionData } = await supabase
+    .from("subscriptions")
+    .select("id")
+    .eq("name", subscriptionName)
+    .maybeSingle();
+
+  if (!subscriptionData) {
+    console.log(`Không tìm thấy gói đăng ký có tên: ${subscriptionName}`);
+    return;
+  }
+
+  const subscriptionId = subscriptionData.id;
+  
+  // Kiểm tra xem người dùng đã có đăng ký nào chưa
+  const { data: existingSubscription } = await supabase
+    .from("user_subscriptions")
+    .select("id, status")
+    .eq("user_id", userId)
+    .order("id", { ascending: false })
+    .maybeSingle();
+
+  // Tính toán ngày bắt đầu và kết thúc
+  const startDate = new Date().toISOString().split('T')[0];
+  const endDate = new Date();
+  endDate.setMonth(endDate.getMonth() + 1); // 1 tháng
+  const endDateStr = endDate.toISOString().split('T')[0];
+
+  if (existingSubscription) {
+    // Hủy đăng ký cũ nếu có
+    await supabase
+      .from("user_subscriptions")
+      .update({ status: "inactive" })
+      .eq("id", existingSubscription.id);
+  }
+  
+  // Tạo đăng ký mới
+  await supabase
+    .from("user_subscriptions")
+    .insert({
+      user_id: userId,
+      subscription_id: subscriptionId,
+      start_date: startDate,
+      end_date: endDateStr,
+      status: "active"
+    });
+}
 
 export const deleteUser = async (id: string | number): Promise<void> => {
   // Chuyển đổi id thành string nếu đang là number
