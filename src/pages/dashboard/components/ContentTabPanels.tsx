@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { TabsContent } from "@/components/ui/tabs";
 import { FileText, Book, Text, Link as LinkIcon, Key, Image } from "lucide-react";
 import KeywordInputs from "./KeywordInputs";
@@ -183,17 +183,11 @@ const ContentTabPanels = ({
             <Image className="h-5 w-5 text-primary" /> Hình ảnh cho bài viết
           </h2>
           <p className="text-sm text-muted-foreground mb-4">
-            Quản lý cài đặt cho hình ảnh trong bài viết của bạn
+            Quản lý cài đặt kích thước hình ảnh trong bài viết của bạn
           </p>
           <ImageSettings
             imageSize={imageSize}
             setImageSize={setImageSize}
-            resolution={resolution}
-            setResolution={setResolution}
-            keepAspectRatio={keepAspectRatio}
-            setKeepAspectRatio={setKeepAspectRatio}
-            optimizeImages={optimizeImages}
-            setOptimizeImages={setOptimizeImages}
           />
         </div>
       </TabsContent>

@@ -10,6 +10,7 @@ import PreviewDialog from "./components/PreviewDialog";
 import { OutlineItem } from "./components/ContentOutline";
 import FormatSettings from "./components/FormatSettings";
 import { Link } from "lucide-react";
+import ImageSettings from "./components/ImageSettings";
 
 const CreateContent = () => {
   const [isGenerating, setIsGenerating] = useState(false);
