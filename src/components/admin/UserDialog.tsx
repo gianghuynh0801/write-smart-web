@@ -37,6 +37,7 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
       setIsLoading(true);
       try {
         const userData = await getUserById(userId);
+        console.log("Fetched user data:", userData);
         setUser(userData);
       } catch (error: any) {
         console.error("Error fetching user:", error);
@@ -60,6 +61,7 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
     
     setIsSaving(true);
     try {
+      console.log("Saving user data:", data);
       if (userId) {
         await updateUser(userId, data);
         toast({

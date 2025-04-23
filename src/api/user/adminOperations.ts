@@ -70,6 +70,8 @@ export const createUserSubscriptionAsAdmin = async (
 
 export const getUserActiveSubscription = async (userId: string) => {
   try {
+    console.log("Fetching active subscription for user:", userId);
+
     const { data, error } = await adminClient
       .from("user_subscriptions")
       .select(`
@@ -93,6 +95,7 @@ export const getUserActiveSubscription = async (userId: string) => {
       return null;
     }
     
+    console.log("Active subscription data:", data);
     return data;
   } catch (error) {
     console.error("Lỗi trong quá trình xử lý:", error);

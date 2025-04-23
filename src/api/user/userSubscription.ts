@@ -5,6 +5,8 @@ import { createUserSubscriptionAsAdmin } from "./adminOperations";
 // Handle subscription changes for a user
 export async function handleSubscriptionChange(userId: string, subscriptionName: string) {
   try {
+    console.log("Handling subscription change for user:", userId, "to:", subscriptionName);
+    
     // Get subscription info from name
     const { data: subscriptionData, error: subscriptionError } = await supabase
       .from("subscriptions")
@@ -22,6 +24,7 @@ export async function handleSubscriptionChange(userId: string, subscriptionName:
       throw new Error(`Không tìm thấy gói đăng ký có tên: ${subscriptionName}`);
     }
 
+    console.log("Found subscription data:", subscriptionData);
     const subscriptionId = subscriptionData.id;
 
     // Calculate subscription dates
@@ -29,6 +32,8 @@ export async function handleSubscriptionChange(userId: string, subscriptionName:
     const endDate = new Date();
     endDate.setMonth(endDate.getMonth() + 1); // 1 month subscription
     const endDateStr = endDate.toISOString().split('T')[0];
+
+    console.log("Creating subscription with dates:", { startDate, endDateStr });
 
     // Use admin operations to bypass RLS
     await createUserSubscriptionAsAdmin(userId, subscriptionId, startDate, endDateStr);
@@ -47,6 +52,7 @@ export async function handleSubscriptionChange(userId: string, subscriptionName:
 // Get subscription options list
 export const getSubscriptionOptions = async (): Promise<string[]> => {
   try {
+    console.log("Fetching subscription options...");
     const { data, error } = await supabase
       .from("subscriptions")
       .select("name")
