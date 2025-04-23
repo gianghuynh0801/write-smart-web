@@ -187,13 +187,26 @@ async function handleSubscriptionChange(userId: string, subscriptionName: string
       }
     }
     
-    const { error } = await supabase.rpc('create_user_subscription', {
+    interface CreateUserSubscriptionParams {
+      p_user_id: string;
+      p_subscription_id: number;
+      p_start_date: string;
+      p_end_date: string;
+      p_status: string;
+    }
+
+    const rpcParams: CreateUserSubscriptionParams = {
       p_user_id: userId,
       p_subscription_id: subscriptionId,
       p_start_date: startDate,
       p_end_date: endDateStr,
       p_status: 'active'
-    } as any);
+    };
+    
+    const { error } = await supabase.rpc(
+      'create_user_subscription', 
+      rpcParams
+    );
     
     if (error) {
       console.error(`Lỗi khi tạo gói mới qua RPC: ${error.message}`);
