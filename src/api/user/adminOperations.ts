@@ -84,7 +84,7 @@ export const getUserActiveSubscription = async (userId: string) => {
       `)
       .eq("user_id", userId)
       .eq("status", "active")
-      .single();
+      .maybeSingle();
       
     if (error) {
       if (error.code !== 'PGRST116') { // PGRST116 = no rows returned

@@ -39,6 +39,7 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
         const userData = await getUserById(userId);
         setUser(userData);
       } catch (error: any) {
+        console.error("Error fetching user:", error);
         toast({
           title: "Lỗi",
           description: error.message || "Không thể tải thông tin người dùng",
