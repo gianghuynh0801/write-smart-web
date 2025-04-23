@@ -7,6 +7,7 @@ import {
   Book,
   Text,
   Link as LinkIcon,
+  Image,
 } from "lucide-react";
 
 export const verticalTabs = [
@@ -43,7 +44,7 @@ export const verticalTabs = [
   {
     value: "images",
     label: "Hình ảnh",
-    icon: LinkIcon,
+    icon: Image,
   },
 ];
 
@@ -53,7 +54,7 @@ interface ContentTabsProps {
 
 const ContentTabs = ({ activeTab }: ContentTabsProps) => {
   return (
-    <TabsList className="flex flex-col h-auto w-56 bg-muted/70 p-1.5 rounded-xl shadow">
+    <TabsList className="flex flex-col h-auto w-56 bg-muted/70 p-1.5 rounded-xl shadow sticky top-6">
       {verticalTabs.map((tab) => (
         <TabsTrigger
           key={tab.value}

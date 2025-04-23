@@ -110,19 +110,23 @@ const CreateContent = () => {
           orientation="vertical" 
           value={activeTab} 
           onValueChange={setActiveTab}
-          className="flex flex-col md:flex-row gap-6"
+          className="flex flex-col md:flex-row gap-6 relative"
         >
-          <ContentTabs activeTab={activeTab} />
-          <ContentTabPanels 
-            mainKeyword={mainKeyword}
-            setMainKeyword={setMainKeyword}
-            subKeywords={subKeywords}
-            setSubKeywords={setSubKeywords}
-            relatedKeywords={relatedKeywords}
-            setRelatedKeywords={setRelatedKeywords}
-            outlineItems={outlineItems}
-            setOutlineItems={setOutlineItems}
-          />
+          <div className="md:sticky top-0 self-start">
+            <ContentTabs activeTab={activeTab} />
+          </div>
+          <div className="flex-1">
+            <ContentTabPanels 
+              mainKeyword={mainKeyword}
+              setMainKeyword={setMainKeyword}
+              subKeywords={subKeywords}
+              setSubKeywords={setSubKeywords}
+              relatedKeywords={relatedKeywords}
+              setRelatedKeywords={setRelatedKeywords}
+              outlineItems={outlineItems}
+              setOutlineItems={setOutlineItems}
+            />
+          </div>
         </Tabs>
       </div>
 
