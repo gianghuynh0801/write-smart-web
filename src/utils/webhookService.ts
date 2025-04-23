@@ -70,7 +70,7 @@ export const generateContent = async (
       throw new Error(`HTTP error: ${response.status} - ${response.statusText}`);
     }
     
-    // Kiểm tra nếu response có nội dung trước khi parse JSON
+    // Check if response has content before parsing JSON
     const responseText = await response.text();
     if (!responseText || responseText.trim() === '') {
       console.log('Empty response received from webhook');
@@ -80,7 +80,7 @@ export const generateContent = async (
       };
     }
     
-    // Thử parse JSON từ text response
+    // Try to parse JSON from text response
     let data;
     try {
       data = JSON.parse(responseText);
