@@ -75,9 +75,10 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
       onUserSaved();
       onClose();
     } catch (error) {
+      console.error("Lỗi khi lưu người dùng:", error);
       toast({
         title: "Lỗi",
-        description: error instanceof Error ? error.message : "Có lỗi xảy ra",
+        description: error instanceof Error ? error.message : "Có lỗi xảy ra khi lưu thông tin",
         variant: "destructive"
       });
     } finally {
@@ -87,7 +88,7 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
   
   // Đảm bảo dialog đóng đúng cách
   const handleDialogClose = () => {
-    // Đảm bảo không có tiến trình đang xử lý
+    // Chỉ đóng dialog khi không có tiến trình xử lý
     if (!isSaving) {
       onClose();
     }

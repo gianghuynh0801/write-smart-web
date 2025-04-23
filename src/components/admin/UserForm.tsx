@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -32,6 +33,7 @@ interface UserFormProps {
 const UserForm = ({ user, onSubmit, onCancel, isSubmitting = false }: UserFormProps) => {
   const [subscriptions, setSubscriptions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [internalSubmitting, setInternalSubmitting] = useState(false);
   const { toast } = useToast();
   
   const form = useForm<UserFormValues>({
@@ -71,9 +73,9 @@ const UserForm = ({ user, onSubmit, onCancel, isSubmitting = false }: UserFormPr
   }, [toast]);
   
   const handleSubmit = async (data: UserFormValues) => {
-    if (isSubmitting) return;
+    if (isSubmitting || internalSubmitting) return;
     
-    setIsLoading(true);
+    setInternalSubmitting(true);
     try {
       await onSubmit(data);
     } catch (error) {
@@ -82,11 +84,13 @@ const UserForm = ({ user, onSubmit, onCancel, isSubmitting = false }: UserFormPr
         description: error instanceof Error ? error.message : "Đã xảy ra lỗi khi lưu thông tin",
         variant: "destructive"
       });
-      setIsLoading(false);
+    } finally {
+      setInternalSubmitting(false);
     }
   };
   
-  const buttonDisabled = isLoading || isSubmitting;
+  // Kết hợp trạng thái nội bộ và trạng thái từ props để xác định khi nào button bị disable
+  const buttonDisabled = isLoading || isSubmitting || internalSubmitting;
   
   return (
     <Form {...form}>
@@ -236,7 +240,7 @@ const UserForm = ({ user, onSubmit, onCancel, isSubmitting = false }: UserFormPr
             Hủy bỏ
           </Button>
           <Button type="submit" disabled={buttonDisabled}>
-            {(isLoading || isSubmitting) && <Loader className="mr-2 h-4 w-4 animate-spin" />}
+            {(isLoading || isSubmitting || internalSubmitting) && <Loader className="mr-2 h-4 w-4 animate-spin" />}
             {user ? "Cập nhật" : "Tạo mới"}
           </Button>
         </div>
