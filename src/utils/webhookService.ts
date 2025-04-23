@@ -36,7 +36,7 @@ interface WebhookResponse {
 
 export const generateContent = async (
   params: ContentGenerationParams,
-  webhookUrl: string = import.meta.env.VITE_N8N_WEBHOOK_URL || ''
+  webhookUrl: string = getItem(LOCAL_STORAGE_KEYS.WEBHOOK_URL, false) || import.meta.env.VITE_N8N_WEBHOOK_URL || ''
 ): Promise<WebhookResponse> => {
   try {
     if (!webhookUrl) {

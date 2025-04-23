@@ -1,4 +1,3 @@
-
 /**
  * Utility for working with localStorage to store user preferences and credentials
  * Note: In a production app, sensitive data should be stored securely on the backend
@@ -8,9 +7,10 @@
 export const LOCAL_STORAGE_KEYS = {
   THEME: 'writesmart_theme',
   LANGUAGE: 'writesmart_language',
-  WORDPRESS_CREDENTIALS: 'writesmart_wp_creds', // For development only
+  WORDPRESS_CREDENTIALS: 'writesmart_wp_creds',
   SESSION_TOKEN: 'writesmart_session',
   USER_PREFERENCES: 'writesmart_preferences',
+  WEBHOOK_URL: 'writesmart_webhook_url',
 };
 
 // Get an item from localStorage with optional JSON parsing
