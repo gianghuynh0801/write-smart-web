@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { User, UserFormValues } from "@/types/user";
 
@@ -187,8 +188,8 @@ async function handleSubscriptionChange(userId: string, subscriptionName: string
       }
     }
     
-    // Use any type for RPC parameters since we don't have proper type definitions
-    const rpcParams: any = {
+    // Tránh lỗi TypeScript bằng cách sử dụng Record cho tham số RPC
+    const rpcParams: Record<string, any> = {
       p_user_id: userId,
       p_subscription_id: subscriptionId,
       p_start_date: startDate,
@@ -196,7 +197,7 @@ async function handleSubscriptionChange(userId: string, subscriptionName: string
       p_status: 'active'
     };
     
-    // Use type assertion with the defined interface to satisfy TypeScript
+    // Gọi RPC function với kiểu dữ liệu rõ ràng
     const { error } = await supabase.rpc(
       'create_user_subscription',
       rpcParams
