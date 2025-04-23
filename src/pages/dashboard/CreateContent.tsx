@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs } from "@/components/ui/tabs";
@@ -10,6 +9,7 @@ import ContentTabPanels from "./components/ContentTabPanels";
 import PreviewDialog from "./components/PreviewDialog";
 import { OutlineItem } from "./components/ContentOutline";
 import FormatSettings from "./components/FormatSettings";
+import { Link } from "lucide-react";
 
 const CreateContent = () => {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -35,6 +35,10 @@ const CreateContent = () => {
   const [bold, setBold] = useState(true);
   const [italic, setItalic] = useState(true);
   const [useList, setUseList] = useState(true);
+
+  const [links, setLinks] = useState<Array<{ keyword: string; url: string }>>([
+    { keyword: "", url: "" }
+  ]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,6 +147,8 @@ const CreateContent = () => {
               setItalic={setItalic}
               useList={useList}
               setUseList={setUseList}
+              links={links}
+              setLinks={setLinks}
             />
           </div>
         </Tabs>

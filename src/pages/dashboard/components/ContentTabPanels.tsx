@@ -1,4 +1,3 @@
-
 import { TabsContent } from "@/components/ui/tabs";
 import { FileText, Book, Text, Link as LinkIcon, Key, Image } from "lucide-react";
 import KeywordInputs from "./KeywordInputs";
@@ -6,8 +5,8 @@ import ContentOutline from "./ContentOutline";
 import ContentSettings from "./ContentSettings";
 import KnowledgePanel from "./KnowledgePanel";
 import FormatSettings from "./FormatSettings";
+import LinkSettings from "./LinkSettings";
 import { OutlineItem } from "./ContentOutline";
-import { useState } from "react";
 
 interface ContentTabPanelsProps {
   mainKeyword: string;
@@ -28,6 +27,8 @@ interface ContentTabPanelsProps {
   setItalic: (value: boolean) => void;
   useList: boolean;
   setUseList: (value: boolean) => void;
+  links: Array<{ keyword: string; url: string }>;
+  setLinks: (links: Array<{ keyword: string; url: string }>) => void;
 }
 
 const ContentTabPanels = ({
@@ -49,6 +50,8 @@ const ContentTabPanels = ({
   setItalic,
   useList,
   setUseList,
+  links,
+  setLinks,
 }: ContentTabPanelsProps) => {
   const [language, setLanguage] = useState("vi");
   const [country, setCountry] = useState("vn");
@@ -152,6 +155,7 @@ const ContentTabPanels = ({
           <p className="text-sm text-muted-foreground mb-4">
             Hệ thống sẽ tạo liên kết cho bài viết của bạn.
           </p>
+          <LinkSettings links={links} setLinks={setLinks} />
         </div>
       </TabsContent>
 
