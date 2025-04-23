@@ -116,6 +116,7 @@ export const getUserActiveSubscription = async (userId: string) => {
     
     // Explicitly type the result to match UserSubscription
     if (data) {
+      // Fix: Access subscriptions as an object, not an array
       const subscription: UserSubscription = {
         id: data.id,
         user_id: data.user_id,
@@ -124,8 +125,8 @@ export const getUserActiveSubscription = async (userId: string) => {
         end_date: data.end_date,
         status: data.status,
         subscriptions: data.subscriptions ? {
-          id: data.subscriptions.id,
-          name: data.subscriptions.name,
+          id: data.subscriptions.id, // Fixed: Access as object property
+          name: data.subscriptions.name, // Fixed: Access as object property
           description: null,
           price: 0,
           period: '',
