@@ -1,5 +1,4 @@
 
-// Sử dụng đúng Supabase client typed và kiểm tra null
 import { supabase } from "@/integrations/supabase/client";
 import { parseUser } from "./userCrud";
 import { User } from "@/types/user";
@@ -28,4 +27,3 @@ export const addUserCredits = async (id: string | number, amount: number): Promi
   if (!data) throw new Error("Không thể cập nhật credits");
   return parseUser(data);
 };
-

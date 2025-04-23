@@ -125,6 +125,42 @@ export type Database = {
           },
         ]
       }
+      users: {
+        Row: {
+          avatar: string | null
+          created_at: string | null
+          credits: number | null
+          email: string
+          id: string
+          name: string
+          role: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          avatar?: string | null
+          created_at?: string | null
+          credits?: number | null
+          email: string
+          id: string
+          name: string
+          role?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          avatar?: string | null
+          created_at?: string | null
+          credits?: number | null
+          email?: string
+          id?: string
+          name?: string
+          role?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

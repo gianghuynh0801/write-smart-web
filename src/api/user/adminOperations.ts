@@ -1,6 +1,6 @@
-
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
 import { UserSubscription } from "@/types/subscriptions";
+import { createClient } from "@supabase/supabase-js";
 
 // Create a separate admin client that can bypass RLS
 // This function creates an admin client that can bypass Row Level Security
@@ -95,6 +95,8 @@ export const getUserActiveSubscription = async (userId: string) => {
         start_date,
         end_date,
         status,
+        user_id,
+        subscription_id,
         subscriptions:subscription_id (
           id,
           name
@@ -111,8 +113,28 @@ export const getUserActiveSubscription = async (userId: string) => {
       return null;
     }
     
-    console.log("Active subscription data:", data);
-    return data as UserSubscription | null;
+    // Explicitly type the result to match UserSubscription
+    if (data) {
+      const subscription: UserSubscription = {
+        id: data.id,
+        user_id: data.user_id,
+        subscription_id: data.subscription_id,
+        start_date: data.start_date,
+        end_date: data.end_date,
+        status: data.status,
+        subscriptions: data.subscriptions ? {
+          id: data.subscriptions.id,
+          name: data.subscriptions.name,
+          description: null,
+          price: 0,
+          period: '',
+          features: null
+        } : undefined
+      };
+      return subscription;
+    }
+    
+    return null;
   } catch (error) {
     console.error("Lỗi trong quá trình xử lý:", error);
     return null;
