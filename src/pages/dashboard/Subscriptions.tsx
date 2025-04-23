@@ -1,11 +1,11 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Check, Package, AlertTriangle, CreditCard, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const subscriptionPlans = [
   {
@@ -57,9 +57,16 @@ const subscriptionPlans = [
 ];
 
 const Subscriptions = () => {
-  // Giả lập trạng thái gói đăng ký hiện tại
-  const [currentSubscription] = useState({
-    plan: "professional",
+  const [subscriptions, setSubscriptions] = useState<any[]>([]);
+  const [currentSubscription, setCurrentSubscription] = useState<{
+    plan: string;
+    status: string;
+    startDate: string;
+    endDate: string;
+    usageArticles: number;
+    totalArticles: number;
+  }>({
+    plan: "Chuyên nghiệp",
     status: "active",
     startDate: "15/04/2023",
     endDate: "15/05/2023",
@@ -68,11 +75,32 @@ const Subscriptions = () => {
   });
   
   const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchSubscriptions = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('subscriptions')
+          .select('*');
+
+        if (error) throw error;
+        setSubscriptions(data);
+      } catch (error) {
+        toast({
+          title: "Lỗi",
+          description: "Không thể tải danh sách gói đăng ký",
+          variant: "destructive"
+        });
+      }
+    };
+
+    fetchSubscriptions();
+  }, [toast]);
   
   const handleUpgrade = (planId: string) => {
     // Trong ứng dụng thực tế, sẽ chuyển hướng đến trang thanh toán
     toast({
-      title: `Nâng cấp lên ${planId === "enterprise" ? "Gói Doanh nghiệp" : "Gói Chuyên nghiệp"}`,
+      title: `Nâng cấp lên ${planId === "Doanh nghiệp" ? "Gói Doanh nghiệp" : "Gói Chuyên nghiệp"}`,
       description: "Đang chuyển hướng đến trang thanh toán..."
     });
   };
@@ -157,21 +185,21 @@ const Subscriptions = () => {
       <div className="space-y-4">
         <h2 className="text-xl font-medium">Tất cả gói đăng ký</h2>
         <div className="grid md:grid-cols-3 gap-4">
-          {subscriptionPlans.map((plan) => (
+          {subscriptions.map((plan) => (
             <Card 
               key={plan.id}
               className={`relative overflow-hidden cursor-pointer transition-all ${
-                currentSubscription.plan === plan.id 
+                currentSubscription.plan === plan.name 
                   ? 'ring-2 ring-primary' 
                   : 'hover:shadow-md'
-              } ${plan.popular ? 'shadow-md' : ''}`}
+              } ${plan.name === 'Chuyên nghiệp' ? 'shadow-md' : ''}`}
             >
-              {plan.popular && (
+              {plan.name === 'Chuyên nghiệp' && (
                 <div className="absolute top-0 right-0 bg-primary text-white text-xs py-1 px-3 rounded-bl-lg">
                   Phổ biến
                 </div>
               )}
-              {currentSubscription.plan === plan.id && (
+              {currentSubscription.plan === plan.name && (
                 <div className="absolute top-0 right-0 bg-green-600 text-white text-xs py-1 px-3 rounded-bl-lg">
                   Gói hiện tại
                 </div>
@@ -182,11 +210,11 @@ const Subscriptions = () => {
               </CardHeader>
               <CardContent className="pb-2">
                 <div className="mb-4">
-                  <span className="text-2xl font-bold">{plan.price}đ</span>
+                  <span className="text-2xl font-bold">{plan.price.toLocaleString()}đ</span>
                   <span className="text-gray-500">/{plan.period}</span>
                 </div>
                 <ul className="space-y-2 text-sm">
-                  {plan.features.map((feature, i) => (
+                  {JSON.parse(plan.features).map((feature: string, i: number) => (
                     <li key={i} className="flex items-start">
                       <Check size={16} className="text-green-500 mr-2 flex-shrink-0 mt-0.5" />
                       <span>{feature}</span>
@@ -195,19 +223,19 @@ const Subscriptions = () => {
                 </ul>
               </CardContent>
               <CardFooter>
-                {currentSubscription.plan === plan.id ? (
+                {currentSubscription.plan === plan.name ? (
                   <div className="w-full p-2 bg-green-50 text-green-700 font-medium rounded-md text-center">
                     Gói hiện tại
                   </div>
                 ) : (
                   <Button
-                    variant={plan.id === "enterprise" ? "default" : "outline"}
+                    variant={plan.name === "Doanh nghiệp" ? "default" : "outline"}
                     className="w-full"
-                    onClick={() => handleUpgrade(plan.id)}
+                    onClick={() => handleUpgrade(plan.name)}
                   >
-                    {currentSubscription.plan === "enterprise" 
+                    {currentSubscription.plan === "Doanh nghiệp" 
                       ? "Hạ cấp xuống gói này" 
-                      : plan.id === "enterprise" 
+                      : plan.name === "Doanh nghiệp" 
                         ? "Nâng cấp lên gói này"
                         : "Chuyển sang gói này"}
                   </Button>
