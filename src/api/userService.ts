@@ -220,7 +220,25 @@ async function handleSubscriptionChange(userId: string, subscriptionName: string
     // Nếu RPC không tồn tại hoặc có lỗi, thử phương pháp khác - chỉ log lỗi
     if (error) {
       console.error(`Lỗi khi tạo gói mới qua RPC: ${error.message}`);
-      // Không throw error để tránh gián đoạn luồng chính
+      
+      // Thử phương pháp insert trực tiếp nếu RPC không khả dụng
+      try {
+        const { error: insertError } = await supabase
+          .from("user_subscriptions")
+          .insert({
+            user_id: userId,
+            subscription_id: subscriptionId,
+            start_date: startDate,
+            end_date: endDateStr,
+            status: 'active'
+          });
+          
+        if (insertError) {
+          console.error(`Lỗi khi tạo gói mới qua insert: ${insertError.message}`);
+        }
+      } catch (insertCatchError) {
+        console.error(`Lỗi exception khi tạo gói mới: ${insertCatchError}`);
+      }
     }
   } catch (error) {
     console.error("Lỗi xử lý thay đổi gói đăng ký:", error);
