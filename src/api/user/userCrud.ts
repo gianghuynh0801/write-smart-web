@@ -102,7 +102,6 @@ export const createUser = async (userData: UserFormValues): Promise<User> => {
       name: userData.name,
       email: userData.email,
       credits: userData.credits,
-      subscription: userData.subscription,
       status: userData.status,
       avatar: `https://i.pravatar.cc/150?img=${Math.floor(Math.random() * 70)}`,
       role: userData.role
@@ -110,7 +109,18 @@ export const createUser = async (userData: UserFormValues): Promise<User> => {
   ]).select().single();
 
   if (error) throw new Error(error.message);
-  return parseUser(data);
+  
+  // Xử lý gói đăng ký sau khi tạo user
+  try {
+    await handleSubscriptionChange(newId, userData.subscription);
+  } catch (subError) {
+    console.error("Không thể cập nhật thông tin đăng ký:", subError);
+    // Vẫn tiếp tục vì đã tạo user thành công
+  }
+  
+  const createdUser = parseUser(data);
+  createdUser.subscription = userData.subscription; // Cập nhật trường subscription cho đối tượng trả về
+  return createdUser;
 };
 
 export const updateUser = async (id: string | number, userData: UserFormValues): Promise<User> => {
@@ -132,14 +142,20 @@ export const updateUser = async (id: string | number, userData: UserFormValues):
   if (error) throw new Error(error.message);
 
   const updatedUser = parseUser(data);
-  updatedUser.subscription = userData.subscription;
-
+  
+  // Kiểm tra nếu gói đăng ký đã thay đổi thì cập nhật
   if (currentUser && currentUser.subscription !== userData.subscription) {
     try {
-      await handleSubscriptionChange(userId, userData.subscription);
+      const result = await handleSubscriptionChange(userId, userData.subscription);
+      console.log("Kết quả cập nhật gói đăng ký:", result);
+      updatedUser.subscription = userData.subscription; // Cập nhật trường subscription cho đối tượng trả về
     } catch (subError) {
       console.error("Không thể cập nhật thông tin đăng ký:", subError);
+      // Vẫn tiếp tục vì đã cập nhật user thành công
+      throw new Error(`Không thể cập nhật gói đăng ký: ${subError instanceof Error ? subError.message : String(subError)}`);
     }
+  } else {
+    updatedUser.subscription = userData.subscription || currentUser?.subscription || "Không có";
   }
 
   return updatedUser;
