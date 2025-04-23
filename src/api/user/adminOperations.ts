@@ -6,7 +6,7 @@ import type { Database } from "@/integrations/supabase/types";
 // This function creates an admin client that can bypass Row Level Security
 const createAdminClient = () => {
   const supabaseUrl = "https://ctegtqmkxkbqhwlqukfd.supabase.co";
-  const supabaseServiceRoleKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0ZWd0cW1reGticWh3bHF1a2ZkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NTM4ODc5NiwiZXhwIjoyMDYwOTY0Nzk2fQ.4ihpDJWRD8k7SWKzEAS5QsVlhnN8gPDHUCFM9FCYGoo";
+  const supabaseServiceRoleKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0ZWd0cW1reGticWh3bHF1a2ZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDUzOTc0ODUsImV4cCI6MjA2MDk3MzQ4NX0.B0hz-X9hhSl_nEAj94pyFA08gihsbrVAPNm58PjErJo";
   
   // Use the service_role key to create a client that bypasses RLS
   return createClient<Database>(
