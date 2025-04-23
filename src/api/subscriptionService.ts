@@ -53,41 +53,7 @@ export const fetchUserSubscription = async (userId: string) => {
     };
   }
 
-  // Fallback to user.subscription field (legacy or simplified approach)
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .select('subscription')
-    .eq('id', userId)
-    .single();
-  
-  if (userError) {
-    console.error("Error fetching user data:", userError);
-    throw new Error(`Error fetching user data: ${userError.message}`);
-  }
-
-  // Get subscription plan details
-  if (userData?.subscription) {
-    const { data: planData } = await supabase
-      .from('subscriptions')
-      .select('*')
-      .eq('name', userData.subscription)
-      .maybeSingle();
-
-    if (planData) {
-      return {
-        plan: planData.name,
-        planId: planData.id,
-        status: "active",
-        startDate: new Date().toISOString().split('T')[0],
-        endDate: new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0], // 30 days from now
-        price: planData.price,
-        usageArticles: 8,
-        totalArticles: 30
-      };
-    }
-  }
-
-  // Fallback to no subscription
+  // If no active subscription found, return default values
   return {
     plan: "Không có",
     planId: null,
@@ -156,14 +122,6 @@ export const updateUserSubscription = async (userId: string, planId: number) => 
       });
     
     if (insertError) throw new Error(`Error creating subscription: ${insertError.message}`);
-    
-    // Update user subscription reference (for backward compatibility)
-    const { error: userUpdateError } = await supabase
-      .from('users')
-      .update({ subscription: planData.name })
-      .eq('id', userId);
-    
-    if (userUpdateError) throw new Error(`Error updating user: ${userUpdateError.message}`);
     
     // Record payment
     const { error: paymentError } = await supabase

@@ -23,9 +23,14 @@ const PaymentHistoryCard = () => {
     const fetchPaymentHistory = async () => {
       setIsLoading(true);
       try {
+        // Get current user ID
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("User not authenticated");
+        
         const { data, error } = await supabase
           .from('payment_history')
           .select('*')
+          .eq('user_id', user.id)
           .order('payment_at', { ascending: false })
           .limit(3);
 

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -53,7 +52,21 @@ const AdminSubscriptions = () => {
         .order("price", { ascending: true });
         
       if (error) throw error;
-      setPlans(data || []);
+      
+      const transformedData: SubscriptionPlan[] = (data || []).map(plan => ({
+        id: plan.id,
+        name: plan.name,
+        description: plan.description,
+        price: plan.price,
+        period: plan.period,
+        features: Array.isArray(plan.features) 
+          ? plan.features 
+          : typeof plan.features === 'string' 
+            ? [plan.features] 
+            : plan.features ? JSON.parse(JSON.stringify(plan.features)) : []
+      }));
+      
+      setPlans(transformedData);
     } catch (error: any) {
       toast({
         title: "Lỗi",
@@ -135,7 +148,6 @@ const AdminSubscriptions = () => {
 
   const handleSubmit = async () => {
     try {
-      // Validate inputs
       if (!currentPlan.name.trim()) {
         throw new Error("Tên gói không được để trống");
       }
@@ -144,7 +156,6 @@ const AdminSubscriptions = () => {
         throw new Error("Giá gói phải lớn hơn hoặc bằng 0");
       }
 
-      // Parse features from textarea to array
       const featuresArray = currentPlan.features
         .split("\n")
         .map((feature) => feature.trim())
@@ -161,7 +172,6 @@ const AdminSubscriptions = () => {
       let error;
       
       if (currentPlan.id) {
-        // Update existing plan
         const { error: updateError } = await supabase
           .from("subscriptions")
           .update(planData)
@@ -176,7 +186,6 @@ const AdminSubscriptions = () => {
           });
         }
       } else {
-        // Create new plan
         const { error: insertError } = await supabase
           .from("subscriptions")
           .insert([planData]);
@@ -312,7 +321,6 @@ const AdminSubscriptions = () => {
         </CardContent>
       </Card>
 
-      {/* Add/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[550px]">
           <DialogHeader>
@@ -410,7 +418,6 @@ const AdminSubscriptions = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
