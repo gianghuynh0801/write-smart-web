@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Loader } from "lucide-react";
 
@@ -17,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 interface UserDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  userId?: number;
+  userId?: string | number;
   onUserSaved: () => void;
 }
 

@@ -28,7 +28,8 @@ const AdminUsers = () => {
   const [addCreditsDialogOpen, setAddCreditsDialogOpen] = useState(false);
   const [userDialogOpen, setUserDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [editUserId, setEditUserId] = useState<number | undefined>(undefined);
+  // Changed from number | undefined to string | number | undefined to match User.id type
+  const [editUserId, setEditUserId] = useState<string | number | undefined>(undefined);
   const pageSize = 5;
   const { toast } = useToast();
   
@@ -115,7 +116,8 @@ const AdminUsers = () => {
     }
   };
   
-  const handleEditUser = (userId: number) => {
+  // Update parameter type from number to string | number to match User.id type
+  const handleEditUser = (userId: string | number) => {
     setEditUserId(userId);
     setUserDialogOpen(true);
   };
