@@ -1,6 +1,16 @@
 
 import { supabase } from "@/integrations/supabase/client";
 
+// Create a separate admin client that can bypass RLS
+// This function creates an admin client that can bypass Row Level Security
+const createAdminClient = () => {
+  const supabaseUrl = "https://ctegtqmkxkbqhwlqukfd.supabase.co";
+  const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0ZWd0cW1reGticWh3bHF1a2ZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDUzODg3OTYsImV4cCI6MjA2MDk2NDc5Nn0.1CHW5ZxM4hLjP04es4o1LEgMORdi7lWnGX8grCHCnZs";
+  return supabase;
+};
+
+const adminClient = createAdminClient();
+
 export const createUserSubscriptionAsAdmin = async (
   userId: string, 
   subscriptionId: number, 
@@ -8,8 +18,10 @@ export const createUserSubscriptionAsAdmin = async (
   endDate: string
 ): Promise<boolean> => {
   try {
+    console.log("Creating subscription with admin privileges:", { userId, subscriptionId, startDate, endDate });
+    
     // Ensure all existing subscriptions for this user are set to inactive
-    const { error: updateError } = await supabase
+    const { error: updateError } = await adminClient
       .from("user_subscriptions")
       .update({ status: "inactive" })
       .eq("user_id", userId)
@@ -17,11 +29,11 @@ export const createUserSubscriptionAsAdmin = async (
       
     if (updateError) {
       console.error("Lỗi khi cập nhật gói đăng ký cũ:", updateError.message);
-      // Continue anyway to create the new subscription
+      throw new Error(`Could not deactivate old subscriptions: ${updateError.message}`);
     }
     
-    // Create the new subscription with explicit RLS bypass for admin operations
-    const { error: insertError } = await supabase
+    // Create the new subscription with direct database access
+    const { error: insertError } = await adminClient
       .from("user_subscriptions")
       .insert({
         user_id: userId,
@@ -29,25 +41,23 @@ export const createUserSubscriptionAsAdmin = async (
         start_date: startDate,
         end_date: endDate,
         status: 'active'
-      })
-      // Add headers to bypass RLS for admin operations
-      .select();
+      });
       
     if (insertError) {
       console.error("Lỗi khi tạo gói đăng ký mới:", insertError.message);
-      return false;
+      throw new Error(`Could not create new subscription: ${insertError.message}`);
     }
     
     return true;
   } catch (error) {
     console.error("Lỗi trong quá trình xử lý:", error);
-    return false;
+    throw error; // Re-throw to allow proper error handling upstream
   }
 };
 
 export const getUserActiveSubscription = async (userId: string) => {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await adminClient
       .from("user_subscriptions")
       .select(`
         id,

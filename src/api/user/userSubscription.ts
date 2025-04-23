@@ -115,6 +115,7 @@ export const getSubscriptionOptions = async (): Promise<string[]> => {
       options.unshift("Không có");
     }
     
+    console.log("Available subscription options:", options);
     return options;
   } catch (error) {
     console.error("Error processing subscription options:", error);

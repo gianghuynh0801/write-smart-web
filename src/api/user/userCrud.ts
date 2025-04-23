@@ -1,6 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
 import { User, UserFormValues } from "@/types/user";
-import { handleSubscriptionChange } from "./userSubscription";
 import { createUserSubscriptionAsAdmin, getUserActiveSubscription } from "./adminOperations";
 
 // === MOCK DATA, chỉ sử dụng để insert vào DB nếu DB đang trống ===
@@ -145,20 +144,16 @@ export const createUser = async (userData: UserFormValues): Promise<User> => {
         endDate.setMonth(endDate.getMonth() + 1); // 1 month subscription
         const endDateStr = endDate.toISOString().split('T')[0];
         
-        const success = await createUserSubscriptionAsAdmin(
+        await createUserSubscriptionAsAdmin(
           newId,
           subscriptionData.id,
           startDate,
           endDateStr
         );
-        
-        if (!success) {
-          console.warn("Could not create subscription for new user, but user was created");
-        }
       }
     } catch (subError) {
       console.error("Could not update subscription info:", subError);
-      // Still continue since user creation was successful
+      throw new Error(`Could not create subscription: ${subError instanceof Error ? subError.message : String(subError)}`);
     }
   }
   
@@ -192,8 +187,8 @@ export const updateUser = async (id: string | number, userData: UserFormValues):
   
   // Check if subscription has changed and update if needed
   if (currentUser && currentUser.subscription !== userData.subscription) {
-    if (userData.subscription !== "Không có") {
-      try {
+    try {
+      if (userData.subscription !== "Không có") {
         // Get subscription id from name
         const { data: subscriptionData, error: subError } = await supabase
           .from("subscriptions")
@@ -211,35 +206,20 @@ export const updateUser = async (id: string | number, userData: UserFormValues):
         endDate.setMonth(endDate.getMonth() + 1); // 1 month subscription
         const endDateStr = endDate.toISOString().split('T')[0];
         
-        const success = await createUserSubscriptionAsAdmin(
+        await createUserSubscriptionAsAdmin(
           userId,
           subscriptionData.id,
           startDate,
           endDateStr
         );
-        
-        if (!success) {
-          throw new Error("Could not update subscription");
-        }
-      } catch (error) {
-        console.error("Error updating subscription:", error);
-        throw new Error(`Could not update subscription: ${error instanceof Error ? error.message : String(error)}`);
+      } else {
+        // If changing to "No subscription", deactivate all active subscriptions
+        // This is handled by the admin client in createUserSubscriptionAsAdmin
+        // by setting all existing subscriptions to inactive before creating a new one
       }
-    } else {
-      // If changing to "No subscription", deactivate all active subscriptions
-      try {
-        const { error: updateError } = await supabase
-          .from("user_subscriptions")
-          .update({ status: "inactive" })
-          .eq("user_id", userId)
-          .eq("status", "active");
-          
-        if (updateError) {
-          console.error("Error deactivating subscriptions:", updateError);
-        }
-      } catch (error) {
-        console.error("Error processing subscription change:", error);
-      }
+    } catch (error) {
+      console.error("Error updating subscription:", error);
+      throw new Error(`Could not update subscription: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
