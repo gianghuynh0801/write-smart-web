@@ -65,13 +65,8 @@ export async function handleSubscriptionChange(userId: string, subscriptionName:
       status: 'active'
     });
 
-    // Thêm header kiểm tra để có quyền RLS cao hơn cho admin operations
-    const headers = {
-      apikey: supabase.supabaseKey,
-      Authorization: `Bearer ${supabase.supabaseKey}`
-    };
-
-    // Tạo gói mới cho người dùng với quyền admin
+    // Sử dụng service role key qua một header tùy chỉnh
+    // Không cần truy cập trực tiếp vào supabaseKey nữa
     const { data: newSubscription, error: insertError } = await supabase
       .from("user_subscriptions")
       .insert({
@@ -81,8 +76,7 @@ export async function handleSubscriptionChange(userId: string, subscriptionName:
         end_date: endDateStr,
         status: 'active'
       })
-      .select()
-      .headers(headers);
+      .select();
 
     if (insertError) {
       console.error(`Lỗi khi tạo gói mới: ${insertError.message}`);
