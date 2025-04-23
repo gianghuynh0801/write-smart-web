@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -27,9 +26,10 @@ interface UserFormProps {
   user?: User;
   onSubmit: (data: UserFormValues) => Promise<void>;
   onCancel: () => void;
+  isSubmitting?: boolean;
 }
 
-const UserForm = ({ user, onSubmit, onCancel }: UserFormProps) => {
+const UserForm = ({ user, onSubmit, onCancel, isSubmitting = false }: UserFormProps) => {
   const [subscriptions, setSubscriptions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -71,6 +71,8 @@ const UserForm = ({ user, onSubmit, onCancel }: UserFormProps) => {
   }, [toast]);
   
   const handleSubmit = async (data: UserFormValues) => {
+    if (isSubmitting) return;
+    
     setIsLoading(true);
     try {
       await onSubmit(data);
@@ -80,10 +82,11 @@ const UserForm = ({ user, onSubmit, onCancel }: UserFormProps) => {
         description: error instanceof Error ? error.message : "Đã xảy ra lỗi khi lưu thông tin",
         variant: "destructive"
       });
-    } finally {
       setIsLoading(false);
     }
   };
+  
+  const buttonDisabled = isLoading || isSubmitting;
   
   return (
     <Form {...form}>
@@ -224,11 +227,16 @@ const UserForm = ({ user, onSubmit, onCancel }: UserFormProps) => {
         </div>
         
         <div className="flex justify-end space-x-4 pt-4">
-          <Button type="button" variant="outline" onClick={onCancel}>
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={onCancel} 
+            disabled={buttonDisabled}
+          >
             Hủy bỏ
           </Button>
-          <Button type="submit" disabled={isLoading}>
-            {isLoading && <Loader className="mr-2 h-4 w-4 animate-spin" />}
+          <Button type="submit" disabled={buttonDisabled}>
+            {(isLoading || isSubmitting) && <Loader className="mr-2 h-4 w-4 animate-spin" />}
             {user ? "Cập nhật" : "Tạo mới"}
           </Button>
         </div>

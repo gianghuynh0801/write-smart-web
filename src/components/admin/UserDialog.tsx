@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Loader } from "lucide-react";
 
@@ -23,6 +24,7 @@ interface UserDialogProps {
 const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) => {
   const [user, setUser] = useState<User | undefined>();
   const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
   
   useEffect(() => {
@@ -53,6 +55,9 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
   }, [userId, isOpen, toast]);
   
   const handleSubmit = async (data: UserFormValues) => {
+    if (isSaving) return; // Ngăn submit nhiều lần
+    
+    setIsSaving(true);
     try {
       if (userId) {
         await updateUser(userId, data);
@@ -75,11 +80,21 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
         description: error instanceof Error ? error.message : "Có lỗi xảy ra",
         variant: "destructive"
       });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+  
+  // Đảm bảo dialog đóng đúng cách
+  const handleDialogClose = () => {
+    // Đảm bảo không có tiến trình đang xử lý
+    if (!isSaving) {
+      onClose();
     }
   };
   
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleDialogClose}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>{userId ? "Chỉnh sửa người dùng" : "Thêm người dùng mới"}</DialogTitle>
@@ -96,7 +111,8 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
           <UserForm 
             user={user} 
             onSubmit={handleSubmit} 
-            onCancel={onClose} 
+            onCancel={handleDialogClose}
+            isSubmitting={isSaving}
           />
         )}
       </DialogContent>
