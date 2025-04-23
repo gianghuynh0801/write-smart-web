@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { TabsContent } from "@/components/ui/tabs";
 import { FileText, Book, Text, Link as LinkIcon, Key, Image } from "lucide-react";
@@ -8,6 +7,7 @@ import ContentSettings from "./ContentSettings";
 import KnowledgePanel from "./KnowledgePanel";
 import FormatSettings from "./FormatSettings";
 import LinkSettings from "./LinkSettings";
+import ImageSettings from "./ImageSettings";
 import { OutlineItem } from "./ContentOutline";
 
 interface ContentTabPanelsProps {
@@ -31,6 +31,14 @@ interface ContentTabPanelsProps {
   setUseList: (value: boolean) => void;
   links: Array<{ keyword: string; url: string }>;
   setLinks: (links: Array<{ keyword: string; url: string }>) => void;
+  imageSize: string;
+  setImageSize: (size: string) => void;
+  resolution: number;
+  setResolution: (value: number) => void;
+  keepAspectRatio: boolean;
+  setKeepAspectRatio: (value: boolean) => void;
+  optimizeImages: boolean;
+  setOptimizeImages: (value: boolean) => void;
 }
 
 const ContentTabPanels = ({
@@ -54,6 +62,14 @@ const ContentTabPanels = ({
   setUseList,
   links,
   setLinks,
+  imageSize,
+  setImageSize,
+  resolution,
+  setResolution,
+  keepAspectRatio,
+  setKeepAspectRatio,
+  optimizeImages,
+  setOptimizeImages,
 }: ContentTabPanelsProps) => {
   const [language, setLanguage] = useState("vi");
   const [country, setCountry] = useState("vn");
@@ -167,8 +183,18 @@ const ContentTabPanels = ({
             <Image className="h-5 w-5 text-primary" /> Hình ảnh cho bài viết
           </h2>
           <p className="text-sm text-muted-foreground mb-4">
-            Hệ thống sẽ tạo hình ảnh cho bài viết của bạn.
+            Quản lý cài đặt cho hình ảnh trong bài viết của bạn
           </p>
+          <ImageSettings
+            imageSize={imageSize}
+            setImageSize={setImageSize}
+            resolution={resolution}
+            setResolution={setResolution}
+            keepAspectRatio={keepAspectRatio}
+            setKeepAspectRatio={setKeepAspectRatio}
+            optimizeImages={optimizeImages}
+            setOptimizeImages={setOptimizeImages}
+          />
         </div>
       </TabsContent>
     </div>
@@ -176,4 +202,3 @@ const ContentTabPanels = ({
 };
 
 export default ContentTabPanels;
-

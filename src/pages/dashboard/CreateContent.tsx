@@ -40,6 +40,11 @@ const CreateContent = () => {
     { keyword: "", url: "" }
   ]);
 
+  const [imageSize, setImageSize] = useState("medium");
+  const [resolution, setResolution] = useState(72);
+  const [keepAspectRatio, setKeepAspectRatio] = useState(true);
+  const [optimizeImages, setOptimizeImages] = useState(true);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -118,9 +123,9 @@ const CreateContent = () => {
       <p className="text-gray-500 mb-6">Tạo bài viết chuẩn SEO với công nghệ AI</p>
       
       <div className="flex flex-col md:flex-row gap-6">
-        <Tabs 
-          orientation="vertical" 
-          value={activeTab} 
+        <Tabs
+          orientation="vertical"
+          value={activeTab}
           onValueChange={setActiveTab}
           className="flex flex-col md:flex-row gap-6 relative"
         >
@@ -128,7 +133,7 @@ const CreateContent = () => {
             <ContentTabs activeTab={activeTab} />
           </div>
           <div className="flex-1">
-            <ContentTabPanels 
+            <ContentTabPanels
               mainKeyword={mainKeyword}
               setMainKeyword={setMainKeyword}
               subKeywords={subKeywords}
@@ -149,6 +154,14 @@ const CreateContent = () => {
               setUseList={setUseList}
               links={links}
               setLinks={setLinks}
+              imageSize={imageSize}
+              setImageSize={setImageSize}
+              resolution={resolution}
+              setResolution={setResolution}
+              keepAspectRatio={keepAspectRatio}
+              setKeepAspectRatio={setKeepAspectRatio}
+              optimizeImages={optimizeImages}
+              setOptimizeImages={setOptimizeImages}
             />
           </div>
         </Tabs>
