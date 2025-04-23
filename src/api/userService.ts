@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { User, UserFormValues } from "@/types/user";
 
@@ -204,9 +205,10 @@ async function handleSubscriptionChange(userId: string, subscriptionName: string
       p_status: 'active'
     };
     
+    // Use type assertion with the defined interface to satisfy TypeScript
     const { error } = await supabase.rpc(
-      'create_user_subscription', 
-      rpcParams
+      'create_user_subscription',
+      rpcParams as any  // Use type assertion to bypass TypeScript's type checking for RPC
     );
     
     if (error) {
