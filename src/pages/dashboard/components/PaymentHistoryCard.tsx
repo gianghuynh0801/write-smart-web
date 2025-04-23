@@ -5,14 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Package, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-
-interface PaymentHistory {
-  id: number;
-  amount: number;
-  status: string;
-  payment_at: string;
-  description: string | null;
-}
+import { PaymentHistory } from "@/types/subscriptions";
 
 const PaymentHistoryCard = () => {
   const [payments, setPayments] = useState<PaymentHistory[]>([]);
@@ -31,11 +24,18 @@ const PaymentHistoryCard = () => {
           .from('payment_history')
           .select('*')
           .eq('user_id', user.id)
-          .order('payment_at', { ascending: false })
+          .order('created_at', { ascending: false })
           .limit(3);
 
         if (error) throw error;
-        setPayments(data || []);
+        
+        // Transform the data to match our PaymentHistory interface
+        const transformedData = data?.map(item => ({
+          ...item,
+          payment_at: item.created_at // Map created_at to payment_at
+        })) || [];
+        
+        setPayments(transformedData);
       } catch (error: any) {
         console.error("Error fetching payment history:", error);
         toast({
