@@ -1,9 +1,10 @@
-
 import { TabsContent } from "@/components/ui/tabs";
 import { FileText, Book, Text, Link as LinkIcon, Key } from "lucide-react";
 import KeywordInputs from "./KeywordInputs";
 import ContentOutline from "./ContentOutline";
 import { OutlineItem } from "./ContentOutline";
+import ContentSettings from "./ContentSettings";
+import { useState } from "react";
 
 interface ContentTabPanelsProps {
   mainKeyword: string;
@@ -26,6 +27,12 @@ const ContentTabPanels = ({
   outlineItems,
   setOutlineItems,
 }: ContentTabPanelsProps) => {
+  const [language, setLanguage] = useState("vi");
+  const [country, setCountry] = useState("vn");
+  const [tone, setTone] = useState("Neutral");
+  const [narrator, setNarrator] = useState("tự động");
+  const [formality, setFormality] = useState("tự động");
+
   return (
     <div className="flex-1">
       <TabsContent value="keywords" className="mt-0 animate-fade-in">
@@ -63,6 +70,18 @@ const ContentTabPanels = ({
           <p className="text-sm text-muted-foreground mb-4">
             Hệ thống sẽ tạo nội dung cho bài viết của bạn.
           </p>
+          <ContentSettings
+            language={language}
+            setLanguage={setLanguage}
+            country={country}
+            setCountry={setCountry}
+            tone={tone}
+            setTone={setTone}
+            narrator={narrator}
+            setNarrator={setNarrator}
+            formality={formality}
+            setFormality={setFormality}
+          />
         </div>
       </TabsContent>
 
