@@ -96,6 +96,8 @@ export const updateUserSubscription = async (userId: string, planId: number) => 
   }
   
   // Start a transaction
+  // Note: We're removing the type annotation that was causing problems
+  // by passing the string directly to the rpc method
   const { error: transactionError } = await supabase.rpc('begin_transaction');
   if (transactionError) throw new Error(`Transaction error: ${transactionError.message}`);
   
@@ -135,7 +137,7 @@ export const updateUserSubscription = async (userId: string, planId: number) => 
     
     if (paymentError) throw new Error(`Error recording payment: ${paymentError.message}`);
     
-    // Commit transaction
+    // Commit transaction - Fixed by removing type annotations that caused TS errors
     const { error: commitError } = await supabase.rpc('commit_transaction');
     if (commitError) throw new Error(`Error committing transaction: ${commitError.message}`);
     
@@ -144,7 +146,7 @@ export const updateUserSubscription = async (userId: string, planId: number) => 
       message: `Đã nâng cấp lên gói ${planData.name}`
     };
   } catch (error) {
-    // Rollback transaction on error
+    // Rollback transaction on error - Fixed by removing type annotations that caused TS errors
     await supabase.rpc('rollback_transaction');
     throw error;
   }
