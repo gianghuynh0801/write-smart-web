@@ -74,7 +74,7 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
       }
       onUserSaved();
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Lỗi khi lưu người dùng:", error);
       toast({
         title: "Lỗi",

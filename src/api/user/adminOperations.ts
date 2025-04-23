@@ -1,14 +1,18 @@
 
-import { supabase } from "@/integrations/supabase/client";
+import { createClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
 
 // Create a separate admin client that can bypass RLS
 // This function creates an admin client that can bypass Row Level Security
 const createAdminClient = () => {
   const supabaseUrl = "https://ctegtqmkxkbqhwlqukfd.supabase.co";
-  const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0ZWd0cW1reGticWh3bHF1a2ZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDUzODg3OTYsImV4cCI6MjA2MDk2NDc5Nn0.1CHW5ZxM4hLjP04es4o1LEgMORdi7lWnGX8grCHCnZs";
-  return supabase;
+  const supabaseServiceRoleKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0ZWd0cW1reGticWh3bHF1a2ZkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NTM4ODc5NiwiZXhwIjoyMDYwOTY0Nzk2fQ.4ihpDJWRD8k7SWKzEAS5QsVlhnN8gPDHUCFM9FCYGoo";
+  
+  // Use the service_role key to create a client that bypasses RLS
+  return createClient<Database>(supabaseUrl, supabaseServiceRoleKey);
 };
 
+// Create a single admin client instance to be reused
 const adminClient = createAdminClient();
 
 export const createUserSubscriptionAsAdmin = async (
