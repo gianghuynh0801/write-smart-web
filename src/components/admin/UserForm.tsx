@@ -6,7 +6,7 @@ import * as z from "zod";
 import { Loader } from "lucide-react";
 
 import { UserFormValues, User } from "@/types/user";
-import { getSubscriptionOptions } from "@/api/userService";
+import { getSubscriptionOptions } from "@/api/user/userSubscription";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -42,7 +42,7 @@ const UserForm = ({ user, onSubmit, onCancel, isSubmitting = false }: UserFormPr
       name: user.name,
       email: user.email,
       credits: user.credits,
-      subscription: user.subscription,
+      subscription: user.subscription || "Không có",
       status: user.status,
       role: user.role
     } : {
@@ -57,15 +57,18 @@ const UserForm = ({ user, onSubmit, onCancel, isSubmitting = false }: UserFormPr
   
   useEffect(() => {
     const loadSubscriptions = async () => {
+      setIsLoading(true);
       try {
         const options = await getSubscriptionOptions();
         setSubscriptions(options);
+        setIsLoading(false);
       } catch (error) {
         toast({
           title: "Lỗi",
           description: "Không thể tải danh sách gói đăng ký",
           variant: "destructive"
         });
+        setIsLoading(false);
       }
     };
     

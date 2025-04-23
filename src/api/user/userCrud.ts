@@ -128,10 +128,10 @@ export const createUser = async (userData: UserFormValues): Promise<User> => {
   
   const createdUser = parseUser(data);
   
-  // Xử lý gói đăng ký sau khi tạo user
+  // Process subscription after user creation
   if (userData.subscription && userData.subscription !== "Không có") {
     try {
-      // Lấy thông tin gói đăng ký từ tên
+      // Get subscription info by name
       const { data: subscriptionData } = await supabase
         .from("subscriptions")
         .select("id")
@@ -139,32 +139,40 @@ export const createUser = async (userData: UserFormValues): Promise<User> => {
         .maybeSingle();
       
       if (subscriptionData) {
-        // Tính toán thời gian bắt đầu và kết thúc gói
+        // Calculate subscription dates
         const startDate = new Date().toISOString().split('T')[0];
         const endDate = new Date();
-        endDate.setMonth(endDate.getMonth() + 1); // Gói 1 tháng
+        endDate.setMonth(endDate.getMonth() + 1); // 1 month subscription
         const endDateStr = endDate.toISOString().split('T')[0];
         
-        await createUserSubscriptionAsAdmin(
+        const success = await createUserSubscriptionAsAdmin(
           newId,
           subscriptionData.id,
           startDate,
           endDateStr
         );
+        
+        if (!success) {
+          console.warn("Could not create subscription for new user, but user was created");
+        }
       }
     } catch (subError) {
-      console.error("Không thể cập nhật thông tin đăng ký:", subError);
-      // Vẫn tiếp tục vì đã tạo user thành công
+      console.error("Could not update subscription info:", subError);
+      // Still continue since user creation was successful
     }
   }
   
-  createdUser.subscription = userData.subscription; // Cập nhật trường subscription cho đối tượng trả về
+  createdUser.subscription = userData.subscription; // Update subscription field in return object
   return createdUser;
 };
 
 export const updateUser = async (id: string | number, userData: UserFormValues): Promise<User> => {
   const userId = String(id);
+  
+  // Get current user data for comparison
   const currentUser = await getUserById(userId);
+  
+  // Update basic user information
   const { data, error } = await supabase
     .from("users")
     .update({
@@ -179,24 +187,28 @@ export const updateUser = async (id: string | number, userData: UserFormValues):
     .single();
 
   if (error) throw new Error(error.message);
-
+  
   const updatedUser = parseUser(data);
   
-  // Kiểm tra nếu gói đăng ký đã thay đổi thì cập nhật
+  // Check if subscription has changed and update if needed
   if (currentUser && currentUser.subscription !== userData.subscription) {
-    try {
-      // Lấy thông tin gói đăng ký từ tên
-      const { data: subscriptionData } = await supabase
-        .from("subscriptions")
-        .select("id")
-        .eq("name", userData.subscription)
-        .maybeSingle();
-      
-      if (subscriptionData) {
-        // Tính toán thời gian bắt đầu và kết thúc gói
+    if (userData.subscription !== "Không có") {
+      try {
+        // Get subscription id from name
+        const { data: subscriptionData, error: subError } = await supabase
+          .from("subscriptions")
+          .select("id")
+          .eq("name", userData.subscription)
+          .maybeSingle();
+        
+        if (subError || !subscriptionData) {
+          throw new Error(`Could not find subscription: ${subError?.message || "Unknown error"}`);
+        }
+        
+        // Calculate subscription dates
         const startDate = new Date().toISOString().split('T')[0];
         const endDate = new Date();
-        endDate.setMonth(endDate.getMonth() + 1); // Gói 1 tháng
+        endDate.setMonth(endDate.getMonth() + 1); // 1 month subscription
         const endDateStr = endDate.toISOString().split('T')[0];
         
         const success = await createUserSubscriptionAsAdmin(
@@ -206,21 +218,32 @@ export const updateUser = async (id: string | number, userData: UserFormValues):
           endDateStr
         );
         
-        if (success) {
-          console.log(`Đã cập nhật gói đăng ký thành ${userData.subscription}`);
-          updatedUser.subscription = userData.subscription;
-        } else {
-          throw new Error("Không thể cập nhật gói đăng ký");
+        if (!success) {
+          throw new Error("Could not update subscription");
         }
+      } catch (error) {
+        console.error("Error updating subscription:", error);
+        throw new Error(`Could not update subscription: ${error instanceof Error ? error.message : String(error)}`);
       }
-    } catch (subError) {
-      console.error("Không thể cập nhật thông tin đăng ký:", subError);
-      throw new Error(`Không thể cập nhật gói đăng ký: ${subError instanceof Error ? subError.message : String(subError)}`);
+    } else {
+      // If changing to "No subscription", deactivate all active subscriptions
+      try {
+        const { error: updateError } = await supabase
+          .from("user_subscriptions")
+          .update({ status: "inactive" })
+          .eq("user_id", userId)
+          .eq("status", "active");
+          
+        if (updateError) {
+          console.error("Error deactivating subscriptions:", updateError);
+        }
+      } catch (error) {
+        console.error("Error processing subscription change:", error);
+      }
     }
-  } else {
-    updatedUser.subscription = userData.subscription || currentUser?.subscription || "Không có";
   }
 
+  updatedUser.subscription = userData.subscription;
   return updatedUser;
 };
 

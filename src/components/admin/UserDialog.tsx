@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { getUserById, createUser, updateUser } from "@/api/userService";
+import { getUserById, createUser, updateUser } from "@/api/user/userCrud";
 import { User, UserFormValues } from "@/types/user";
 import UserForm from "./UserForm";
 import { useToast } from "@/hooks/use-toast";
@@ -55,7 +55,7 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
   }, [userId, isOpen, toast]);
   
   const handleSubmit = async (data: UserFormValues) => {
-    if (isSaving) return; // Ngăn submit nhiều lần
+    if (isSaving) return;
     
     setIsSaving(true);
     try {
@@ -81,18 +81,16 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
         description: error instanceof Error ? error.message : "Có lỗi xảy ra khi lưu thông tin",
         variant: "destructive"
       });
-      // Không đóng dialog khi có lỗi xảy ra để người dùng có thể sửa và thử lại
-      setIsSaving(false); // Chỉ reset trạng thái isSaving khi có lỗi
+    } finally {
+      setIsSaving(false); // Always reset saving state, regardless of success or error
     }
   };
   
-  // Đảm bảo dialog đóng đúng cách
+  // Ensure dialog closes properly
   const handleDialogClose = () => {
-    // Chỉ đóng dialog khi không có tiến trình xử lý
     if (!isSaving) {
       onClose();
     } else {
-      // Thông báo cho người dùng biết rằng đang có tiến trình xử lý
       toast({
         title: "Đang xử lý",
         description: "Vui lòng đợi trong khi chúng tôi lưu thông tin của bạn",

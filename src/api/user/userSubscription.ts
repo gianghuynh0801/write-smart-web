@@ -1,7 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 
-// Hàm xử lý việc thay đổi gói đăng ký cho user
+// Handle subscription changes for a user
 export async function handleSubscriptionChange(userId: string, subscriptionName: string) {
   try {
     // Lấy thông tin gói đăng ký từ tên
@@ -96,12 +96,28 @@ export async function handleSubscriptionChange(userId: string, subscriptionName:
   }
 }
 
-// Lấy DS options gói đăng ký
+// Get subscription options list
 export const getSubscriptionOptions = async (): Promise<string[]> => {
-  const { data, error } = await supabase.from("subscriptions").select("name");
-  if (error || !data) {
-    console.error("Lỗi khi lấy danh sách gói đăng ký:", error);
+  try {
+    const { data, error } = await supabase
+      .from("subscriptions")
+      .select("name")
+      .order('price', { ascending: true });
+      
+    if (error) {
+      console.error("Error fetching subscription options:", error.message);
+      return ["Không có", "Cơ bản", "Chuyên nghiệp", "Doanh nghiệp"];
+    }
+    
+    // Always ensure "Không có" (None) is an option
+    const options = data.map(row => row.name);
+    if (!options.includes("Không có")) {
+      options.unshift("Không có");
+    }
+    
+    return options;
+  } catch (error) {
+    console.error("Error processing subscription options:", error);
     return ["Không có", "Cơ bản", "Chuyên nghiệp", "Doanh nghiệp"];
   }
-  return data.map(row => row.name);
 };

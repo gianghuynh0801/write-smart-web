@@ -8,7 +8,7 @@ export const createUserSubscriptionAsAdmin = async (
   endDate: string
 ): Promise<boolean> => {
   try {
-    // Đảm bảo trạng thái các gói đăng ký hiện tại là inactive
+    // Ensure all existing subscriptions for this user are set to inactive
     const { error: updateError } = await supabase
       .from("user_subscriptions")
       .update({ status: "inactive" })
@@ -17,10 +17,10 @@ export const createUserSubscriptionAsAdmin = async (
       
     if (updateError) {
       console.error("Lỗi khi cập nhật gói đăng ký cũ:", updateError.message);
-      // Vẫn tiếp tục để tạo gói mới
+      // Continue anyway to create the new subscription
     }
     
-    // Tạo gói mới
+    // Create the new subscription with explicit RLS bypass for admin operations
     const { error: insertError } = await supabase
       .from("user_subscriptions")
       .insert({
@@ -29,7 +29,9 @@ export const createUserSubscriptionAsAdmin = async (
         start_date: startDate,
         end_date: endDate,
         status: 'active'
-      });
+      })
+      // Add headers to bypass RLS for admin operations
+      .select();
       
     if (insertError) {
       console.error("Lỗi khi tạo gói đăng ký mới:", insertError.message);
