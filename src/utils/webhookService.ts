@@ -1,4 +1,6 @@
+
 // Utility for working with n8n webhooks for content generation
+import { getItem, LOCAL_STORAGE_KEYS } from "./localStorageService";
 
 interface ContentGenerationParams {
   keywords: {
