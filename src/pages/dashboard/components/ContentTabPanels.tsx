@@ -1,9 +1,10 @@
 import { TabsContent } from "@/components/ui/tabs";
-import { FileText, Book, Text, Link as LinkIcon, Key } from "lucide-react";
+import { FileText, Book, Text, Link as LinkIcon, Key, Image } from "lucide-react";
 import KeywordInputs from "./KeywordInputs";
 import ContentOutline from "./ContentOutline";
-import { OutlineItem } from "./ContentOutline";
 import ContentSettings from "./ContentSettings";
+import KnowledgePanel from "./KnowledgePanel";
+import { OutlineItem } from "./ContentOutline";
 import { useState } from "react";
 
 interface ContentTabPanelsProps {
@@ -15,6 +16,10 @@ interface ContentTabPanelsProps {
   setRelatedKeywords: (keywords: string[]) => void;
   outlineItems: OutlineItem[];
   setOutlineItems: (items: OutlineItem[]) => void;
+  webConnection: boolean;
+  setWebConnection: (value: boolean) => void;
+  reference: string;
+  setReference: (value: string) => void;
 }
 
 const ContentTabPanels = ({
@@ -26,6 +31,10 @@ const ContentTabPanels = ({
   setRelatedKeywords,
   outlineItems,
   setOutlineItems,
+  webConnection,
+  setWebConnection,
+  reference,
+  setReference,
 }: ContentTabPanelsProps) => {
   const [language, setLanguage] = useState("vi");
   const [country, setCountry] = useState("vn");
@@ -93,6 +102,12 @@ const ContentTabPanels = ({
           <p className="text-sm text-muted-foreground mb-4">
             Hệ thống sẽ cung cấp kiến thức cho bài viết của bạn.
           </p>
+          <KnowledgePanel
+            webConnection={webConnection}
+            setWebConnection={setWebConnection}
+            reference={reference}
+            setReference={setReference}
+          />
         </div>
       </TabsContent>
 

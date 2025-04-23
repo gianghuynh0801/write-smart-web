@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs } from "@/components/ui/tabs";
@@ -27,6 +26,9 @@ const CreateContent = () => {
   const [outlineItems, setOutlineItems] = useState<OutlineItem[]>([
     { heading: "H2", title: "" }
   ]);
+
+  const [webConnection, setWebConnection] = useState(true);
+  const [reference, setReference] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,6 +127,10 @@ const CreateContent = () => {
               setRelatedKeywords={setRelatedKeywords}
               outlineItems={outlineItems}
               setOutlineItems={setOutlineItems}
+              webConnection={webConnection}
+              setWebConnection={setWebConnection}
+              reference={reference}
+              setReference={setReference}
             />
           </div>
         </Tabs>
