@@ -42,15 +42,26 @@ export const generateContent = async (
 ): Promise<WebhookResponse> => {
   try {
     if (!webhookUrl) {
-      throw new Error('No webhook URL provided');
+      throw new Error('Không có URL webhook nào được cung cấp');
     }
     
-    console.log('Sending request to webhook:', webhookUrl);
-    console.log('Request params:', params);
+    // Kiểm tra URL có đúng định dạng không
+    try {
+      new URL(webhookUrl);
+    } catch (urlError) {
+      console.error('URL không hợp lệ:', webhookUrl);
+      return {
+        status: 'error',
+        error: 'URL webhook không hợp lệ. Vui lòng kiểm tra định dạng URL.'
+      };
+    }
+    
+    console.log('Gửi yêu cầu đến webhook:', webhookUrl);
+    console.log('Tham số yêu cầu:', params);
     
     // Thiết lập timeout 10 phút
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 600000); // 10 minutes = 600000ms
+    const timeoutId = setTimeout(() => controller.abort(), 600000); // 10 phút = 600000ms
     
     const response = await fetch(webhookUrl, {
       method: 'POST',
@@ -68,17 +79,17 @@ export const generateContent = async (
     clearTimeout(timeoutId);
     
     if (!response.ok) {
-      console.error('HTTP error response:', response.status, response.statusText);
-      throw new Error(`HTTP error: ${response.status} - ${response.statusText}`);
+      console.error('Phản hồi lỗi HTTP:', response.status, response.statusText);
+      throw new Error(`Lỗi HTTP: ${response.status} - ${response.statusText}`);
     }
     
     // Kiểm tra nếu response có nội dung trước khi parse JSON
     const responseText = await response.text();
     if (!responseText || responseText.trim() === '') {
-      console.log('Empty response received from webhook');
+      console.log('Nhận được phản hồi trống từ webhook');
       return {
         status: 'success',
-        content: 'Server returned an empty response. Content was not generated.',
+        content: 'Máy chủ đã trả về phản hồi trống. Nội dung không được tạo.',
       };
     }
     
@@ -87,23 +98,23 @@ export const generateContent = async (
     try {
       data = JSON.parse(responseText);
     } catch (jsonError) {
-      console.error('Invalid JSON response:', responseText);
+      console.error('Phản hồi JSON không hợp lệ:', responseText);
       return {
         status: 'error',
-        error: 'Server trả về định dạng không hợp lệ. Vui lòng thử lại sau.',
+        error: 'Máy chủ trả về định dạng không hợp lệ. Vui lòng thử lại sau.',
       };
     }
     
-    console.log('Response data:', data);
+    console.log('Dữ liệu phản hồi:', data);
     
     return {
       status: 'success',
-      content: data.content || 'Content generated successfully, but empty response received.',
+      content: data.content || 'Nội dung đã được tạo thành công, nhưng nhận được phản hồi trống.',
     };
   } catch (error) {
     // Kiểm tra lỗi mạng
     if (error instanceof TypeError && error.message === 'Failed to fetch') {
-      console.error('Network error - Failed to fetch:', error);
+      console.error('Lỗi mạng - Không thể kết nối:', error);
       return {
         status: 'error',
         error: 'Không thể kết nối tới webhook URL. Vui lòng kiểm tra kết nối mạng và URL webhook.'
@@ -112,14 +123,14 @@ export const generateContent = async (
     
     // Kiểm tra timeout
     if (error instanceof DOMException && error.name === 'AbortError') {
-      console.error('Request timeout:', error);
+      console.error('Yêu cầu hết thời gian chờ:', error);
       return {
         status: 'error',
         error: 'Yêu cầu quá thời gian chờ (10 phút). Vui lòng thử lại sau.'
       };
     }
     
-    console.error('Error calling webhook:', error);
+    console.error('Lỗi khi gọi webhook:', error);
     return {
       status: 'error',
       error: error instanceof Error ? error.message : 'Lỗi không xác định khi gọi webhook',

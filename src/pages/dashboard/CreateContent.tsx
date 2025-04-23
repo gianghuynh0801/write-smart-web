@@ -9,9 +9,7 @@ import ContentTabs from "./components/ContentTabs";
 import ContentTabPanels from "./components/ContentTabPanels";
 import PreviewDialog from "./components/PreviewDialog";
 import { OutlineItem } from "./components/ContentOutline";
-import FormatSettings from "./components/FormatSettings";
-import { Link } from "lucide-react";
-import ImageSettings from "./components/ImageSettings";
+import { getItem, LOCAL_STORAGE_KEYS } from "@/utils/localStorageService";
 
 const CreateContent = () => {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -93,10 +91,12 @@ const CreateContent = () => {
 
       console.log("Gửi yêu cầu tạo nội dung với params:", params);
       
-      const resp = await generateContent(
-        params,
-        "https://workflow.matbao.support/webhook-test/80808e9c-a56a-4b4f-83da-7710fae0bda7"
-      );
+      // Lấy webhook URL từ localStorage hoặc sử dụng URL mặc định
+      const webhookUrl = getItem(LOCAL_STORAGE_KEYS.WEBHOOK_URL, false) || 
+        import.meta.env.VITE_N8N_WEBHOOK_URL ||
+        "https://workflow.matbao.support/webhook/80808e9c-a56a-4b4f-83da-7710fae0bda7";
+      
+      const resp = await generateContent(params, webhookUrl);
       
       if (resp.status === "success" && resp.content) {
         setGeneratedContent(resp.content);
