@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { UserSubscription } from "@/types/subscriptions";
 import { createClient } from "@supabase/supabase-js";
