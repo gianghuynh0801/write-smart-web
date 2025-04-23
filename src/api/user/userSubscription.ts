@@ -28,7 +28,7 @@ export async function handleSubscriptionChange(userId: string, subscriptionName:
       .from("user_subscriptions")
       .select("id, status")
       .eq("user_id", userId)
-      .eq("status", "active")
+      .eq("status", 'active')
       .order("id", { ascending: false })
       .maybeSingle();
 
@@ -56,8 +56,17 @@ export async function handleSubscriptionChange(userId: string, subscriptionName:
       }
     }
 
+    // In thông tin subscription data để debug
+    console.log("Creating subscription with data:", {
+      user_id: userId,
+      subscription_id: subscriptionId,
+      start_date: startDate,
+      end_date: endDateStr,
+      status: 'active'
+    });
+
     // Tạo gói mới cho người dùng
-    const { error: insertError } = await supabase
+    const { data: newSubscription, error: insertError } = await supabase
       .from("user_subscriptions")
       .insert({
         user_id: userId,
@@ -65,18 +74,19 @@ export async function handleSubscriptionChange(userId: string, subscriptionName:
         start_date: startDate,
         end_date: endDateStr,
         status: 'active'
-      });
+      })
+      .select();
 
     if (insertError) {
       console.error(`Lỗi khi tạo gói mới: ${insertError.message}`);
       throw new Error(`Lỗi khi tạo gói mới: ${insertError.message}`);
     }
 
-    // Thay vì cập nhật trực tiếp subscription trong bảng users,
-    // chúng ta sẽ dùng API trong userCrud.ts để cập nhật
+    console.log("New subscription created:", newSubscription);
+
+    // Cập nhật các metadata khác liên quan đến user
     try {
-      // Cập nhật thông tin đăng ký trong session data 
-      // (không update trực tiếp trong database để tránh lỗi TypeScript)
+      // Lấy thông tin user hiện tại
       const { data: userData } = await supabase
         .from("users")
         .select("*")
@@ -88,12 +98,13 @@ export async function handleSubscriptionChange(userId: string, subscriptionName:
         await supabase
           .from("users")
           .update({ 
-            name: userData.name,  // Giữ nguyên các giá trị hiện tại
+            name: userData.name,
             email: userData.email,
             credits: userData.credits,
             status: userData.status,
             role: userData.role,
-            // Có thể không lưu subscription trực tiếp trong bảng users
+            // Không lưu subscription trực tiếp trong bảng users vì không có trường này
+            // trong type definition
           })
           .eq("id", userId);
       }
