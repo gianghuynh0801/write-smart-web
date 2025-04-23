@@ -1,5 +1,6 @@
 
 import { createClient } from "@supabase/supabase-js";
+import { UserSubscription } from "@/types/subscriptions";
 import type { Database } from "@/integrations/supabase/types";
 
 // Create a separate admin client that can bypass RLS
@@ -52,7 +53,7 @@ export const createUserSubscriptionAsAdmin = async (
       .from("user_subscriptions")
       .update({ status: "inactive" })
       .eq("user_id", userId)
-      .eq("status", "active");
+      .eq("status", "active") as { error: any };
       
     if (updateError) {
       console.error("Lỗi khi cập nhật gói đăng ký cũ:", updateError.message);
@@ -68,7 +69,7 @@ export const createUserSubscriptionAsAdmin = async (
         start_date: startDate,
         end_date: endDate,
         status: 'active'
-      });
+      }) as { error: any };
       
     if (insertError) {
       console.error("Lỗi khi tạo gói đăng ký mới:", insertError.message);
@@ -102,7 +103,7 @@ export const getUserActiveSubscription = async (userId: string) => {
       `)
       .eq("user_id", userId)
       .eq("status", "active")
-      .maybeSingle();
+      .maybeSingle() as { data: UserSubscription | null, error: any };
       
     if (error) {
       if (error.code !== 'PGRST116') { // PGRST116 = no rows returned

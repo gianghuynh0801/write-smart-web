@@ -1,6 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { createUserSubscriptionAsAdmin } from "./adminOperations";
+import { Subscription } from "@/types/subscriptions";
 
 // Handle subscription changes for a user
 export async function handleSubscriptionChange(userId: string, subscriptionName: string) {
@@ -23,7 +24,7 @@ export async function handleSubscriptionChange(userId: string, subscriptionName:
       .from("subscriptions")
       .select("id")
       .eq("name", subscriptionName)
-      .maybeSingle();
+      .maybeSingle() as { data: Subscription | null, error: any };
 
     if (subscriptionError) {
       console.error(`Lỗi khi tìm gói đăng ký: ${subscriptionError.message}`);
@@ -104,7 +105,7 @@ export const getSubscriptionOptions = async (): Promise<string[]> => {
     const { data, error } = await supabase
       .from("subscriptions")
       .select("name")
-      .order('price', { ascending: true });
+      .order('price', { ascending: true }) as { data: Subscription[] | null, error: any };
       
     if (error) {
       console.error("Error fetching subscription options:", error.message);
@@ -113,7 +114,7 @@ export const getSubscriptionOptions = async (): Promise<string[]> => {
     }
     
     // Always ensure "Không có" (None) is an option
-    const options = data.map(row => row.name);
+    const options = data ? data.map(row => row.name) : [];
     if (!options.includes("Không có")) {
       options.unshift("Không có");
     }

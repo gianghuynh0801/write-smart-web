@@ -1,12 +1,13 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { Subscription, UserSubscription, PaymentHistory } from "@/types/subscriptions";
 
 // Fetch all subscription plans
-export const fetchSubscriptionPlans = async () => {
+export const fetchSubscriptionPlans = async (): Promise<Subscription[]> => {
   const { data, error } = await supabase
     .from('subscriptions')
     .select('*')
-    .order('price', { ascending: true });
+    .order('price', { ascending: true }) as { data: Subscription[] | null, error: any };
     
   if (error) throw new Error(`Error fetching subscription plans: ${error.message}`);
   return data || [];
@@ -32,7 +33,7 @@ export const fetchUserSubscription = async (userId: string) => {
     `)
     .eq('user_id', userId)
     .eq('status', 'active')
-    .single();
+    .single() as { data: UserSubscription | null, error: any };
   
   if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
     console.error("Error fetching user subscription:", error);
@@ -73,9 +74,10 @@ export const updateUserSubscription = async (userId: string, planId: number) => 
     .from('subscriptions')
     .select('*')
     .eq('id', planId)
-    .single();
+    .single() as { data: Subscription | null, error: any };
   
   if (planError) throw new Error(`Error fetching plan: ${planError.message}`);
+  if (!planData) throw new Error("Plan not found");
   
   // Calculate subscription dates
   const startDate = new Date().toISOString().split('T')[0];
@@ -89,7 +91,7 @@ export const updateUserSubscription = async (userId: string, planId: number) => 
     .select('id')
     .eq('user_id', userId)
     .eq('status', 'active')
-    .maybeSingle();
+    .maybeSingle() as { data: { id: string } | null, error: any };
   
   if (subError && subError.code !== 'PGRST116') {
     throw new Error(`Error checking existing subscription: ${subError.message}`);
@@ -151,7 +153,7 @@ export const cancelUserSubscription = async (userId: string) => {
     .select('id')
     .eq('user_id', userId)
     .eq('status', 'active')
-    .maybeSingle();
+    .maybeSingle() as { data: { id: string } | null, error: any };
   
   if (findError && findError.code !== 'PGRST116') {
     throw new Error(`Error finding subscription: ${findError.message}`);
