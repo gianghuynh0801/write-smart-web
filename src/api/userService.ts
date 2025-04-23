@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { User, UserFormValues } from "@/types/user";
 
@@ -207,8 +208,8 @@ async function handleSubscriptionChange(userId: string, subscriptionName: string
       }
     }
     
-    // Thay đổi cách tạo đăng ký mới sử dụng RPC thay vì insert trực tiếp
-    // RPC có thể bypass RLS policy nếu được cấu hình đúng
+    // Fix TypeScript error: Use an object with properly typed parameters for the RPC call
+    // Instead of passing individual arguments, pass as a single parameters object
     const { error } = await supabase.rpc('create_user_subscription', {
       p_user_id: userId,
       p_subscription_id: subscriptionId,
