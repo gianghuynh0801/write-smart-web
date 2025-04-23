@@ -38,10 +38,10 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
       try {
         const userData = await getUserById(userId);
         setUser(userData);
-      } catch (error) {
+      } catch (error: any) {
         toast({
           title: "Lỗi",
-          description: "Không thể tải thông tin người dùng",
+          description: error.message || "Không thể tải thông tin người dùng",
           variant: "destructive"
         });
       } finally {
@@ -78,7 +78,7 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
       console.error("Lỗi khi lưu người dùng:", error);
       toast({
         title: "Lỗi",
-        description: error instanceof Error ? error.message : "Có lỗi xảy ra khi lưu thông tin",
+        description: error.message || "Có lỗi xảy ra khi lưu thông tin",
         variant: "destructive"
       });
     } finally {

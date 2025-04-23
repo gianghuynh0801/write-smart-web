@@ -9,7 +9,16 @@ const createAdminClient = () => {
   const supabaseServiceRoleKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0ZWd0cW1reGticWh3bHF1a2ZkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NTM4ODc5NiwiZXhwIjoyMDYwOTY0Nzk2fQ.4ihpDJWRD8k7SWKzEAS5QsVlhnN8gPDHUCFM9FCYGoo";
   
   // Use the service_role key to create a client that bypasses RLS
-  return createClient<Database>(supabaseUrl, supabaseServiceRoleKey);
+  return createClient<Database>(
+    supabaseUrl, 
+    supabaseServiceRoleKey,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    }
+  );
 };
 
 // Create a single admin client instance to be reused
