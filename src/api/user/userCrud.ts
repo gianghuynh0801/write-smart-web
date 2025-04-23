@@ -166,9 +166,14 @@ export const createUser = async (userData: UserFormValues): Promise<User> => {
   if (error) throw new Error(error.message);
   
   const createdUser = parseUser(data);
-  
-  // Process subscription after user creation
-  if (userData.subscription && userData.subscription !== "Không có") {
+
+  // [NOTE!] The trigger handle_new_user_subscription() automatically creates a default subscription for every user.
+  // Only create a user_subscriptions record IF the admin selects a different package than the default (e.g., "Không có" meaning no subscription, or a package other than default).
+  if (
+    userData.subscription &&
+    userData.subscription !== "Không có" &&
+    userData.subscription !== "Cơ bản"
+  ) {
     try {
       // Get subscription info by name
       const { data: subscriptionData } = await supabase
@@ -196,7 +201,7 @@ export const createUser = async (userData: UserFormValues): Promise<User> => {
       throw new Error(`Could not create subscription: ${subError instanceof Error ? subError.message : String(subError)}`);
     }
   }
-  
+
   createdUser.subscription = userData.subscription; // Update subscription field in return object
   return createdUser;
 };
