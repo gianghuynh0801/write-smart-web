@@ -134,7 +134,6 @@ export const updateUser = async (id: string | number, userData: UserFormValues):
       credits: userData.credits,
       subscription: userData.subscription,
       status: userData.status,
-      avatar: null, // Sửa sau nếu form cho phép đổi avatar, tạm giữ nguyên
       role: userData.role
     })
     .eq("id", userId)
