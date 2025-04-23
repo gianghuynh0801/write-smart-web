@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Tabs } from "@/components/ui/tabs";
 import ContentTabs from "./components/ContentTabs";
@@ -36,8 +35,11 @@ const CreateContent = () => {
 
   const { isGenerating, generateContent } = useContentGeneration();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = () => {
+    handleContentGeneration();
+  };
+
+  const handleContentGeneration = async () => {
     const content = await generateContent({
       mainKeyword,
       subKeywords,
