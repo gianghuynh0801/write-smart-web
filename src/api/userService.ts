@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { User, UserFormValues } from "@/types/user";
 
@@ -188,41 +187,22 @@ async function handleSubscriptionChange(userId: string, subscriptionName: string
       }
     }
     
-    // Tránh lỗi TypeScript bằng cách sử dụng Record cho tham số RPC
-    const rpcParams: Record<string, any> = {
-      p_user_id: userId,
-      p_subscription_id: subscriptionId,
-      p_start_date: startDate,
-      p_end_date: endDateStr,
-      p_status: 'active'
-    };
-    
-    // Gọi RPC function với kiểu dữ liệu rõ ràng
-    const { error } = await supabase.rpc(
-      'create_user_subscription',
-      rpcParams
-    );
-    
-    if (error) {
-      console.error(`Lỗi khi tạo gói mới qua RPC: ${error.message}`);
-      
-      try {
-        const { error: insertError } = await supabase
-          .from("user_subscriptions")
-          .insert({
-            user_id: userId,
-            subscription_id: subscriptionId,
-            start_date: startDate,
-            end_date: endDateStr,
-            status: 'active'
-          });
-          
-        if (insertError) {
-          console.error(`Lỗi khi tạo gói mới qua insert: ${insertError.message}`);
-        }
-      } catch (insertCatchError) {
-        console.error(`Lỗi exception khi tạo gói mới: ${insertCatchError}`);
+    try {
+      const { error: insertError } = await supabase
+        .from("user_subscriptions")
+        .insert({
+          user_id: userId,
+          subscription_id: subscriptionId,
+          start_date: startDate,
+          end_date: endDateStr,
+          status: 'active'
+        });
+        
+      if (insertError) {
+        console.error(`Lỗi khi tạo gói mới: ${insertError.message}`);
       }
+    } catch (insertCatchError) {
+      console.error(`Lỗi exception khi tạo gói mới: ${insertCatchError}`);
     }
   } catch (error) {
     console.error("Lỗi xử lý thay đổi gói đăng ký:", error);
