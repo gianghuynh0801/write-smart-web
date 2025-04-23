@@ -46,11 +46,21 @@ export async function handleSubscriptionChange(userId: string, subscriptionName:
 
       console.log("Creating mock subscription with dates:", { startDate, endDateStr, mockSubscriptionId });
       
-      // Giả lập thành công không gọi API thực
-      return {
-        success: true,
-        message: `Đã cập nhật gói đăng ký thành ${subscriptionName} (mock)`
-      };
+      // Thực hiện tạo subscription thật với admin client nếu có thể
+      try {
+        await createUserSubscriptionAsAdmin(userId, mockSubscriptionId, startDate, endDateStr);
+        return {
+          success: true,
+          message: `Đã cập nhật gói đăng ký thành ${subscriptionName}`
+        };
+      } catch (adminError) {
+        console.error("Không thể tạo subscription thật:", adminError);
+        // Giả lập thành công không gọi API thực
+        return {
+          success: true,
+          message: `Đã cập nhật gói đăng ký thành ${subscriptionName} (mock)`
+        };
+      }
     }
 
     if (!subscriptionData) {

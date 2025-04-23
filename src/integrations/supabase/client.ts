@@ -6,16 +6,16 @@ import type { Database } from './types';
 const SUPABASE_URL = "https://ctegtqmkxkbqhwlqukfd.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0ZWd0cW1reGticWh3bHF1a2ZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDUzODg3OTYsImV4cCI6MjA2MDk2NDc5Nn0.1CHW5ZxM4hLjP04es4o1LEgMORdi7lWnGX8grCHCnZs";
 
-// Cấu hình client để sử dụng localStorage và tránh tạo nhiều instance
-const clientOptions = {
+// Cấu hình client để tránh lỗi nhiều instances và đảm bảo hoạt động chính xác
+const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
     storage: typeof window !== 'undefined' ? window.localStorage : undefined
   }
-};
+});
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, clientOptions);
+export { supabase };

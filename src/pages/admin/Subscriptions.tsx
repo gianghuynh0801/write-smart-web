@@ -28,6 +28,33 @@ interface FormValues {
   features: string;
 }
 
+const mockPlans: SubscriptionPlan[] = [
+  {
+    id: 1,
+    name: "Cơ bản",
+    description: "Dành cho người dùng cá nhân",
+    price: 99000,
+    period: "tháng",
+    features: ["10 bài viết/tháng", "Tối đa 1.000 từ/bài", "Hỗ trợ qua email"]
+  },
+  {
+    id: 2,
+    name: "Chuyên nghiệp",
+    description: "Dành cho người sáng tạo nội dung",
+    price: 299000,
+    period: "tháng",
+    features: ["50 bài viết/tháng", "Tối đa 5.000 từ/bài", "Hỗ trợ ưu tiên", "SEO tools"]
+  },
+  {
+    id: 3,
+    name: "Doanh nghiệp",
+    description: "Dành cho doanh nghiệp",
+    price: 999000,
+    period: "tháng",
+    features: ["Không giới hạn bài viết", "Không giới hạn độ dài", "Hỗ trợ 24/7", "SEO tools", "API tích hợp"]
+  }
+];
+
 const AdminSubscriptions = () => {
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -41,17 +68,35 @@ const AdminSubscriptions = () => {
     features: "",
   });
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
+  const [isUsingMockData, setIsUsingMockData] = useState(false);
   const { toast } = useToast();
 
   const fetchPlans = async () => {
     setIsLoading(true);
     try {
+      console.log("Đang tải dữ liệu gói đăng ký từ Supabase...");
       const { data, error } = await supabase
         .from("subscriptions")
         .select("*")
         .order("price", { ascending: true });
         
-      if (error) throw error;
+      if (error) {
+        console.error("Lỗi khi tải dữ liệu gói đăng ký:", error);
+        throw error;
+      }
+      
+      console.log("Dữ liệu gói đăng ký đã tải:", data);
+      
+      if (!data || data.length === 0) {
+        console.log("Không có dữ liệu gói đăng ký, kiểm tra kết nối hoặc sử dụng dữ liệu mẫu");
+        
+        if (!isUsingMockData) {
+          toast({
+            title: "Không có dữ liệu",
+            description: "Không tìm thấy gói đăng ký nào. Bạn có thể thêm gói mới hoặc kiểm tra kết nối.",
+          });
+        }
+      }
       
       const transformedData: SubscriptionPlan[] = (data || []).map(plan => ({
         id: plan.id,
@@ -67,12 +112,21 @@ const AdminSubscriptions = () => {
       }));
       
       setPlans(transformedData);
+      setIsUsingMockData(false);
     } catch (error: any) {
-      toast({
-        title: "Lỗi",
-        description: "Không thể tải dữ liệu gói đăng ký: " + error.message,
-        variant: "destructive",
-      });
+      console.error("Lỗi khi tải dữ liệu từ API:", error);
+      
+      // Sử dụng dữ liệu mẫu khi API lỗi
+      if (!isUsingMockData) {
+        toast({
+          title: "Lỗi kết nối",
+          description: "Không thể kết nối đến API. Đang sử dụng dữ liệu mẫu.",
+          variant: "destructive",
+        });
+        
+        setPlans(mockPlans);
+        setIsUsingMockData(true);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -114,20 +168,32 @@ const AdminSubscriptions = () => {
     if (!selectedPlanId) return;
     
     try {
-      const { error } = await supabase
-        .from("subscriptions")
-        .delete()
-        .eq("id", selectedPlanId);
+      setIsLoading(true);
+      
+      if (isUsingMockData) {
+        // Nếu đang sử dụng dữ liệu mẫu, chỉ xóa từ state
+        setPlans(plans.filter(plan => plan.id !== selectedPlanId));
+        toast({
+          title: "Thành công",
+          description: "Đã xóa gói đăng ký (chế độ giả lập)",
+        });
+      } else {
+        const { error } = await supabase
+          .from("subscriptions")
+          .delete()
+          .eq("id", selectedPlanId);
+          
+        if (error) throw error;
         
-      if (error) throw error;
-      
-      toast({
-        title: "Thành công",
-        description: "Đã xóa gói đăng ký",
-      });
-      
-      fetchPlans();
+        toast({
+          title: "Thành công",
+          description: "Đã xóa gói đăng ký",
+        });
+        
+        fetchPlans();
+      }
     } catch (error: any) {
+      console.error("Lỗi khi xóa gói đăng ký:", error);
       toast({
         title: "Lỗi",
         description: "Không thể xóa gói đăng ký: " + error.message,
@@ -135,6 +201,7 @@ const AdminSubscriptions = () => {
       });
     } finally {
       setIsDeleteDialogOpen(false);
+      setIsLoading(false);
     }
   };
 
@@ -155,6 +222,8 @@ const AdminSubscriptions = () => {
       if (currentPlan.price < 0) {
         throw new Error("Giá gói phải lớn hơn hoặc bằng 0");
       }
+      
+      setIsLoading(true);
 
       const featuresArray = currentPlan.features
         .split("\n")
@@ -168,6 +237,35 @@ const AdminSubscriptions = () => {
         period: currentPlan.period,
         features: featuresArray,
       };
+
+      if (isUsingMockData) {
+        // Xử lý trong trường hợp sử dụng dữ liệu mẫu
+        if (currentPlan.id) {
+          // Cập nhật
+          setPlans(plans.map(plan => 
+            plan.id === currentPlan.id 
+              ? { ...plan, ...planData, id: currentPlan.id } 
+              : plan
+          ));
+          
+          toast({
+            title: "Thành công",
+            description: "Đã cập nhật gói đăng ký (chế độ giả lập)",
+          });
+        } else {
+          // Thêm mới
+          const newId = Math.max(0, ...plans.map(p => p.id)) + 1;
+          setPlans([...plans, { ...planData, id: newId }]);
+          
+          toast({
+            title: "Thành công",
+            description: "Đã thêm gói đăng ký mới (chế độ giả lập)",
+          });
+        }
+        
+        setIsDialogOpen(false);
+        return;
+      }
 
       let error;
       
@@ -205,11 +303,14 @@ const AdminSubscriptions = () => {
       setIsDialogOpen(false);
       fetchPlans();
     } catch (error: any) {
+      console.error("Lỗi khi lưu gói đăng ký:", error);
       toast({
         title: "Lỗi",
         description: error.message || "Có lỗi xảy ra",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -241,12 +342,27 @@ const AdminSubscriptions = () => {
           <h1 className="text-2xl font-bold">Quản lý gói đăng ký</h1>
           <p className="text-gray-500">
             Thêm, sửa và xóa các gói đăng ký của ứng dụng
+            {isUsingMockData && <span className="text-yellow-500 ml-2">(Đang sử dụng dữ liệu mẫu)</span>}
           </p>
         </div>
-        <Button onClick={handleAddNew}>
-          <PlusIcon className="mr-2 h-4 w-4" />
-          Thêm gói mới
-        </Button>
+        <div className="flex gap-2">
+          {isUsingMockData && (
+            <Button 
+              variant="outline" 
+              onClick={fetchPlans} 
+              className="flex items-center gap-1"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Thử kết nối lại
+            </Button>
+          )}
+          <Button onClick={handleAddNew}>
+            <PlusIcon className="mr-2 h-4 w-4" />
+            Thêm gói mới
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -411,8 +527,17 @@ const AdminSubscriptions = () => {
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
               Hủy bỏ
             </Button>
-            <Button onClick={handleSubmit}>
-              {currentPlan.id ? "Cập nhật" : "Thêm mới"}
+            <Button onClick={handleSubmit} disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Đang xử lý...
+                </>
+              ) : currentPlan.id ? (
+                "Cập nhật"
+              ) : (
+                "Thêm mới"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -436,8 +561,19 @@ const AdminSubscriptions = () => {
             <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
               Hủy bỏ
             </Button>
-            <Button variant="destructive" onClick={confirmDelete}>
-              Xóa
+            <Button 
+              variant="destructive" 
+              onClick={confirmDelete}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Đang xử lý...
+                </>
+              ) : (
+                "Xóa"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -8,6 +8,8 @@ const createAdminClient = () => {
   const supabaseUrl = "https://ctegtqmkxkbqhwlqukfd.supabase.co";
   const supabaseServiceRoleKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0ZWd0cW1reGticWh3bHF1a2ZkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NTM5NzQ4NSwiZXhwIjoyMDYwOTczNDg1fQ.6Tmm3yDFU9z8jN45CJkjYsbd8J1irfap_kGyAj_TAWA";
   
+  console.log("Khởi tạo admin client với service role key");
+  
   // Cấu hình client để tránh lỗi nhiều instance và đảm bảo hoạt động chính xác
   return createClient<Database>(
     supabaseUrl, 
@@ -23,7 +25,16 @@ const createAdminClient = () => {
 };
 
 // Create a single admin client instance to be reused
-const adminClient = createAdminClient();
+let adminClient: ReturnType<typeof createAdminClient>;
+
+// Ensure we only initialize the client once
+const getAdminClient = () => {
+  if (!adminClient) {
+    adminClient = createAdminClient();
+    console.log("Admin client đã được khởi tạo");
+  }
+  return adminClient;
+};
 
 export const createUserSubscriptionAsAdmin = async (
   userId: string, 
@@ -34,8 +45,10 @@ export const createUserSubscriptionAsAdmin = async (
   try {
     console.log("Creating subscription with admin privileges:", { userId, subscriptionId, startDate, endDate });
     
+    const client = getAdminClient();
+    
     // Ensure all existing subscriptions for this user are set to inactive
-    const { error: updateError } = await adminClient
+    const { error: updateError } = await client
       .from("user_subscriptions")
       .update({ status: "inactive" })
       .eq("user_id", userId)
@@ -47,7 +60,7 @@ export const createUserSubscriptionAsAdmin = async (
     }
     
     // Create the new subscription with direct database access
-    const { error: insertError } = await adminClient
+    const { error: insertError } = await client
       .from("user_subscriptions")
       .insert({
         user_id: userId,
@@ -72,8 +85,10 @@ export const createUserSubscriptionAsAdmin = async (
 export const getUserActiveSubscription = async (userId: string) => {
   try {
     console.log("Fetching active subscription for user:", userId);
+    
+    const client = getAdminClient();
 
-    const { data, error } = await adminClient
+    const { data, error } = await client
       .from("user_subscriptions")
       .select(`
         id,
