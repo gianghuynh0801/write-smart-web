@@ -31,6 +31,13 @@ export const LoginForm = ({ onSubmit, isLoading }: LoginFormProps) => {
     setShowPassword(!showPassword);
   };
 
+  const fillDefaultCredentials = () => {
+    setFormData({
+      username: defaultAdmin.username,
+      password: defaultAdmin.password
+    });
+  };
+
   return (
     <div className="w-full max-w-md p-8 bg-white rounded-lg shadow-md">
       <div className="text-center mb-8">
@@ -85,6 +92,15 @@ export const LoginForm = ({ onSubmit, isLoading }: LoginFormProps) => {
         
         <Button type="submit" className="w-full" disabled={isLoading}>
           {isLoading ? "Đang đăng nhập..." : "Đăng nhập"}
+        </Button>
+        
+        <Button 
+          type="button" 
+          variant="outline" 
+          className="w-full mt-2" 
+          onClick={fillDefaultCredentials}
+        >
+          Dùng tài khoản mặc định
         </Button>
       </form>
       
