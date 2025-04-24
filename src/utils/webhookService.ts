@@ -1,5 +1,3 @@
-
-
 // Utility for working with n8n webhooks for content generation
 import { getItem, LOCAL_STORAGE_KEYS } from "./localStorageService";
 
@@ -85,104 +83,41 @@ export const generateContent = async (
       throw new Error(`Lỗi HTTP: ${response.status} - ${response.statusText}`);
     }
     
-    // Lấy response text và log toàn bộ để debug
     const responseText = await response.text();
     console.log('Phản hồi gốc từ server:', responseText);
     
-    // Kiểm tra nếu response có nội dung
     if (!responseText || responseText.trim() === '') {
-      console.log('Nhận được phản hồi trống từ webhook');
       return {
         status: 'error',
         error: 'Máy chủ trả về phản hồi trống. Vui lòng kiểm tra cấu hình webhook.',
       };
     }
     
-    // Thử parse JSON từ text response
-    let data;
     try {
-      data = JSON.parse(responseText);
+      const data = JSON.parse(responseText);
       console.log('Dữ liệu JSON đã parse:', data);
       
-      // Xử lý trường hợp n8n webhook test đặc biệt, trả về mảng chứa thông tin test
-      if (Array.isArray(data) && data.length > 0) {
-        console.log('Phát hiện định dạng webhook test n8n, gỡ lỗi:', data);
-        
-        // Đây là chế độ test webhook, trích xuất thông tin nhận được
-        // Tạo một phản hồi mẫu để hiển thị
+      // Xử lý trường hợp n8n webhook test
+      if (Array.isArray(data)) {
         return {
           status: 'success',
-          content: `Webhook kết nối thành công! Nhận được dữ liệu test:\n\n${JSON.stringify(data, null, 2)}`,
+          content: JSON.stringify(data, null, 2),
           rawResponse: data
         };
       }
       
-      // Kiểm tra cấu trúc dữ liệu trả về
-      if (typeof data === 'object') {
-        // Nếu data có thuộc tính content, sử dụng nó
-        if (data.content) {
-          return {
-            status: 'success',
-            content: data.content,
-            rawResponse: data
-          };
-        } 
-        // Nếu data có thuộc tính data.data hoặc data.result (các cấu trúc phổ biến của n8n)
-        else if (data.data) {
-          return {
-            status: 'success',
-            content: typeof data.data === 'string' ? data.data : JSON.stringify(data.data),
-            rawResponse: data
-          };
-        }
-        else if (data.result) {
-          return {
-            status: 'success',
-            content: typeof data.result === 'string' ? data.result : JSON.stringify(data.result),
-            rawResponse: data
-          };
-        }
-        // Nếu data là string hoặc có thể chuyển thành string
-        else if (typeof data === 'string' || data.toString) {
-          return {
-            status: 'success',
-            content: typeof data === 'string' ? data : data.toString(),
-            rawResponse: data
-          };
-        }
-        // Trường hợp khác, trả về toàn bộ dữ liệu dưới dạng string
-        else {
-          return {
-            status: 'success',
-            content: JSON.stringify(data),
-            rawResponse: data
-          };
-        }
-      } 
-      // Nếu data là string đơn giản
-      else if (typeof data === 'string') {
-        return {
-          status: 'success',
-          content: data,
-          rawResponse: data
-        };
-      }
-      // Trường hợp khác, trả về dữ liệu dưới dạng string
-      else {
-        return {
-          status: 'success',
-          content: JSON.stringify(data),
-          rawResponse: data
-        };
-      }
-    } catch (jsonError) {
-      console.error('Phản hồi JSON không hợp lệ:', responseText);
-      console.error('Lỗi parse JSON:', jsonError);
-      
-      // Nếu không parse được JSON, trả về text gốc
+      // Xử lý các response khác
       return {
         status: 'success',
-        content: responseText, // Trả về text gốc khi không thể parse JSON
+        content: typeof data === 'string' ? data : JSON.stringify(data, null, 2),
+        rawResponse: data
+      };
+      
+    } catch (jsonError) {
+      console.error('Lỗi parse JSON:', jsonError);
+      return {
+        status: 'success',
+        content: responseText,
         error: 'Dữ liệu không ở định dạng JSON, hiển thị dưới dạng text.',
       };
     }
@@ -276,4 +211,3 @@ export const publishToWordPress = async (
     };
   }
 };
-
