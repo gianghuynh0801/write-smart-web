@@ -3,11 +3,13 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const AdminLogin = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     username: "",
     password: ""
@@ -18,35 +20,82 @@ const AdminLogin = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Tài khoản admin mặc định
-    const defaultAdmin = {
-      username: "admin",
-      password: "admin@1238"
-    };
-    
-    if (formData.username === defaultAdmin.username && formData.password === defaultAdmin.password) {
-      // Lưu thông tin đăng nhập admin vào localStorage (trong thực tế nên dùng JWT/session)
-      localStorage.setItem("adminAuth", JSON.stringify({ 
-        isAdmin: true, 
-        username: formData.username,
-        token: "admin-mock-token-" + Date.now() // Mock token
-      }));
+    setIsLoading(true);
+
+    try {
+      // Tài khoản admin mặc định
+      const defaultAdmin = {
+        username: "admin",
+        password: "admin@1238"
+      };
       
+      if (formData.username === defaultAdmin.username && formData.password === defaultAdmin.password) {
+        // Sign up with Supabase if the user doesn't exist
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email: "admin@writesmart.vn",
+          password: defaultAdmin.password,
+        });
+
+        if (signUpError && signUpError.message !== "User already registered") {
+          throw signUpError;
+        }
+
+        // Sign in with Supabase
+        const { data: { user }, error: signInError } = await supabase.auth.signInWithPassword({
+          email: "admin@writesmart.vn",
+          password: defaultAdmin.password,
+        });
+
+        if (signInError) throw signInError;
+        if (!user) throw new Error("Không tìm thấy thông tin người dùng");
+
+        // Insert or update user record
+        const { error: userError } = await supabase
+          .from('users')
+          .upsert({
+            id: user.id,
+            email: user.email!,
+            name: "Admin",
+            role: "admin",
+            status: "active",
+          });
+
+        if (userError) throw userError;
+
+        // Insert admin role into user_roles table
+        const { error: roleError } = await supabase
+          .from('user_roles')
+          .upsert({
+            user_id: user.id,
+            role: "admin",
+          });
+
+        if (roleError) throw roleError;
+        
+        toast({
+          title: "Đăng nhập thành công",
+          description: "Chào mừng quay trở lại, Admin!",
+        });
+        
+        navigate("/admin");
+      } else {
+        toast({
+          title: "Đăng nhập thất bại",
+          description: "Tên đăng nhập hoặc mật khẩu không chính xác",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Lỗi đăng nhập:', error);
       toast({
-        title: "Đăng nhập thành công",
-        description: "Chào mừng quay trở lại, Admin!",
-      });
-      
-      navigate("/admin");
-    } else {
-      toast({
-        title: "Đăng nhập thất bại",
-        description: "Tên đăng nhập hoặc mật khẩu không chính xác",
+        title: "Lỗi",
+        description: error instanceof Error ? error.message : "Có lỗi xảy ra khi đăng nhập",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -88,8 +137,8 @@ const AdminLogin = () => {
             />
           </div>
           
-          <Button type="submit" className="w-full">
-            Đăng nhập
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? "Đang đăng nhập..." : "Đăng nhập"}
           </Button>
         </form>
         
