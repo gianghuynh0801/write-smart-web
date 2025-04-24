@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
@@ -10,10 +10,46 @@ const AdminLogin = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
   const [formData, setFormData] = useState({
     username: "",
     password: ""
   });
+
+  // Check if user is already logged in as admin
+  useEffect(() => {
+    const checkAdminSession = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (user) {
+          // Check if current user is admin
+          const { data: roleData, error: roleError } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', user.id)
+            .eq('role', 'admin')
+            .single();
+
+          if (roleData && !roleError) {
+            // User is already logged in as admin
+            toast({
+              title: "Đã đăng nhập",
+              description: "Bạn đã đăng nhập với quyền quản trị.",
+            });
+            navigate("/admin");
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('Lỗi kiểm tra phiên đăng nhập:', error);
+      } finally {
+        setIsChecking(false);
+      }
+    };
+
+    checkAdminSession();
+  }, [navigate, toast]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -32,24 +68,34 @@ const AdminLogin = () => {
       };
       
       if (formData.username === defaultAdmin.username && formData.password === defaultAdmin.password) {
-        // Sign up with Supabase if the user doesn't exist
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email: "admin@writesmart.vn",
-          password: defaultAdmin.password,
-        });
-
-        if (signUpError && signUpError.message !== "User already registered") {
-          throw signUpError;
-        }
-
+        console.log("Đăng nhập với tài khoản admin mặc định");
+        
         // Sign in with Supabase
         const { data: { user }, error: signInError } = await supabase.auth.signInWithPassword({
           email: "admin@writesmart.vn",
           password: defaultAdmin.password,
         });
 
-        if (signInError) throw signInError;
+        // If user doesn't exist, sign up
+        if (signInError && signInError.message.includes("Invalid login credentials")) {
+          console.log("Tài khoản admin chưa tồn tại, đăng ký mới");
+          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+            email: "admin@writesmart.vn",
+            password: defaultAdmin.password,
+          });
+
+          if (signUpError) throw signUpError;
+          if (!signUpData.user) throw new Error("Không thể tạo tài khoản admin");
+          
+          // Use the newly created user
+          user = signUpData.user;
+        } else if (signInError) {
+          throw signInError;
+        }
+
         if (!user) throw new Error("Không tìm thấy thông tin người dùng");
+        
+        console.log("Đăng nhập thành công, user ID:", user.id);
 
         // Insert or update user record
         const { error: userError } = await supabase
@@ -62,17 +108,39 @@ const AdminLogin = () => {
             status: "active",
           });
 
-        if (userError) throw userError;
+        if (userError) {
+          console.error("Lỗi khi cập nhật user:", userError);
+          throw userError;
+        }
 
-        // Insert admin role into user_roles table
-        const { error: roleError } = await supabase
+        console.log("Đã cập nhật thông tin user");
+
+        // Check if role already exists to avoid duplicate
+        const { data: existingRole } = await supabase
           .from('user_roles')
-          .upsert({
-            user_id: user.id,
-            role: "admin",
-          });
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('role', 'admin')
+          .single();
 
-        if (roleError) throw roleError;
+        if (!existingRole) {
+          // Insert admin role into user_roles table
+          const { error: roleError } = await supabase
+            .from('user_roles')
+            .insert({
+              user_id: user.id,
+              role: "admin",
+            });
+
+          if (roleError) {
+            console.error("Lỗi khi thêm vai trò admin:", roleError);
+            throw roleError;
+          }
+          
+          console.log("Đã thêm vai trò admin");
+        } else {
+          console.log("Vai trò admin đã tồn tại");
+        }
         
         toast({
           title: "Đăng nhập thành công",
@@ -98,6 +166,16 @@ const AdminLogin = () => {
       setIsLoading(false);
     }
   };
+
+  if (isChecking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="text-center">
+          <p className="text-gray-600">Đang kiểm tra phiên đăng nhập...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
