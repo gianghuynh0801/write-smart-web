@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { User } from "@supabase/supabase-js";
 
 const AdminLogin = () => {
   const navigate = useNavigate();
@@ -70,8 +71,11 @@ const AdminLogin = () => {
       if (formData.username === defaultAdmin.username && formData.password === defaultAdmin.password) {
         console.log("Đăng nhập với tài khoản admin mặc định");
         
+        // Using a variable to hold the user instead of destructuring immediately
+        let authUser: User | null = null;
+        
         // Sign in with Supabase
-        const { data: { user }, error: signInError } = await supabase.auth.signInWithPassword({
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
           email: "admin@writesmart.vn",
           password: defaultAdmin.password,
         });
@@ -88,21 +92,24 @@ const AdminLogin = () => {
           if (!signUpData.user) throw new Error("Không thể tạo tài khoản admin");
           
           // Use the newly created user
-          user = signUpData.user;
+          authUser = signUpData.user;
         } else if (signInError) {
           throw signInError;
+        } else {
+          // Use the signed-in user if no error
+          authUser = signInData.user;
         }
 
-        if (!user) throw new Error("Không tìm thấy thông tin người dùng");
+        if (!authUser) throw new Error("Không tìm thấy thông tin người dùng");
         
-        console.log("Đăng nhập thành công, user ID:", user.id);
+        console.log("Đăng nhập thành công, user ID:", authUser.id);
 
         // Insert or update user record
         const { error: userError } = await supabase
           .from('users')
           .upsert({
-            id: user.id,
-            email: user.email!,
+            id: authUser.id,
+            email: authUser.email!,
             name: "Admin",
             role: "admin",
             status: "active",
@@ -119,7 +126,7 @@ const AdminLogin = () => {
         const { data: existingRole } = await supabase
           .from('user_roles')
           .select('*')
-          .eq('user_id', user.id)
+          .eq('user_id', authUser.id)
           .eq('role', 'admin')
           .single();
 
@@ -128,7 +135,7 @@ const AdminLogin = () => {
           const { error: roleError } = await supabase
             .from('user_roles')
             .insert({
-              user_id: user.id,
+              user_id: authUser.id,
               role: "admin",
             });
 
