@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { TabsContent } from "@/components/ui/tabs";
 import { OutlineItem } from "./ContentOutline";
 import KeywordsPanel from "./tab-panels/KeywordsPanel";
 import OutlinePanel from "./tab-panels/OutlinePanel";
@@ -41,12 +41,6 @@ interface ContentTabPanelsProps {
 }
 
 const ContentTabPanels = (props: ContentTabPanelsProps) => {
-  const [language, setLanguage] = useState("vi");
-  const [country, setCountry] = useState("vn");
-  const [tone, setTone] = useState("Neutral");
-  const [narrator, setNarrator] = useState("tự động");
-  const [formality, setFormality] = useState("tự động");
-
   return (
     <div className="flex-1">
       <KeywordsPanel
@@ -64,16 +58,16 @@ const ContentTabPanels = (props: ContentTabPanelsProps) => {
       />
       
       <ContentPanel
-        language={language}
-        setLanguage={setLanguage}
-        country={country}
-        setCountry={setCountry}
-        tone={tone}
-        setTone={setTone}
-        narrator={narrator}
-        setNarrator={setNarrator}
-        formality={formality}
-        setFormality={setFormality}
+        language="vi"
+        setLanguage={() => {}}
+        country="vn"
+        setCountry={() => {}}
+        tone="Neutral"
+        setTone={() => {}}
+        narrator="tự động"
+        setNarrator={() => {}}
+        formality="tự động"
+        setFormality={() => {}}
       />
 
       <KnowledgePanel
