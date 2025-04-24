@@ -9,23 +9,32 @@ export function useSessionCheck() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isChecking, setIsChecking] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const checkAdminSession = async () => {
       try {
+        console.log("Kiểm tra phiên đăng nhập admin...");
         const { data: { user } } = await supabase.auth.getUser();
         
         if (user) {
+          console.log("Đã tìm thấy người dùng:", user.email);
           const { roleData, roleError } = await checkAdminRole(user.id);
 
           if (roleData && !roleError) {
+            console.log("Xác thực quyền admin thành công");
+            setIsAdmin(true);
             toast({
               title: "Đã đăng nhập",
               description: "Bạn đã đăng nhập với quyền quản trị.",
             });
             navigate("/admin");
             return;
+          } else {
+            console.log("Người dùng không có quyền admin");
           }
+        } else {
+          console.log("Chưa đăng nhập");
         }
       } catch (error) {
         console.error('Lỗi kiểm tra phiên đăng nhập:', error);
@@ -37,5 +46,5 @@ export function useSessionCheck() {
     checkAdminSession();
   }, [navigate, toast]);
 
-  return { isChecking };
+  return { isChecking, isAdmin };
 }
