@@ -8,15 +8,62 @@ import { Link, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 
 export const WebhookUrlCard = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [webhookUrl, setWebhookUrl] = useState("");
   const [isValidUrl, setIsValidUrl] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   
   useEffect(() => {
-    loadWebhookUrl();
+    // Check if user is admin before loading webhook URL
+    const checkAdminAndLoadUrl = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) {
+          toast({
+            title: "Chưa đăng nhập",
+            description: "Vui lòng đăng nhập với tài khoản quản trị.",
+            variant: "destructive"
+          });
+          navigate("/admin/login");
+          return;
+        }
+
+        // Check if current user is admin
+        const { data: roleData, error: roleError } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .eq('role', 'admin')
+          .single();
+
+        if (roleError || !roleData) {
+          toast({
+            title: "Truy cập bị từ chối",
+            description: "Bạn không có quyền truy cập trang này.",
+            variant: "destructive"
+          });
+          navigate("/admin/login");
+          return;
+        }
+
+        // Load webhook URL if admin
+        loadWebhookUrl();
+      } catch (error) {
+        console.error('Lỗi kiểm tra quyền admin:', error);
+        toast({
+          title: "Lỗi hệ thống",
+          description: "Không thể xác thực quyền truy cập.",
+          variant: "destructive"
+        });
+      }
+    };
+
+    checkAdminAndLoadUrl();
   }, []);
 
   const loadWebhookUrl = async () => {
@@ -173,3 +220,4 @@ export const WebhookUrlCard = () => {
     </Card>
   );
 };
+
