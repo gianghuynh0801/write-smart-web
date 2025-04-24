@@ -45,6 +45,7 @@ const ContentTabPanels = (props: ContentTabPanelsProps) => {
   return (
     <div className="flex-1">
       <KeywordsPanel
+        activeTab={props.activeTab}
         mainKeyword={props.mainKeyword}
         setMainKeyword={props.setMainKeyword}
         subKeywords={props.subKeywords}
@@ -54,11 +55,13 @@ const ContentTabPanels = (props: ContentTabPanelsProps) => {
       />
       
       <OutlinePanel
+        activeTab={props.activeTab}
         outlineItems={props.outlineItems}
         onOutlineChange={props.setOutlineItems}
       />
       
       <ContentPanel
+        activeTab={props.activeTab}
         language="vi"
         setLanguage={() => {}}
         country="vn"
@@ -72,6 +75,7 @@ const ContentTabPanels = (props: ContentTabPanelsProps) => {
       />
 
       <KnowledgePanel
+        activeTab={props.activeTab}
         webConnection={props.webConnection}
         setWebConnection={props.setWebConnection}
         reference={props.reference}
@@ -79,6 +83,7 @@ const ContentTabPanels = (props: ContentTabPanelsProps) => {
       />
 
       <FormatPanel
+        activeTab={props.activeTab}
         bold={props.bold}
         setBold={props.setBold}
         italic={props.italic}
@@ -88,11 +93,13 @@ const ContentTabPanels = (props: ContentTabPanelsProps) => {
       />
 
       <LinksPanel
+        activeTab={props.activeTab}
         links={props.links}
         setLinks={props.setLinks}
       />
 
       <ImagesPanel
+        activeTab={props.activeTab}
         imageSize={props.imageSize}
         setImageSize={props.setImageSize}
       />

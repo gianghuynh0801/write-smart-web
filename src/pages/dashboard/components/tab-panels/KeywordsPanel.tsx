@@ -5,6 +5,7 @@ import KeywordInputs from "../KeywordInputs";
 import TabLayout from "./TabLayout";
 
 interface KeywordsPanelProps {
+  activeTab: string;
   mainKeyword: string;
   setMainKeyword: (value: string) => void;
   subKeywords: string[];
@@ -14,6 +15,7 @@ interface KeywordsPanelProps {
 }
 
 const KeywordsPanel = ({
+  activeTab,
   mainKeyword,
   setMainKeyword,
   subKeywords,
@@ -22,21 +24,23 @@ const KeywordsPanel = ({
   setRelatedKeywords,
 }: KeywordsPanelProps) => {
   return (
-    <TabsContent value="keywords" className="mt-0 animate-fade-in" forceMount>
-      <TabLayout
-        icon={<Key className="h-5 w-5 text-primary" />}
-        title="Từ khoá cho bài viết"
-        description="Hệ thống sẽ ép các từ khoá này vào phần ai tạo. Đảm bảo các từ khóa có liên quan đến chủ đề của bài viết."
-      >
-        <KeywordInputs
-          mainKeyword={mainKeyword}
-          setMainKeyword={setMainKeyword}
-          subKeywords={subKeywords}
-          setSubKeywords={setSubKeywords}
-          relatedKeywords={relatedKeywords}
-          setRelatedKeywords={setRelatedKeywords}
-        />
-      </TabLayout>
+    <TabsContent value="keywords" className="mt-0 animate-fade-in">
+      {activeTab === "keywords" && (
+        <TabLayout
+          icon={<Key className="h-5 w-5 text-primary" />}
+          title="Từ khoá cho bài viết"
+          description="Hệ thống sẽ ép các từ khoá này vào phần ai tạo. Đảm bảo các từ khóa có liên quan đến chủ đề của bài viết."
+        >
+          <KeywordInputs
+            mainKeyword={mainKeyword}
+            setMainKeyword={setMainKeyword}
+            subKeywords={subKeywords}
+            setSubKeywords={setSubKeywords}
+            relatedKeywords={relatedKeywords}
+            setRelatedKeywords={setRelatedKeywords}
+          />
+        </TabLayout>
+      )}
     </TabsContent>
   );
 };
