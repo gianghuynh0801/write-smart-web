@@ -5,7 +5,7 @@ import { User } from "@supabase/supabase-js";
 export const defaultAdmin = {
   username: "admin",
   password: "admin@1238",
-  email: "admin@example.com" // Thay đổi email sang định dạng hợp lệ
+  email: "admin@writesmart.vn" // Đổi sang email hợp lệ
 };
 
 export async function setupAdminUser(user: User) {

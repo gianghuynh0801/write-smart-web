@@ -41,14 +41,14 @@ export const LoginForm = ({ onSubmit, isLoading }: LoginFormProps) => {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
-            Tên đăng nhập
+            Tên đăng nhập / Email
           </label>
           <Input
             id="username"
             name="username"
             value={formData.username}
             onChange={handleChange}
-            placeholder="admin"
+            placeholder="Nhập tên đăng nhập hoặc email"
             required
           />
         </div>
@@ -101,6 +101,7 @@ export const LoginForm = ({ onSubmit, isLoading }: LoginFormProps) => {
         <p className="text-sm font-medium text-gray-700 mb-2">Tài khoản mặc định:</p>
         <div className="text-sm text-gray-600">
           <p>Tên đăng nhập: <span className="font-mono bg-gray-200 px-1 rounded">{defaultAdmin.username}</span></p>
+          <p>Email: <span className="font-mono bg-gray-200 px-1 rounded">{defaultAdmin.email}</span></p>
           <p>Mật khẩu: <span className="font-mono bg-gray-200 px-1 rounded">{defaultAdmin.password}</span></p>
         </div>
       </div>
