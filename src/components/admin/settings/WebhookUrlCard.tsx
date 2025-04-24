@@ -13,20 +13,40 @@ export const WebhookUrlCard = () => {
   const { toast } = useToast();
   const [webhookUrl, setWebhookUrl] = useState("");
   const [isValidUrl, setIsValidUrl] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   
   useEffect(() => {
     loadWebhookUrl();
   }, []);
 
   const loadWebhookUrl = async () => {
-    const { data, error } = await supabase
-      .from('system_configurations')
-      .select('value')
-      .eq('key', 'webhook_url')
-      .single();
+    try {
+      console.log("Đang tải webhook URL từ database...");
+      
+      const { data, error } = await supabase
+        .from('system_configurations')
+        .select('value')
+        .eq('key', 'webhook_url')
+        .single();
 
-    if (!error && data) {
-      setWebhookUrl(data.value);
+      if (error) {
+        console.error('Lỗi khi tải webhook URL:', error);
+        toast({
+          title: "Lỗi khi tải dữ liệu",
+          description: "Không thể tải URL webhook từ cơ sở dữ liệu.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (data) {
+        console.log("Đã tải webhook URL:", data.value);
+        setWebhookUrl(data.value);
+      } else {
+        console.log("Không tìm thấy webhook URL trong database");
+      }
+    } catch (error) {
+      console.error('Lỗi exception khi tải webhook URL:', error);
     }
   };
 
@@ -61,29 +81,44 @@ export const WebhookUrlCard = () => {
     }
     
     setIsValidUrl(true);
+    setIsLoading(true);
     
-    const { error } = await supabase
-      .from('system_configurations')
-      .upsert({ 
-        key: 'webhook_url', 
-        value: webhookUrl,
-        updated_at: new Date().toISOString()
-      });
+    try {
+      console.log("Đang lưu webhook URL vào database:", webhookUrl);
+      
+      const { error } = await supabase
+        .from('system_configurations')
+        .upsert({ 
+          key: 'webhook_url', 
+          value: webhookUrl,
+          updated_at: new Date().toISOString()
+        });
 
-    if (error) {
-      console.error('Lỗi khi lưu webhook URL:', error);
+      if (error) {
+        console.error('Lỗi khi lưu webhook URL:', error);
+        toast({
+          title: "Lỗi",
+          description: "Không thể lưu URL webhook. Vui lòng thử lại sau.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log("Lưu webhook URL thành công");
+      toast({
+        title: "Đã lưu cấu hình",
+        description: "URL webhook đã được cập nhật thành công.",
+      });
+    } catch (error) {
+      console.error('Exception khi lưu webhook URL:', error);
       toast({
         title: "Lỗi",
-        description: "Không thể lưu URL webhook. Vui lòng thử lại sau.",
+        description: "Có lỗi xảy ra khi lưu URL webhook.",
         variant: "destructive",
       });
-      return;
+    } finally {
+      setIsLoading(false);
     }
-
-    toast({
-      title: "Đã lưu cấu hình",
-      description: "URL webhook đã được cập nhật thành công.",
-    });
   };
 
   const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -127,8 +162,11 @@ export const WebhookUrlCard = () => {
               URL webhook được sử dụng để kết nối với n8n workflow. Đảm bảo nhập một URL webhook hợp lệ.
             </p>
           </div>
-          <Button onClick={handleSaveWebhook}>
-            Lưu cấu hình
+          <Button 
+            onClick={handleSaveWebhook} 
+            disabled={isLoading}
+          >
+            {isLoading ? "Đang lưu..." : "Lưu cấu hình"}
           </Button>
         </div>
       </CardContent>
