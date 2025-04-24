@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -35,18 +34,17 @@ const AdminSettings = () => {
     if (!webhookUrl) {
       toast({
         title: "URL không được để trống",
-        description: "Vui lòng nhập URL webhook n8n.",
+        description: "Vui lòng nhập URL webhook.",
         variant: "destructive",
       });
       return;
     }
 
-    // Kiểm tra URL hợp lệ
     if (!validateUrl(webhookUrl)) {
       setIsValidUrl(false);
       toast({
         title: "URL không hợp lệ",
-        description: "Vui lòng nhập một URL webhook hợp lệ.",
+        description: "Vui lòng nhập một URL hợp lệ.",
         variant: "destructive",
       });
       return;
