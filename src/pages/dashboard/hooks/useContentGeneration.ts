@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { generateContent } from "@/utils/webhookService";
+import { generateContent } from "@/services/webhook/webhookService";
 import { OutlineItem } from "../components/ContentOutline";
 
 interface ContentGenerationParams {
