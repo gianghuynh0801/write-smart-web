@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -100,8 +101,7 @@ const AdminSettings = () => {
                 </Alert>
               )}
               <p className="text-sm text-muted-foreground">
-                URL webhook được sử dụng để kết nối với n8n workflow. 
-                Đảm bảo URL có dạng: https://workflow.matbao.support/webhook/[your-webhook-id]
+                URL webhook được sử dụng để kết nối với n8n workflow. Đảm bảo URL có dạng: https://workflow.matbao.support/webhook/[your-webhook-id]
               </p>
             </div>
             <Button onClick={handleSaveWebhook}>
