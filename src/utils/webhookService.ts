@@ -104,6 +104,19 @@ export const generateContent = async (
       data = JSON.parse(responseText);
       console.log('Dữ liệu JSON đã parse:', data);
       
+      // Xử lý trường hợp n8n webhook test đặc biệt, trả về mảng chứa thông tin test
+      if (Array.isArray(data) && data.length > 0) {
+        console.log('Phát hiện định dạng webhook test n8n, gỡ lỗi:', data);
+        
+        // Đây là chế độ test webhook, trích xuất thông tin nhận được
+        // Tạo một phản hồi mẫu để hiển thị
+        return {
+          status: 'success',
+          content: `Webhook kết nối thành công! Nhận được dữ liệu test:\n\n${JSON.stringify(data, null, 2)}`,
+          rawResponse: data
+        };
+      }
+      
       // Kiểm tra cấu trúc dữ liệu trả về
       if (typeof data === 'object') {
         // Nếu data có thuộc tính content, sử dụng nó

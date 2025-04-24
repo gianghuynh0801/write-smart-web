@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -86,7 +87,7 @@ const AdminSettings = () => {
               </Label>
               <Input
                 id="webhook-url"
-                placeholder="Nhập URL webhook n8n"
+                placeholder="Nhập URL webhook hợp lệ"
                 value={webhookUrl}
                 onChange={handleUrlChange}
                 className={!isValidUrl && webhookUrl ? "border-destructive" : ""}

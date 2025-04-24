@@ -1,5 +1,4 @@
 
-
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { generateContent } from "@/utils/webhookService";
@@ -62,7 +61,15 @@ export const useContentGeneration = () => {
 
       const resp = await generateContent(requestParams);
       
-      if (resp.status === "success" && resp.content) {
+      // Kiểm tra xem đây có phải là phản hồi webhook test không
+      if (resp.status === "success" && resp.content && resp.content.startsWith("Webhook kết nối thành công")) {
+        setGeneratedContent(resp.content);
+        toast({
+          title: "Kết nối webhook thành công!",
+          description: "Webhook hoạt động bình thường ở chế độ test.",
+        });
+        return resp.content;
+      } else if (resp.status === "success" && resp.content) {
         setGeneratedContent(resp.content);
         toast({
           title: "Tạo nội dung thành công!",
