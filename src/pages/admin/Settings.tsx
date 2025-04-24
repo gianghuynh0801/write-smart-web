@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Settings, Link, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getItem, setItem, LOCAL_STORAGE_KEYS } from "@/utils/localStorageService";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { supabase } from "@/integrations/supabase/client";
 
 const AdminSettings = () => {
   const { toast } = useToast();
@@ -15,11 +15,20 @@ const AdminSettings = () => {
   const [isValidUrl, setIsValidUrl] = useState(true);
   
   useEffect(() => {
-    const storedUrl = getItem<string>(LOCAL_STORAGE_KEYS.WEBHOOK_URL, false);
-    if (storedUrl) {
-      setWebhookUrl(storedUrl);
-    }
+    loadWebhookUrl();
   }, []);
+
+  const loadWebhookUrl = async () => {
+    const { data, error } = await supabase
+      .from('system_configurations')
+      .select('value')
+      .eq('key', 'webhook_url')
+      .single();
+
+    if (!error && data) {
+      setWebhookUrl(data.value);
+    }
+  };
 
   const validateUrl = (url: string): boolean => {
     if (!url) return false;
@@ -31,7 +40,7 @@ const AdminSettings = () => {
     }
   };
 
-  const handleSaveWebhook = () => {
+  const handleSaveWebhook = async () => {
     if (!webhookUrl) {
       toast({
         title: "URL không được để trống",
@@ -52,15 +61,31 @@ const AdminSettings = () => {
     }
     
     setIsValidUrl(true);
-    setItem(LOCAL_STORAGE_KEYS.WEBHOOK_URL, webhookUrl);
+    
+    const { error } = await supabase
+      .from('system_configurations')
+      .upsert({ 
+        key: 'webhook_url', 
+        value: webhookUrl,
+        updated_at: new Date().toISOString()
+      });
+
+    if (error) {
+      console.error('Lỗi khi lưu webhook URL:', error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể lưu URL webhook. Vui lòng thử lại sau.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     toast({
       title: "Đã lưu cấu hình",
       description: "URL webhook đã được cập nhật thành công.",
     });
 
-    // In ra màn hình console để xác minh đã lưu thành công
     console.log("Đã lưu URL webhook:", webhookUrl);
-    console.log("Đã lưu vào key:", LOCAL_STORAGE_KEYS.WEBHOOK_URL);
   };
 
   const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {

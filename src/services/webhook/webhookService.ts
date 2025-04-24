@@ -1,13 +1,26 @@
-
-import { getItem, LOCAL_STORAGE_KEYS } from "@/utils/localStorageService";
+import { supabase } from "@/integrations/supabase/client";
 import { ContentGenerationParams, WebhookResponse } from "./types";
+
+const getWebhookUrl = async (): Promise<string> => {
+  const { data, error } = await supabase
+    .from('system_configurations')
+    .select('value')
+    .eq('key', 'webhook_url')
+    .single();
+
+  if (error) {
+    console.error('Lỗi khi lấy webhook URL từ database:', error);
+    return '';
+  }
+
+  return data?.value || '';
+};
 
 export const generateContent = async (
   params: ContentGenerationParams,
 ): Promise<WebhookResponse> => {
   try {
-    // Lấy webhook URL từ localStorage, nếu không có thì mới lấy từ biến môi trường
-    const webhookUrl = getItem(LOCAL_STORAGE_KEYS.WEBHOOK_URL, false) || import.meta.env.VITE_N8N_WEBHOOK_URL || '';
+    const webhookUrl = await getWebhookUrl();
     
     if (!webhookUrl) {
       console.error('Không có URL webhook nào được cung cấp');
