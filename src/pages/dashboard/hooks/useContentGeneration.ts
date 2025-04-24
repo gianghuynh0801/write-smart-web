@@ -71,6 +71,7 @@ export const useContentGeneration = () => {
         }
       };
 
+      // Sử dụng không truyền tham số webhookUrl để sử dụng giá trị từ localStorage
       const resp = await generateContent(requestParams);
       
       if (resp.status === "success" && resp.content) {

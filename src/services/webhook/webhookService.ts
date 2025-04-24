@@ -4,10 +4,13 @@ import { ContentGenerationParams, WebhookResponse } from "./types";
 
 export const generateContent = async (
   params: ContentGenerationParams,
-  webhookUrl: string = getItem(LOCAL_STORAGE_KEYS.WEBHOOK_URL, false) || import.meta.env.VITE_N8N_WEBHOOK_URL || ''
 ): Promise<WebhookResponse> => {
   try {
+    // Lấy webhook URL từ localStorage, nếu không có thì mới lấy từ biến môi trường
+    const webhookUrl = getItem(LOCAL_STORAGE_KEYS.WEBHOOK_URL, false) || import.meta.env.VITE_N8N_WEBHOOK_URL || '';
+    
     if (!webhookUrl) {
+      console.error('Không có URL webhook nào được cung cấp');
       throw new Error('Không có URL webhook nào được cung cấp');
     }
     
@@ -99,4 +102,3 @@ export const generateContent = async (
     };
   }
 };
-

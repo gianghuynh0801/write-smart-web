@@ -57,6 +57,10 @@ const AdminSettings = () => {
       title: "Đã lưu cấu hình",
       description: "URL webhook đã được cập nhật thành công.",
     });
+
+    // In ra màn hình console để xác minh đã lưu thành công
+    console.log("Đã lưu URL webhook:", webhookUrl);
+    console.log("Đã lưu vào key:", LOCAL_STORAGE_KEYS.WEBHOOK_URL);
   };
 
   const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
