@@ -5,7 +5,7 @@ import { User } from "@supabase/supabase-js";
 export const defaultAdmin = {
   username: "admin",
   password: "admin@1238",
-  email: "admin@example.com" // Changed to a standard email format that will pass validation
+  email: "admin@example.com"
 };
 
 export async function setupAdminUser(user: User) {
@@ -32,7 +32,7 @@ export async function setupAdminUser(user: User) {
     .from('user_roles')
     .select('*')
     .eq('user_id', user.id)
-    .eq('role', 'admin')
+    .eq('role', "admin")
     .single();
 
   if (!existingRole) {
@@ -66,13 +66,32 @@ export async function checkAdminRole(userId: string) {
 }
 
 export async function createAdminAccount() {
+  // Trước tiên kiểm tra xem tài khoản đã tồn tại chưa
+  const { data: existingUser } = await supabase.auth.signInWithPassword({
+    email: defaultAdmin.email,
+    password: defaultAdmin.password,
+  });
+
+  if (existingUser.user) {
+    console.log("Tài khoản admin đã tồn tại, sử dụng tài khoản này");
+    return existingUser.user;
+  }
+
+  // Nếu chưa tồn tại, tạo mới
+  console.log("Tạo mới tài khoản admin");
   const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
     email: defaultAdmin.email,
     password: defaultAdmin.password,
   });
 
-  if (signUpError) throw signUpError;
-  if (!signUpData.user) throw new Error("Không thể tạo tài khoản admin");
+  if (signUpError) {
+    console.error("Lỗi khi đăng ký tài khoản admin:", signUpError);
+    throw signUpError;
+  }
+  
+  if (!signUpData.user) {
+    throw new Error("Không thể tạo tài khoản admin");
+  }
   
   return signUpData.user;
 }

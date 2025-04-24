@@ -25,26 +25,46 @@ export const useAdminAuth = () => {
       if (isDefaultAdmin) {
         console.log("Đăng nhập với tài khoản admin mặc định");
         
-        let authUser = null;
-        
         // Luôn dùng email từ cấu hình defaultAdmin để đăng nhập với Supabase
         const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
           email: defaultAdmin.email,
           password: defaultAdmin.password,
         });
 
-        if (signInError && signInError.message.includes("Invalid login credentials")) {
-          console.log("Tài khoản admin chưa tồn tại, đăng ký mới");
-          authUser = await createAdminAccount();
-        } else if (signInError) {
-          throw signInError;
-        } else {
-          authUser = signInData.user;
+        if (signInError) {
+          if (signInError.message.includes("Invalid login credentials")) {
+            console.log("Tài khoản admin chưa tồn tại, đăng ký mới");
+            const authUser = await createAdminAccount();
+            
+            if (!authUser) throw new Error("Không thể tạo tài khoản admin");
+            
+            await setupAdminUser(authUser);
+            
+            // Sau khi tạo tài khoản và thiết lập, đăng nhập lại
+            const { data: reSignInData, error: reSignInError } = await supabase.auth.signInWithPassword({
+              email: defaultAdmin.email,
+              password: defaultAdmin.password,
+            });
+            
+            if (reSignInError) throw reSignInError;
+            
+            if (!reSignInData.user) throw new Error("Đăng nhập thất bại sau khi tạo tài khoản");
+            
+            toast({
+              title: "Đăng nhập thành công",
+              description: "Đã tạo và thiết lập tài khoản admin mới.",
+            });
+            
+            navigate("/admin");
+            return;
+          } else {
+            throw signInError;
+          }
         }
 
-        if (!authUser) throw new Error("Không tìm thấy thông tin người dùng");
+        if (!signInData.user) throw new Error("Không tìm thấy thông tin người dùng");
         
-        await setupAdminUser(authUser);
+        await setupAdminUser(signInData.user);
         
         toast({
           title: "Đăng nhập thành công",
