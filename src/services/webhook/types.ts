@@ -1,4 +1,3 @@
-
 export interface ContentGenerationParams {
   keywords: {
     main: string;
@@ -18,10 +17,8 @@ export interface ContentGenerationParams {
     italic: boolean;
     useList: boolean;
   };
-  links: Array<{
-    keyword: string;
-    url: string;
-  }>;
+  link_keywords?: string[];
+  link_urls?: string[];
   images: {
     size: string;
   };

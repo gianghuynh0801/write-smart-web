@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { generateContent } from "@/services/webhook/webhookService";
@@ -42,6 +41,9 @@ export const useContentGeneration = () => {
     setGeneratedContent("");
 
     try {
+      const link_keywords = params.links.map(link => link.keyword);
+      const link_urls = params.links.map(link => link.url);
+
       const requestParams = {
         keywords: {
           main: params.mainKeyword,
@@ -58,7 +60,8 @@ export const useContentGeneration = () => {
           italic: params.italic,
           useList: params.useList,
         },
-        links: params.links,
+        link_keywords,
+        link_urls,
         images: {
           size: params.imageSize,
         },
@@ -71,7 +74,6 @@ export const useContentGeneration = () => {
         }
       };
 
-      // Sử dụng không truyền tham số webhookUrl để sử dụng giá trị từ localStorage
       const resp = await generateContent(requestParams);
       
       if (resp.status === "success" && resp.content) {
