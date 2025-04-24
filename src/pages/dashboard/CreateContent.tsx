@@ -33,6 +33,16 @@ const CreateContent = () => {
     { keyword: "", url: "" }
   ]);
   const [imageSize, setImageSize] = useState("medium");
+  const [resolution, setResolution] = useState(72);
+  const [keepAspectRatio, setKeepAspectRatio] = useState(true);
+  const [optimizeImages, setOptimizeImages] = useState(true);
+  
+  // New content settings state
+  const [language, setLanguage] = useState("vi");
+  const [country, setCountry] = useState("vn");
+  const [tone, setTone] = useState("Neutral");
+  const [narrator, setNarrator] = useState("tự động");
+  const [formality, setFormality] = useState("tự động");
 
   const { isGenerating, generateContent } = useContentGeneration();
 
@@ -53,6 +63,11 @@ const CreateContent = () => {
       useList,
       links,
       imageSize,
+      language,
+      country,
+      tone,
+      narrator,
+      formality,
     });
 
     if (content) {
@@ -119,12 +134,22 @@ const CreateContent = () => {
               setLinks={setLinks}
               imageSize={imageSize}
               setImageSize={setImageSize}
-              resolution={72}
-              setResolution={() => {}}
-              keepAspectRatio={true}
-              setKeepAspectRatio={() => {}}
-              optimizeImages={true}
-              setOptimizeImages={() => {}}
+              resolution={resolution}
+              setResolution={setResolution}
+              keepAspectRatio={keepAspectRatio}
+              setKeepAspectRatio={setKeepAspectRatio}
+              optimizeImages={optimizeImages}
+              setOptimizeImages={setOptimizeImages}
+              language={language}
+              setLanguage={setLanguage}
+              country={country}
+              setCountry={setCountry}
+              tone={tone}
+              setTone={setTone}
+              narrator={narrator}
+              setNarrator={setNarrator}
+              formality={formality}
+              setFormality={setFormality}
             />
           </div>
         </Tabs>

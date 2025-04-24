@@ -39,6 +39,16 @@ interface ContentTabPanelsProps {
   setKeepAspectRatio: (value: boolean) => void;
   optimizeImages: boolean;
   setOptimizeImages: (value: boolean) => void;
+  language: string;
+  setLanguage: (value: string) => void;
+  country: string;
+  setCountry: (value: string) => void;
+  tone: string;
+  setTone: (value: string) => void;
+  narrator: string;
+  setNarrator: (value: string) => void;
+  formality: string;
+  setFormality: (value: string) => void;
 }
 
 const ContentTabPanels = (props: ContentTabPanelsProps) => {
@@ -62,16 +72,16 @@ const ContentTabPanels = (props: ContentTabPanelsProps) => {
       
       <ContentPanel
         activeTab={props.activeTab}
-        language="vi"
-        setLanguage={() => {}}
-        country="vn"
-        setCountry={() => {}}
-        tone="Neutral"
-        setTone={() => {}}
-        narrator="tự động"
-        setNarrator={() => {}}
-        formality="tự động"
-        setFormality={() => {}}
+        language={props.language}
+        setLanguage={props.setLanguage}
+        country={props.country}
+        setCountry={props.setCountry}
+        tone={props.tone}
+        setTone={props.setTone}
+        narrator={props.narrator}
+        setNarrator={props.setNarrator}
+        formality={props.formality}
+        setFormality={props.setFormality}
       />
 
       <KnowledgePanel
