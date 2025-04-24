@@ -1,4 +1,5 @@
 
+
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { generateContent } from "@/utils/webhookService";
@@ -69,6 +70,7 @@ export const useContentGeneration = () => {
         });
         return resp.content;
       } else {
+        console.error("Response đầy đủ từ webhook:", resp);
         toast({
           title: "Lỗi",
           description: resp.error || "Đã xảy ra lỗi khi tạo nội dung!",
@@ -96,3 +98,4 @@ export const useContentGeneration = () => {
     generateContent: generateContentHandler,
   };
 };
+
