@@ -11,7 +11,7 @@ interface LinksPanelProps {
 
 const LinksPanel = ({ links, setLinks }: LinksPanelProps) => {
   return (
-    <TabsContent value="links" className="mt-0 animate-fade-in">
+    <TabsContent value="links" className="mt-0 animate-fade-in" forceMount>
       <TabLayout
         icon={<LinkIcon className="h-5 w-5 text-primary" />}
         title="Liên kết cho bài viết"

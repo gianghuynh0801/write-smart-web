@@ -96,6 +96,7 @@ const CreateContent = () => {
           </div>
           <div className="flex-1">
             <ContentTabPanels
+              activeTab={activeTab}
               mainKeyword={mainKeyword}
               setMainKeyword={setMainKeyword}
               subKeywords={subKeywords}

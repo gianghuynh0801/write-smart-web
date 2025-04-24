@@ -15,7 +15,7 @@ interface FormatPanelProps {
 
 const FormatPanel = (props: FormatPanelProps) => {
   return (
-    <TabsContent value="format" className="mt-0 animate-fade-in">
+    <TabsContent value="format" className="mt-0 animate-fade-in" forceMount>
       <TabLayout
         icon={<Text className="h-5 w-5 text-primary" />}
         title="Định dạng cho bài viết"

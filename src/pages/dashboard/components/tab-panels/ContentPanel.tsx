@@ -19,7 +19,7 @@ interface ContentPanelProps {
 
 const ContentPanel = (props: ContentPanelProps) => {
   return (
-    <TabsContent value="content" className="mt-0 animate-fade-in">
+    <TabsContent value="content" className="mt-0 animate-fade-in" forceMount>
       <TabLayout
         icon={<FileText className="h-5 w-5 text-primary" />}
         title="Nội dung cho bài viết"

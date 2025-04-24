@@ -13,7 +13,7 @@ interface KnowledgePanelProps {
 
 const KnowledgePanelWrapper = (props: KnowledgePanelProps) => {
   return (
-    <TabsContent value="knowledge" className="mt-0 animate-fade-in">
+    <TabsContent value="knowledge" className="mt-0 animate-fade-in" forceMount>
       <TabLayout
         icon={<Book className="h-5 w-5 text-primary" />}
         title="Kiến thức cho bài viết"

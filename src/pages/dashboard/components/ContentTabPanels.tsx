@@ -10,6 +10,7 @@ import LinksPanel from "./tab-panels/LinksPanel";
 import ImagesPanel from "./tab-panels/ImagesPanel";
 
 interface ContentTabPanelsProps {
+  activeTab: string;
   mainKeyword: string;
   setMainKeyword: (value: string) => void;
   subKeywords: string[];

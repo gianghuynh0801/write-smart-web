@@ -11,7 +11,7 @@ interface ImagesPanelProps {
 
 const ImagesPanel = ({ imageSize, setImageSize }: ImagesPanelProps) => {
   return (
-    <TabsContent value="images" className="mt-0 animate-fade-in">
+    <TabsContent value="images" className="mt-0 animate-fade-in" forceMount>
       <TabLayout
         icon={<Image className="h-5 w-5 text-primary" />}
         title="Hình ảnh cho bài viết"

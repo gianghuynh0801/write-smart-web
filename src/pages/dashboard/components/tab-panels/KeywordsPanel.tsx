@@ -22,7 +22,7 @@ const KeywordsPanel = ({
   setRelatedKeywords,
 }: KeywordsPanelProps) => {
   return (
-    <TabsContent value="keywords" className="mt-0 animate-fade-in">
+    <TabsContent value="keywords" className="mt-0 animate-fade-in" forceMount>
       <TabLayout
         icon={<Key className="h-5 w-5 text-primary" />}
         title="Từ khoá cho bài viết"
