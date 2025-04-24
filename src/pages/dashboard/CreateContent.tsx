@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Tabs } from "@/components/ui/tabs";
 import ContentTabs from "./components/ContentTabs";
@@ -16,7 +17,7 @@ const CreateContent = () => {
   const [savedContent, setSavedContent] = useState("");
   const { toast } = useToast();
 
-  // State management
+  // State management - this state is now preserved when switching tabs
   const [mainKeyword, setMainKeyword] = useState("");
   const [subKeywords, setSubKeywords] = useState<string[]>([]);
   const [relatedKeywords, setRelatedKeywords] = useState<string[]>([]);

@@ -65,6 +65,8 @@ const TabsContent = React.forwardRef<
       "data-[orientation=vertical]:mt-0 data-[orientation=vertical]:ml-2",
       className
     )}
+    // This ensures content is not unmounted when switching tabs
+    forceMount
     {...props}
   />
 ))
