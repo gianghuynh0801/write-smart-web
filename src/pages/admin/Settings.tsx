@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -87,7 +86,7 @@ const AdminSettings = () => {
               </Label>
               <Input
                 id="webhook-url"
-                placeholder="https://workflow.matbao.support/webhook/..."
+                placeholder="Nhập URL webhook n8n"
                 value={webhookUrl}
                 onChange={handleUrlChange}
                 className={!isValidUrl && webhookUrl ? "border-destructive" : ""}
@@ -96,12 +95,12 @@ const AdminSettings = () => {
                 <Alert variant="destructive" className="mt-2">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
-                    URL không hợp lệ. Đảm bảo nó có định dạng đúng (ví dụ: https://workflow.matbao.support/webhook/id)
+                    URL không hợp lệ. Vui lòng nhập một URL webhook hợp lệ.
                   </AlertDescription>
                 </Alert>
               )}
               <p className="text-sm text-muted-foreground">
-                URL webhook được sử dụng để kết nối với n8n workflow. Đảm bảo URL có dạng: https://workflow.matbao.support/webhook/[your-webhook-id]
+                URL webhook được sử dụng để kết nối với n8n workflow. Đảm bảo nhập một URL webhook hợp lệ.
               </p>
             </div>
             <Button onClick={handleSaveWebhook}>
