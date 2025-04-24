@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { generateContent } from "@/services/webhook/webhookService";
@@ -15,6 +16,11 @@ interface ContentGenerationParams {
   useList: boolean;
   links: Array<{ keyword: string; url: string }>;
   imageSize: string;
+  language?: string;
+  country?: string;
+  tone?: string;
+  narrator?: string;
+  formality?: string;
 }
 
 export const useContentGeneration = () => {
@@ -55,6 +61,13 @@ export const useContentGeneration = () => {
         links: params.links,
         images: {
           size: params.imageSize,
+        },
+        content: {
+          language: params.language || 'vi',
+          country: params.country || 'vn',
+          tone: params.tone || 'Neutral',
+          narrator: params.narrator || 'tự động',
+          formality: params.formality || 'tự động'
         }
       };
 

@@ -25,6 +25,13 @@ export interface ContentGenerationParams {
   images: {
     size: string;
   };
+  content?: {
+    language: string;
+    country: string;
+    tone: string;
+    narrator: string;
+    formality: string;
+  };
 }
 
 export interface WebhookResponse {
@@ -33,4 +40,3 @@ export interface WebhookResponse {
   error?: string;
   rawResponse?: any;
 }
-
