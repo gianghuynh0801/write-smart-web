@@ -17,11 +17,13 @@ export const useAdminAuth = () => {
   const handleAdminLogin = async (username: string, password: string) => {
     setIsLoading(true);
     try {
+      // Kiểm tra xem username có phải là admin không
       if (username === defaultAdmin.username && password === defaultAdmin.password) {
         console.log("Đăng nhập với tài khoản admin mặc định");
         
         let authUser = null;
         
+        // Dùng email từ cấu hình defaultAdmin để đăng nhập với Supabase
         const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
           email: defaultAdmin.email,
           password: defaultAdmin.password,
