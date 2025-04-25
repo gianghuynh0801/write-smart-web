@@ -89,6 +89,18 @@ export function RegisterForm() {
     setIsLoading(true);
     
     try {
+      // First, check if the email already exists
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', formData.email)
+        .maybeSingle();
+
+      if (existingUser) {
+        throw new Error("Email này đã được sử dụng. Vui lòng chọn email khác hoặc đăng nhập.");
+      }
+
+      // Create the user in auth
       const { data, error } = await supabase.auth.signUp({ 
         email: formData.email, 
         password: formData.password,
@@ -103,6 +115,11 @@ export function RegisterForm() {
       if (error) throw error;
       
       if (data.user) {
+        // Wait for the user creation to complete
+        // This is important to ensure the user exists before we create the verification token
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Update user profile in our custom users table
         const { error: userUpdateError } = await supabase
           .from('users')
           .update({ 
@@ -114,14 +131,26 @@ export function RegisterForm() {
 
         if (userUpdateError) throw userUpdateError;
 
-        await sendVerificationEmail({
-          email: formData.email,
-          name: formData.name,
-          userId: data.user.id,
-          type: "email_verification"
-        });
-        
-        navigate("/verify-email-prompt");
+        // After the user record is created, send the verification email
+        try {
+          await sendVerificationEmail({
+            email: formData.email,
+            name: formData.name,
+            userId: data.user.id,
+            type: "email_verification"
+          });
+          
+          navigate("/verify-email-prompt");
+        } catch (emailError: any) {
+          console.error("Error sending verification email:", emailError);
+          // Even if email sending fails, we've created the user, so navigate to the prompt page
+          toast({
+            title: "Cảnh báo",
+            description: "Đã tạo tài khoản nhưng không thể gửi email xác thực. Vui lòng liên hệ hỗ trợ.",
+            variant: "destructive"
+          });
+          navigate("/verify-email-prompt");
+        }
       }
     } catch (error: any) {
       console.error("Registration error:", error);

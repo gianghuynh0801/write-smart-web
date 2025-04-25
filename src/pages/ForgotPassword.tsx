@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,6 +34,23 @@ const ForgotPassword = () => {
     setIsLoading(true);
 
     try {
+      // Check if user exists
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', email)
+        .maybeSingle();
+      
+      if (userError) throw userError;
+      
+      if (!userData) {
+        // Don't reveal that the user doesn't exist for security reasons
+        // But log it for debugging
+        console.log("Password reset requested for non-existent user:", email);
+      }
+      
+      const userId = userData?.id || "placeholder";
+
       // Generate a password reset token
       const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/reset-password`,
@@ -40,22 +58,10 @@ const ForgotPassword = () => {
 
       if (error) throw error;
       
-      // The resetPasswordForEmail method doesn't return the token
-      // We'll use a different approach for custom emails - extract the token from the auth flow
-      
-      // Send a separate request to get a session for this user (for demonstration)
-      // In production, you might want to create a more secure flow
-      const { data: authData } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          shouldCreateUser: false,
-        }
-      });
-      
       // Send custom reset email
       await sendVerificationEmail({
         email: email,
-        userId: "placeholder", // We don't have the actual user ID here
+        userId: userId,
         type: "password_reset"
       });
 

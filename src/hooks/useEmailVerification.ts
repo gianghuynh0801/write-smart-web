@@ -16,10 +16,31 @@ export const useEmailVerification = () => {
 
   const sendVerificationEmail = useCallback(async (params: VerificationParams) => {
     try {
+      console.log("Sending verification email for:", params.email, "userId:", params.userId);
+      
+      // Check if user exists in the database
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', params.userId)
+        .maybeSingle();
+        
+      if (userError) {
+        console.error("Error checking for user:", userError);
+        throw new Error(`User not found: ${userError.message}`);
+      }
+      
+      if (!userData) {
+        console.error("User not found in database:", params.userId);
+        throw new Error("User not found in database");
+      }
+      
       // Generate verification token
       const token = generateRandomToken(32);
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
 
+      console.log("Creating verification token for user:", params.userId);
+      
       // Store verification token in database
       const { error: tokenError } = await supabase
         .from('verification_tokens')
@@ -30,12 +51,17 @@ export const useEmailVerification = () => {
           expires_at: expiresAt.toISOString()
         });
 
-      if (tokenError) throw tokenError;
+      if (tokenError) {
+        console.error("Error creating verification token:", tokenError);
+        throw tokenError;
+      }
 
       // Generate verification URL
       const verificationUrl = `${window.location.origin}/verify-email?token=${token}`;
+      console.log("Verification URL generated:", verificationUrl);
 
       // Call our custom edge function to send email using SMTP settings
+      console.log("Invoking send-verification function");
       const response = await supabase.functions.invoke("send-verification", {
         body: {
           email: params.email,
@@ -47,6 +73,8 @@ export const useEmailVerification = () => {
         }
       });
 
+      console.log("Edge function response:", response);
+      
       if (response.error) {
         throw new Error(response.error.message || "Error sending verification email");
       }
@@ -64,7 +92,7 @@ export const useEmailVerification = () => {
         description: `Không thể gửi email xác thực: ${error instanceof Error ? error.message : "Lỗi không xác định"}`,
         variant: "destructive",
       });
-      return { success: false, error };
+      throw error; // Re-throw to handle in the calling function
     }
   }, [toast]);
 
