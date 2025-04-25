@@ -13,6 +13,7 @@ export function SmtpConfigCard() {
   const [isLoading, setIsLoading] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<{success?: boolean; message?: string} | null>(null);
+  const [configId, setConfigId] = useState<string | null>(null);
   const [config, setConfig] = useState({
     host: '',
     port: '',
@@ -33,7 +34,7 @@ export function SmtpConfigCard() {
     try {
       const { data, error } = await supabase
         .from('system_configurations')
-        .select('value')
+        .select('id, value')
         .eq('key', 'smtp_config')
         .maybeSingle();
 
@@ -42,17 +43,22 @@ export function SmtpConfigCard() {
         throw error;
       }
       
-      if (data?.value) {
-        try {
-          const parsedConfig = JSON.parse(data.value);
-          setConfig(parsedConfig);
-        } catch (e) {
-          console.error('Error parsing SMTP config:', e);
-          toast({
-            title: "Lỗi",
-            description: "Không thể đọc cấu hình SMTP",
-            variant: "destructive",
-          });
+      if (data) {
+        setConfigId(data.id);
+        console.log("Fetched SMTP config with ID:", data.id);
+        
+        if (data.value) {
+          try {
+            const parsedConfig = JSON.parse(data.value);
+            setConfig(parsedConfig);
+          } catch (e) {
+            console.error('Error parsing SMTP config:', e);
+            toast({
+              title: "Lỗi",
+              description: "Không thể đọc cấu hình SMTP",
+              variant: "destructive",
+            });
+          }
         }
       }
     } catch (error) {
@@ -73,12 +79,28 @@ export function SmtpConfigCard() {
     try {
       console.log("Saving SMTP config:", JSON.stringify(config));
       
-      const { data, error } = await supabase
-        .from('system_configurations')
-        .upsert({
-          key: 'smtp_config',
-          value: JSON.stringify(config)
-        });
+      let operation;
+      const configData = {
+        key: 'smtp_config',
+        value: JSON.stringify(config)
+      };
+      
+      if (configId) {
+        // Update existing record
+        console.log(`Updating existing config with ID: ${configId}`);
+        operation = supabase
+          .from('system_configurations')
+          .update(configData)
+          .eq('id', configId);
+      } else {
+        // Insert new record
+        console.log("Inserting new config record");
+        operation = supabase
+          .from('system_configurations')
+          .insert(configData);
+      }
+      
+      const { data, error } = await operation;
 
       if (error) {
         console.error('Error saving SMTP config:', error);
@@ -86,6 +108,11 @@ export function SmtpConfigCard() {
       }
 
       console.log("SMTP config saved successfully:", data);
+      
+      // If we just inserted a new record, we need to fetch it to get the ID
+      if (!configId) {
+        await fetchConfig();
+      }
       
       toast({
         title: "Thành công",
