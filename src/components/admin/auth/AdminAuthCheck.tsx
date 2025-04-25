@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { checkAdminRole } from "@/services/admin/adminService";
 
 interface AdminAuthCheckProps {
   onAuthSuccess: () => void;
@@ -33,12 +34,7 @@ export const AdminAuthCheck = ({ onAuthSuccess }: AdminAuthCheckProps) => {
         console.log("User ID:", user.id);
 
         // Check if current user is admin
-        const { data: roleData, error: roleError } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', user.id)
-          .eq('role', 'admin')
-          .single();
+        const { roleData, roleError } = await checkAdminRole(user.id);
 
         console.log("Role data:", roleData, "Role error:", roleError);
 

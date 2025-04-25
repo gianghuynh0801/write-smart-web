@@ -31,7 +31,7 @@ export function useSessionCheck() {
             navigate("/admin");
             return;
           } else {
-            console.log("Người dùng không có quyền admin");
+            console.log("Người dùng không có quyền admin:", roleError);
           }
         } else {
           console.log("Chưa đăng nhập");

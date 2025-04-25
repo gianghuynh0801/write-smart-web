@@ -52,14 +52,21 @@ export const useAdminAuth = () => {
       console.log("Đăng nhập với tài khoản admin mặc định");
       
       // Thực hiện đăng nhập với Supabase
+      // Sử dụng email của admin mặc định để đăng nhập vì Supabase chỉ chấp nhận email
+      const emailToUse = defaultAdmin.email;
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: defaultAdmin.email,
+        email: emailToUse,
         password: defaultAdmin.password,
       });
 
       if (error) {
         console.error('Lỗi đăng nhập:', error);
-        throw new Error("Có lỗi xảy ra khi đăng nhập, vui lòng thử lại sau");
+        toast({
+          title: "Đăng nhập thất bại",
+          description: error.message || "Có lỗi xảy ra khi đăng nhập, vui lòng thử lại sau",
+          variant: "destructive",
+        });
+        return;
       }
 
       if (!data.user) {
