@@ -11,8 +11,12 @@ export const WebhookUrlCard = () => {
   const { toast } = useToast();
   const [webhookUrl, setWebhookUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   const loadWebhookUrl = async () => {
+    // Nếu đã tải, không tải lại để tránh vòng lặp
+    if (isLoaded || isLoading) return;
+
     try {
       setIsLoading(true);
       console.log("Đang tải webhook URL từ database...");
@@ -21,7 +25,7 @@ export const WebhookUrlCard = () => {
         .from('system_configurations')
         .select('value')
         .eq('key', 'webhook_url')
-        .maybeSingle(); // Sử dụng maybeSingle thay vì single để tránh lỗi khi không có dữ liệu
+        .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
         console.error('Lỗi khi tải webhook URL:', error);
@@ -43,6 +47,7 @@ export const WebhookUrlCard = () => {
       console.error('Lỗi exception khi tải webhook URL:', error);
     } finally {
       setIsLoading(false);
+      setIsLoaded(true);
     }
   };
 

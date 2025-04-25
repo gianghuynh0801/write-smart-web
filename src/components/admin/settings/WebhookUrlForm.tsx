@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -18,6 +18,13 @@ export const WebhookUrlForm = ({ initialUrl, onSave }: WebhookUrlFormProps) => {
   const [webhookUrl, setWebhookUrl] = useState(initialUrl);
   const [isValidUrl, setIsValidUrl] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Cập nhật webhookUrl khi initialUrl thay đổi, chỉ khi initialUrl có giá trị
+  useEffect(() => {
+    if (initialUrl) {
+      setWebhookUrl(initialUrl);
+    }
+  }, [initialUrl]);
 
   const validateUrl = (url: string): boolean => {
     if (!url) return true; // Empty URL is considered valid (optional field)
