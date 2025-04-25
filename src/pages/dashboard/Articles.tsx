@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +16,12 @@ import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 
+interface PublishHistoryItem {
+  status: string;
+  timestamp: number;
+  platform: string[];
+}
+
 interface Article {
   id: string;
   title: string;
@@ -24,11 +31,7 @@ interface Article {
   updated_at: string;
   published_at: string | null;
   platform: string[];
-  publish_history: {
-    status: string;
-    timestamp: number;
-    platform: string[];
-  }[];
+  publish_history: PublishHistoryItem[];
 }
 
 const statusColors = {
@@ -61,7 +64,20 @@ const Articles = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setArticles(data || []);
+      // Transform the data to ensure publish_history is properly typed
+      const transformedArticles = data.map(article => ({
+        ...article,
+        // Ensure publish_history is an array of PublishHistoryItem
+        publish_history: Array.isArray(article.publish_history) 
+          ? article.publish_history 
+          : [],
+        // Ensure platform is an array
+        platform: Array.isArray(article.platform) 
+          ? article.platform 
+          : []
+      }));
+      
+      setArticles(transformedArticles);
     } catch (error: any) {
       toast({
         title: "Lỗi",
@@ -106,7 +122,7 @@ const Articles = () => {
     return platforms.join(", ");
   };
 
-  const getLastPublishInfo = (history: Article['publish_history']) => {
+  const getLastPublishInfo = (history: PublishHistoryItem[]) => {
     if (!history || history.length === 0) return null;
     const lastPublish = history
       .filter(h => h.status === 'published')
