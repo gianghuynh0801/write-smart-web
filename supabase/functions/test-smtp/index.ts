@@ -23,14 +23,28 @@ serve(async (req) => {
   }
 
   try {
-    const { config } = await req.json() as { config: SmtpConfig };
+    const body = await req.json();
+    const config = body.config as SmtpConfig;
     
+    console.log("Received SMTP config request with:", {
+      host: config.host,
+      port: config.port,
+      username: config.username,
+      from_email: config.from_email,
+      from_name: config.from_name,
+      // Don't log password
+    });
+
     // Validate required fields
     const requiredFields = ['host', 'port', 'username', 'password', 'from_email'];
-    for (const field of requiredFields) {
-      if (!config[field as keyof SmtpConfig]) {
-        throw new Error(`Thiếu trường ${field}`);
-      }
+    
+    const missingFields = requiredFields.filter(field => {
+      const value = config[field as keyof SmtpConfig];
+      return !value || value.trim() === '';
+    });
+
+    if (missingFields.length > 0) {
+      throw new Error(`Thiếu trường ${missingFields.join(', ')}`);
     }
 
     console.log("Attempting to connect to SMTP server:", { 

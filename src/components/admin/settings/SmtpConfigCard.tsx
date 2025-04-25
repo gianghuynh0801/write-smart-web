@@ -89,27 +89,52 @@ export function SmtpConfigCard() {
     }
   };
 
+  // Validate form before testing
+  const validateForm = () => {
+    const requiredFields = ['host', 'port', 'username', 'password', 'from_email'];
+    const missingFields = requiredFields.filter(field => !config[field as keyof typeof config]);
+    
+    if (missingFields.length > 0) {
+      toast({
+        title: "Thiếu thông tin",
+        description: `Vui lòng điền đầy đủ các trường: ${missingFields.join(', ')}`,
+        variant: "destructive",
+      });
+      return false;
+    }
+    return true;
+  };
+
   // Test SMTP config by sending a test email
   const handleTest = async () => {
+    if (!validateForm()) return;
+    
     setIsTesting(true);
     setTestResult(null);
     
     try {
-      const { data, error } = await supabase.functions.invoke('test-smtp', {
+      const response = await supabase.functions.invoke('test-smtp', {
         body: { config },
       });
 
-      if (error) throw error;
+      if (response.error) throw new Error(response.error);
 
-      setTestResult({
-        success: true,
-        message: "Đã gửi email test thành công"
-      });
+      const data = response.data;
       
-      toast({
-        title: "Thành công",
-        description: "Đã gửi email test thành công",
-      });
+      if (data.success) {
+        setTestResult({
+          success: true,
+          message: "Đã gửi email test thành công"
+        });
+        
+        toast({
+          title: "Thành công",
+          description: "Đã gửi email test thành công. Vui lòng kiểm tra hộp thư.",
+          variant: "default",
+        });
+      } else {
+        throw new Error(data.error || 'Lỗi không xác định');
+      }
     } catch (error: any) {
       console.error('Error testing SMTP:', error);
       
@@ -120,7 +145,7 @@ export function SmtpConfigCard() {
       
       toast({
         title: "Lỗi",
-        description: "Không thể gửi email test",
+        description: `Không thể gửi email test: ${error.message || 'Lỗi không xác định'}`,
         variant: "destructive",
       });
     } finally {
@@ -234,4 +259,3 @@ export function SmtpConfigCard() {
     </Card>
   );
 }
-
