@@ -46,6 +46,22 @@ export function RegisterForm() {
     setError(null);
   };
 
+  // Kiểm tra xem email đã tồn tại chưa
+  const checkEmailExists = async (email: string): Promise<boolean> => {
+    try {
+      const { data } = await supabase
+        .from('users')
+        .select('email')
+        .eq('email', email)
+        .maybeSingle();
+        
+      return !!data;
+    } catch (error) {
+      console.error("Lỗi khi kiểm tra email:", error);
+      return false;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -89,19 +105,13 @@ export function RegisterForm() {
     setIsLoading(true);
     
     try {
-      // First, check if the email already exists
-      console.log("Kiểm tra email đã tồn tại:", formData.email);
-      const { data: existingUser } = await supabase
-        .from('users')
-        .select('id')
-        .eq('email', formData.email)
-        .maybeSingle();
-
-      if (existingUser) {
+      // Kiểm tra nếu email đã tồn tại
+      const emailExists = await checkEmailExists(formData.email);
+      if (emailExists) {
         throw new Error("Email này đã được sử dụng. Vui lòng chọn email khác hoặc đăng nhập.");
       }
 
-      // Create the user in auth
+      // Bước 1: Tạo tài khoản trong auth
       console.log("Bắt đầu tạo tài khoản:", formData.email);
       const { data, error } = await supabase.auth.signUp({ 
         email: formData.email, 
@@ -121,14 +131,50 @@ export function RegisterForm() {
       }
 
       const userId = data.user.id;
-      console.log("Đã tạo tài khoản thành công, ID:", userId);
+      console.log("Đã tạo tài khoản trong auth thành công, ID:", userId);
       
-      // Wait a moment to ensure the auth record is fully created
-      console.log("Đợi 1 giây để đảm bảo tài khoản được tạo đầy đủ...");
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Bước 2: Đợi một khoảng thời gian để đảm bảo bản ghi auth được tạo và nhận được
+      console.log("Đợi để đảm bảo tài khoản được tạo đầy đủ...");
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
+      // Bước 3: Đồng bộ người dùng vào bảng users
+      console.log("Đồng bộ người dùng vào bảng users...");
+      const { data: syncData, error: syncError } = await supabase.functions.invoke("sync-user", {
+        body: { 
+          user_id: userId, 
+          email: formData.email, 
+          name: formData.name 
+        }
+      });
+      
+      if (syncError) {
+        console.error("Lỗi đồng bộ người dùng:", syncError);
+        throw new Error(`Không thể đồng bộ người dùng: ${syncError.message}`);
+      }
+      
+      console.log("Kết quả đồng bộ người dùng:", syncData);
+      
+      // Bước 4: Kiểm tra lại xem người dùng đã được tạo thành công chưa
+      const { data: checkUser, error: checkUserError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+      
+      if (checkUserError) {
+        console.error("Lỗi kiểm tra người dùng:", checkUserError);
+        throw new Error(`Không thể kiểm tra người dùng: ${checkUserError.message}`);
+      }
+      
+      if (!checkUser) {
+        console.error("Người dùng không tồn tại sau khi đồng bộ");
+        throw new Error("Không thể tạo người dùng trong cơ sở dữ liệu. Vui lòng liên hệ hỗ trợ.");
+      }
+      
+      console.log("Người dùng đã được tạo thành công trong database:", checkUser);
+      
+      // Bước 5: Gửi email xác thực
       try {
-        // Send verification email through our hooked flow
         console.log("Gửi email xác thực cho:", formData.email);
         await sendVerificationEmail({
           email: formData.email,
@@ -138,10 +184,14 @@ export function RegisterForm() {
         });
         
         console.log("Đã gửi email xác thực thành công");
+        toast({
+          title: "Đăng ký thành công",
+          description: "Chúng tôi đã gửi email xác thực. Vui lòng kiểm tra hộp thư của bạn.",
+        });
         navigate("/verify-email-prompt");
       } catch (emailError: any) {
         console.error("Lỗi gửi email xác thực:", emailError);
-        // Even if email sending fails, we've created the user, so navigate to the prompt page
+        // Đã tạo người dùng thành công, nhưng không gửi được email
         toast({
           title: "Cảnh báo",
           description: "Đã tạo tài khoản nhưng không thể gửi email xác thực. Vui lòng liên hệ hỗ trợ.",

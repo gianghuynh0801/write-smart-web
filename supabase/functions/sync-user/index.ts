@@ -38,20 +38,23 @@ serve(async (req) => {
     
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Check if user exists in auth.users
-    const { data: authUser, error: authUserError } = await supabaseAdmin.auth.admin.getUserById(user_id);
+    // Try to find the user in auth.users first
+    let authUserExists = false;
+    try {
+      const { data: authUser, error: authUserError } = await supabaseAdmin.auth.admin.getUserById(user_id);
 
-    if (authUserError) {
-      console.error("User not found in auth.users:", authUserError);
-      throw new Error(`User not found in authentication system: ${authUserError.message}`);
+      if (!authUserError && authUser?.user) {
+        authUserExists = true;
+        console.log(`Confirmed user exists in auth system: ${user_id}`);
+      } else {
+        console.log(`User not found in auth system, error: ${authUserError?.message}`);
+        // Instead of throwing an error, we'll try to proceed with creation in case the auth record exists 
+        // but something went wrong with the admin API call
+      }
+    } catch (authError) {
+      console.error("Error checking auth user:", authError);
+      // Continue anyway to try to create the user record
     }
-
-    if (!authUser.user) {
-      console.error("User not found in auth system:", user_id);
-      throw new Error("User not found in authentication system");
-    }
-
-    console.log(`Confirmed user exists in auth system: ${user_id}`);
 
     // Check if user exists in public.users
     const { data: existingUser, error: existingUserError } = await supabaseAdmin
@@ -62,7 +65,7 @@ serve(async (req) => {
 
     if (existingUserError) {
       console.error("Error checking for existing user:", existingUserError);
-      throw existingUserError;
+      // Continue anyway as we'll try to create/update the user
     }
 
     // Create or update user record
@@ -108,7 +111,8 @@ serve(async (req) => {
         success: true, 
         message: "User synchronized successfully",
         user_id: user_id,
-        is_new: !existingUser
+        is_new: !existingUser,
+        auth_user_exists: authUserExists
       }),
       { 
         headers: { ...corsHeaders, "Content-Type": "application/json" },
