@@ -18,6 +18,7 @@ export const WebhookUrlForm = ({ initialUrl, onSave }: WebhookUrlFormProps) => {
   const [webhookUrl, setWebhookUrl] = useState(initialUrl);
   const [isValidUrl, setIsValidUrl] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   // Cập nhật webhookUrl khi initialUrl thay đổi, chỉ khi initialUrl có giá trị
   useEffect(() => {
@@ -37,6 +38,8 @@ export const WebhookUrlForm = ({ initialUrl, onSave }: WebhookUrlFormProps) => {
   };
 
   const handleSaveWebhook = async () => {
+    setError(null);
+    
     if (webhookUrl && !validateUrl(webhookUrl)) {
       setIsValidUrl(false);
       toast({
@@ -53,16 +56,29 @@ export const WebhookUrlForm = ({ initialUrl, onSave }: WebhookUrlFormProps) => {
     try {
       console.log("Đang lưu webhook URL vào database:", webhookUrl);
       
+      // Kiểm tra quyền admin trước khi lưu
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setError("Bạn cần đăng nhập với quyền admin để thực hiện thao tác này.");
+        toast({
+          title: "Lỗi xác thực",
+          description: "Vui lòng đăng nhập lại với quyền admin.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       const { error } = await supabase
         .from('system_configurations')
         .upsert({ 
           key: 'webhook_url', 
-          value: webhookUrl,
+          value: webhookUrl || '',
           updated_at: new Date().toISOString()
         });
 
       if (error) {
         console.error('Lỗi khi lưu webhook URL:', error);
+        setError(`Lỗi khi lưu: ${error.message}`);
         toast({
           title: "Lỗi",
           description: "Không thể lưu URL webhook. Vui lòng thử lại sau.",
@@ -83,6 +99,7 @@ export const WebhookUrlForm = ({ initialUrl, onSave }: WebhookUrlFormProps) => {
       }
     } catch (error) {
       console.error('Exception khi lưu webhook URL:', error);
+      setError("Có lỗi xảy ra. Vui lòng thử lại sau.");
       toast({
         title: "Lỗi",
         description: "Có lỗi xảy ra khi lưu URL webhook.",
@@ -112,7 +129,7 @@ export const WebhookUrlForm = ({ initialUrl, onSave }: WebhookUrlFormProps) => {
         <Input
           id="webhook-url"
           placeholder="Nhập URL webhook hợp lệ"
-          value={webhookUrl}
+          value={webhookUrl || ''}
           onChange={handleUrlChange}
           className={!isValidUrl && webhookUrl ? "border-destructive" : ""}
         />
@@ -124,6 +141,14 @@ export const WebhookUrlForm = ({ initialUrl, onSave }: WebhookUrlFormProps) => {
             </AlertDescription>
           </Alert>
         )}
+        
+        {error && (
+          <Alert variant="destructive" className="mt-2">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+        
         <p className="text-sm text-muted-foreground">
           URL webhook được sử dụng để kết nối với n8n workflow. Đảm bảo nhập một URL webhook hợp lệ.
         </p>
