@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Mail } from "lucide-react";
+import { Mail, AlertCircle } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 export function SmtpConfigCard() {
@@ -157,15 +157,28 @@ export function SmtpConfigCard() {
     setTestResult(null);
     
     try {
+      console.log("Testing SMTP configuration with values:", {
+        host: config.host,
+        port: config.port,
+        username: config.username,
+        from_email: config.from_email,
+        // Don't log password
+      });
+      
       const response = await supabase.functions.invoke('test-smtp', {
         body: { config },
       });
 
-      if (response.error) throw new Error(response.error);
+      console.log("SMTP test response:", response);
+      
+      if (response.error) {
+        console.error("Function error:", response.error);
+        throw new Error(response.error.message || "Lỗi gọi edge function");
+      }
 
       const data = response.data;
       
-      if (data.success) {
+      if (data && data.success) {
         setTestResult({
           success: true,
           message: "Đã gửi email test thành công"
@@ -176,8 +189,10 @@ export function SmtpConfigCard() {
           description: "Đã gửi email test thành công. Vui lòng kiểm tra hộp thư.",
           variant: "default",
         });
+      } else if (data && data.error) {
+        throw new Error(data.error);
       } else {
-        throw new Error(data.error || 'Lỗi không xác định');
+        throw new Error('Lỗi không xác định khi gửi email');
       }
     } catch (error: any) {
       console.error('Error testing SMTP:', error);
@@ -195,6 +210,30 @@ export function SmtpConfigCard() {
     } finally {
       setIsTesting(false);
     }
+  };
+
+  // Helper to show email provider tips
+  const renderEmailProviderTips = () => {
+    if (config.host.includes('gmail')) {
+      return (
+        <Alert className="mt-4 bg-blue-50">
+          <AlertCircle className="h-4 w-4 text-blue-600" />
+          <AlertTitle>Đang sử dụng Gmail?</AlertTitle>
+          <AlertDescription>
+            Nếu bạn đang sử dụng Gmail, cần sử dụng App Password thay vì mật khẩu thường.
+            <a 
+              href="https://support.google.com/accounts/answer/185833" 
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block mt-1 text-blue-600 underline"
+            >
+              Hướng dẫn tạo App Password
+            </a>
+          </AlertDescription>
+        </Alert>
+      );
+    }
+    return null;
   };
 
   return (
@@ -264,6 +303,9 @@ export function SmtpConfigCard() {
                 onChange={(e) => setConfig(prev => ({ ...prev, from_email: e.target.value }))}
                 placeholder="no-reply@yourcompany.com"
               />
+              <p className="text-xs text-muted-foreground mt-1">
+                Lưu ý: Nhiều máy chủ SMTP yêu cầu email người gửi phải khớp với email đăng nhập
+              </p>
             </div>
             <div>
               <Label htmlFor="from-name">Tên người gửi</Label>
@@ -275,6 +317,8 @@ export function SmtpConfigCard() {
               />
             </div>
           </div>
+          
+          {renderEmailProviderTips()}
           
           {testResult && (
             <Alert variant={testResult.success ? "default" : "destructive"}>

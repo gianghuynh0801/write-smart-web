@@ -54,6 +54,11 @@ serve(async (req) => {
       // Don't log password for security
     });
 
+    // Make sure we use the same email in the "from" field as the username
+    // This is important because many SMTP servers require the From email to match
+    // the authenticated user's email address
+    const fromEmail = config.from_email || config.username;
+    
     const client = new SMTPClient({
       connection: {
         hostname: config.host,
@@ -68,8 +73,8 @@ serve(async (req) => {
     });
 
     await client.send({
-      from: `${config.from_name || "Test"} <${config.from_email}>`,
-      to: config.username,
+      from: `${config.from_name || "Test"} <${fromEmail}>`,
+      to: config.username, // Send the test email to the authenticated user
       subject: "SMTP Test Email",
       content: "Đây là email test từ hệ thống. Nếu bạn nhận được email này, cấu hình SMTP đã hoạt động.",
       html: `
@@ -81,7 +86,7 @@ serve(async (req) => {
           <li>Host: ${config.host}</li>
           <li>Port: ${config.port}</li>
           <li>Username: ${config.username}</li>
-          <li>From Email: ${config.from_email}</li>
+          <li>From Email: ${fromEmail}</li>
           <li>From Name: ${config.from_name || "Test"}</li>
         </ul>
       `
@@ -99,8 +104,26 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error("Error sending test email:", error);
+    
+    // Send back a more detailed error message
+    let errorMessage = error.message;
+    
+    // Check for common SMTP errors and provide more helpful messages
+    if (errorMessage.includes("550")) {
+      errorMessage = "Email bị từ chối: Địa chỉ email người gửi không được chấp nhận bởi máy chủ SMTP. Hãy đảm bảo địa chỉ từ (from_email) khớp với tài khoản đã xác thực.";
+    } else if (errorMessage.includes("535")) {
+      errorMessage = "Xác thực không thành công: Tên người dùng hoặc mật khẩu không chính xác.";
+    } else if (errorMessage.includes("connection refused") || errorMessage.includes("ECONNREFUSED")) {
+      errorMessage = "Không thể kết nối đến máy chủ SMTP. Vui lòng kiểm tra host và port.";
+    } else if (errorMessage.includes("timeout")) {
+      errorMessage = "Kết nối đến máy chủ SMTP bị timeout. Vui lòng kiểm tra host và port.";
+    }
+    
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: errorMessage,
+        details: error.toString()
+      }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 500,
