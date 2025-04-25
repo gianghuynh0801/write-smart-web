@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { mail } from "lucide-react";
+import { Mail } from "lucide-react";  // Changed from 'mail' to 'Mail'
 
 export function SmtpConfigCard() {
   const [isLoading, setIsLoading] = useState(false);
@@ -97,7 +97,7 @@ export function SmtpConfigCard() {
     <Card>
       <CardHeader>
         <div className="flex items-center gap-2">
-          <mail className="h-6 w-6 text-primary" />
+          <Mail className="h-6 w-6 text-primary" />  {/* Changed from 'mail' to 'Mail' */}
           <div>
             <CardTitle>Cấu hình SMTP</CardTitle>
             <CardDescription>
