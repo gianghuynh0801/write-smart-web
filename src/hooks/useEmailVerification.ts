@@ -35,27 +35,6 @@ export const useEmailVerification = () => {
       
       console.log("User sync response:", syncData);
       
-      if (!syncData?.success) {
-        throw new Error("Failed to ensure user exists in database");
-      }
-
-      // Double check that the user exists in our database
-      const { data: userExists, error: userCheckError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('id', params.userId)
-        .maybeSingle();
-        
-      if (userCheckError) {
-        console.error("Error checking user existence:", userCheckError);
-        throw new Error(`Could not verify user existence: ${userCheckError.message}`);
-      }
-      
-      if (!userExists) {
-        console.error("User does not exist in the database after sync attempt");
-        throw new Error("Could not find user record in database");
-      }
-
       // Generate verification token
       const token = generateRandomToken(32);
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
