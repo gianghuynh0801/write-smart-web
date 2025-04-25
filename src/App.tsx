@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,6 +10,8 @@ import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import EmailVerified from "./pages/EmailVerified";
 import AdminLogin from "./pages/AdminLogin";
 import { DashboardLayout, Dashboard, CreateContent, Credits, Connections, Settings, Subscriptions, Articles } from "./pages/dashboard";
 import { AdminLayout, AdminDashboard, AdminUsers, AdminCredits, AdminSubscriptions, AdminSettings } from "./pages/admin";
@@ -29,6 +32,8 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/email-verified" element={<EmailVerified />} />
             <Route path="/admin-login" element={<AdminLogin />} />
 
             {/* Dashboard Routes */}
