@@ -58,12 +58,14 @@ const ForgotPassword = () => {
 
       if (error) throw error;
       
-      // Send custom reset email
-      await sendVerificationEmail({
-        email: email,
-        userId: userId,
-        type: "password_reset"
-      });
+      // Send custom reset email if user exists
+      if (userData) {
+        await sendVerificationEmail({
+          email: email,
+          userId: userId,
+          type: "password_reset"
+        });
+      }
 
       setIsSubmitted(true);
     } catch (error: any) {

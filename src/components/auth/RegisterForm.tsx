@@ -90,6 +90,7 @@ export function RegisterForm() {
     
     try {
       // First, check if the email already exists
+      console.log("Kiểm tra email đã tồn tại:", formData.email);
       const { data: existingUser } = await supabase
         .from('users')
         .select('id')
@@ -101,6 +102,7 @@ export function RegisterForm() {
       }
 
       // Create the user in auth
+      console.log("Bắt đầu tạo tài khoản:", formData.email);
       const { data, error } = await supabase.auth.signUp({ 
         email: formData.email, 
         password: formData.password,
@@ -115,24 +117,49 @@ export function RegisterForm() {
       if (error) throw error;
       
       if (data.user) {
-        // Wait for the user creation to complete
-        // This is important to ensure the user exists before we create the verification token
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        console.log("Đã tạo tài khoản thành công, ID:", data.user.id);
         
-        // Update user profile in our custom users table
-        const { error: userUpdateError } = await supabase
-          .from('users')
-          .update({ 
-            name: formData.name, 
-            email_verified: false,
-            status: 'inactive' 
-          })
-          .eq('id', data.user.id);
-
-        if (userUpdateError) throw userUpdateError;
-
-        // After the user record is created, send the verification email
         try {
+          // Wait for the user record to be created in the database
+          // This wait is important because sometimes user data might not be immediately accessible
+          console.log("Đợi 1.5 giây để đảm bảo user record được tạo...");
+          await new Promise(resolve => setTimeout(resolve, 1500));
+          
+          // Double-check that the user exists in our database
+          console.log("Xác nhận user tồn tại:", data.user.id);
+          const { data: userData, error: userCheckError } = await supabase
+            .from('users')
+            .select('id, email')
+            .eq('id', data.user.id)
+            .maybeSingle();
+          
+          if (userCheckError) {
+            console.error("Lỗi kiểm tra user:", userCheckError);
+            throw new Error("Không thể xác minh tài khoản: " + userCheckError.message);
+          }
+          
+          if (!userData) {
+            console.error("Không tìm thấy user trong database:", data.user.id);
+            throw new Error("Tài khoản đã được tạo nhưng không tìm thấy trong hệ thống. Vui lòng thử đăng nhập.");
+          }
+          
+          console.log("Đã xác nhận user tồn tại:", userData);
+          
+          // Update user profile in our custom users table
+          console.log("Cập nhật thông tin user:", data.user.id);
+          const { error: userUpdateError } = await supabase
+            .from('users')
+            .update({ 
+              name: formData.name, 
+              email_verified: false,
+              status: 'inactive' 
+            })
+            .eq('id', data.user.id);
+
+          if (userUpdateError) throw userUpdateError;
+          
+          // After the user record is confirmed, send the verification email
+          console.log("Gửi email xác thực cho:", formData.email);
           await sendVerificationEmail({
             email: formData.email,
             name: formData.name,
@@ -140,9 +167,10 @@ export function RegisterForm() {
             type: "email_verification"
           });
           
+          console.log("Đã gửi email xác thực thành công");
           navigate("/verify-email-prompt");
         } catch (emailError: any) {
-          console.error("Error sending verification email:", emailError);
+          console.error("Lỗi gửi email xác thực:", emailError);
           // Even if email sending fails, we've created the user, so navigate to the prompt page
           toast({
             title: "Cảnh báo",
@@ -151,6 +179,8 @@ export function RegisterForm() {
           });
           navigate("/verify-email-prompt");
         }
+      } else {
+        throw new Error("Không thể tạo tài khoản. Vui lòng thử lại sau.");
       }
     } catch (error: any) {
       console.error("Registration error:", error);

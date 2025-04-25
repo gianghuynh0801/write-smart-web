@@ -21,7 +21,7 @@ export const useEmailVerification = () => {
       // Check if user exists in the database
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('id')
+        .select('id, email')
         .eq('id', params.userId)
         .maybeSingle();
         
@@ -32,7 +32,30 @@ export const useEmailVerification = () => {
       
       if (!userData) {
         console.error("User not found in database:", params.userId);
-        throw new Error("User not found in database");
+        
+        // Try to get user info from auth.users through admin functions
+        const { error: createUserError } = await supabase.functions.invoke("sync-user", {
+          body: { user_id: params.userId, email: params.email, name: params.name }
+        });
+        
+        if (createUserError) {
+          console.error("Error syncing user from auth:", createUserError);
+          throw new Error("User not found in database and couldn't be synchronized");
+        }
+        
+        // Wait a moment for the user to be created
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Verify again
+        const { data: newUserData, error: recheckError } = await supabase
+          .from('users')
+          .select('id')
+          .eq('id', params.userId)
+          .maybeSingle();
+        
+        if (recheckError || !newUserData) {
+          throw new Error("Failed to find or create user record");
+        }
       }
       
       // Generate verification token
