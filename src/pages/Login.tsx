@@ -9,11 +9,13 @@ import Footer from "@/components/common/Footer";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Mail } from "lucide-react";
 
 const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isEmailNotConfirmed, setIsEmailNotConfirmed] = useState(false);
+  const [unconfirmedEmail, setUnconfirmedEmail] = useState<string>("");
   const [formData, setFormData] = useState({
     email: "",
     password: ""
@@ -26,6 +28,7 @@ const Login = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
     // Clear error message when user changes input
     setError(null);
+    setIsEmailNotConfirmed(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -33,6 +36,7 @@ const Login = () => {
     
     // Clear error message before processing
     setError(null);
+    setIsEmailNotConfirmed(false);
     
     // Validate form
     if (!formData.email || !formData.password) {
@@ -69,8 +73,12 @@ const Login = () => {
     } catch (error: any) {
       console.error("Login error:", error);
       
-      // Handle specific error messages
-      if (error.message.includes("Invalid login credentials")) {
+      // Check specifically for email not confirmed error
+      if (error.message?.includes("Email not confirmed")) {
+        setIsEmailNotConfirmed(true);
+        setUnconfirmedEmail(formData.email);
+        setError("Email chưa được xác thực. Vui lòng kiểm tra hộp thư của bạn và xác nhận email trước khi đăng nhập.");
+      } else if (error.message.includes("Invalid login credentials")) {
         setError("Email hoặc mật khẩu không chính xác.");
       } else {
         setError(error.message || "Đã có lỗi xảy ra khi đăng nhập. Vui lòng thử lại sau.");
@@ -78,7 +86,37 @@ const Login = () => {
       
       toast({
         title: "Lỗi đăng nhập",
-        description: "Email hoặc mật khẩu không chính xác.",
+        description: error.message?.includes("Email not confirmed") 
+          ? "Email chưa được xác thực. Vui lòng xác nhận email trước khi đăng nhập." 
+          : "Email hoặc mật khẩu không chính xác.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (!unconfirmedEmail) return;
+    
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: unconfirmedEmail,
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Đã gửi email xác thực",
+        description: "Vui lòng kiểm tra hộp thư của bạn để xác thực tài khoản.",
+      });
+    } catch (error: any) {
+      console.error("Error sending verification email:", error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể gửi lại email xác thực. Vui lòng thử lại sau.",
         variant: "destructive"
       });
     } finally {
@@ -103,6 +141,29 @@ const Login = () => {
               <AlertTriangle className="h-4 w-4 mr-2" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
+          )}
+          
+          {isEmailNotConfirmed && (
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-md mb-4">
+              <div className="flex items-start">
+                <Mail className="h-5 w-5 text-amber-500 mt-0.5 mr-2" />
+                <div>
+                  <h3 className="font-medium text-amber-800">Email chưa được xác thực</h3>
+                  <p className="text-sm text-amber-700 mt-1">
+                    Vui lòng kiểm tra hộp thư của bạn và nhấn vào liên kết xác thực.
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="mt-2 text-amber-600 border-amber-300 hover:bg-amber-100"
+                    onClick={handleResendVerification}
+                    disabled={isLoading}
+                  >
+                    Gửi lại email xác thực
+                  </Button>
+                </div>
+              </div>
+            </div>
           )}
           
           <form onSubmit={handleSubmit} className="space-y-6">
