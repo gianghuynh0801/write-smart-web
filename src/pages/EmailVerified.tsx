@@ -6,12 +6,14 @@ import Navbar from "@/components/common/Navbar";
 import Footer from "@/components/common/Footer";
 import { Check, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const EmailVerified = () => {
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [message, setMessage] = useState<string>("Đang xác thực email của bạn...");
   const navigate = useNavigate();
   const location = useLocation();
+  const { toast } = useToast();
 
   useEffect(() => {
     const verifyEmail = async () => {
@@ -21,21 +23,45 @@ const EmailVerified = () => {
           // Extract the token from the URL hash
           const hashParams = new URLSearchParams(location.hash.substring(1));
           const accessToken = hashParams.get("access_token");
+          const refreshToken = hashParams.get("refresh_token");
           
           if (accessToken) {
-            // Email has been verified successfully
-            setStatus("success");
-            setMessage("Email của bạn đã được xác thực thành công!");
+            console.log("Found access token in URL, setting up session");
             
             // Try to exchange the token for a session
             const { data, error } = await supabase.auth.setSession({
               access_token: accessToken,
-              refresh_token: hashParams.get("refresh_token") || "",
+              refresh_token: refreshToken || "",
             });
             
+            if (error) {
+              console.error("Error setting session:", error);
+              throw error;
+            }
+            
+            // Email has been verified successfully
+            setStatus("success");
+            setMessage("Email của bạn đã được xác thực thành công!");
+            
             if (data && data.session) {
+              // Update user's email_verified status in the database
+              const { error: updateError } = await supabase
+                .from('users')
+                .update({ email_verified: true })
+                .eq('id', data.session.user.id);
+                
+              if (updateError) {
+                console.error("Error updating email verified status:", updateError);
+              }
+              
               // User is logged in
               setMessage("Email của bạn đã được xác thực thành công! Bạn sẽ được chuyển hướng đến trang chủ.");
+              
+              toast({
+                title: "Xác thực thành công",
+                description: "Email của bạn đã được xác thực thành công.",
+              });
+              
               setTimeout(() => {
                 navigate("/dashboard");
               }, 3000);
@@ -49,14 +75,20 @@ const EmailVerified = () => {
           setMessage("Không thể xác thực email. Liên kết không hợp lệ hoặc đã hết hạn.");
         }
       } catch (error) {
+        console.error("Email verification error:", error);
         setStatus("error");
         setMessage("Đã xảy ra lỗi khi xác thực email.");
-        console.error("Email verification error:", error);
+        
+        toast({
+          title: "Lỗi xác thực",
+          description: "Đã xảy ra lỗi khi xác thực email. Vui lòng thử lại hoặc liên hệ hỗ trợ.",
+          variant: "destructive"
+        });
       }
     };
 
     verifyEmail();
-  }, [location, navigate]);
+  }, [location, navigate, toast]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -83,8 +115,8 @@ const EmailVerified = () => {
               <h1 className="text-2xl font-bold">Xác thực thành công!</h1>
               <p className="text-gray-600">{message}</p>
               <div className="pt-4">
-                <Button onClick={() => navigate("/login")}>
-                  Đến trang đăng nhập
+                <Button onClick={() => navigate("/dashboard")}>
+                  Đến trang chủ
                 </Button>
               </div>
             </>
