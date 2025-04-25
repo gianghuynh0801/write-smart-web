@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +28,11 @@ export function RegisterForm() {
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -38,6 +42,15 @@ export function RegisterForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    
+    if (!validateEmail(formData.email)) {
+      toast({
+        title: "Lỗi",
+        description: "Địa chỉ email không hợp lệ. Vui lòng kiểm tra lại.",
+        variant: "destructive"
+      });
+      return;
+    }
     
     if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
       toast({
