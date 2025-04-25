@@ -80,12 +80,13 @@ serve(async (req) => {
     });
 
     // Generate appropriate verification URL and email template
-    let finalVerificationUrl = verification_url;
+    let finalVerificationUrl = "";
     let subject = "";
     let emailTemplate = "";
     
     if (verification_type === "email_verification") {
-      finalVerificationUrl = finalVerificationUrl || `${site_url}/verify-email?token=${verification_token}`;
+      // Important: Use the email-verified route for our site instead of Supabase's redirect
+      finalVerificationUrl = `${site_url}/email-verified#access_token=${verification_token}`;
       subject = "Xác nhận địa chỉ email của bạn";
       emailTemplate = `
         <h2>Xin chào ${name || "bạn"}!</h2>

@@ -56,9 +56,9 @@ export const useEmailVerification = () => {
         throw tokenError;
       }
 
-      // Generate verification URL
-      const verificationUrl = `${window.location.origin}/verify-email?token=${token}`;
-      console.log("Verification URL generated:", verificationUrl);
+      // Get the site URL from window location - this ensures we use the actual site URL
+      const siteUrl = window.location.origin;
+      console.log("Site URL for verification:", siteUrl);
 
       // Call our custom edge function to send email using SMTP settings
       console.log("Invoking send-verification function");
@@ -68,8 +68,7 @@ export const useEmailVerification = () => {
           name: params.name,
           verification_type: params.type,
           verification_token: token,
-          verification_url: verificationUrl,
-          site_url: window.location.origin
+          site_url: siteUrl
         }
       });
 
