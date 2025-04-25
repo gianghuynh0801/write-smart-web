@@ -13,7 +13,6 @@ interface VerificationRequest {
   name?: string;
   verification_type: "email_verification" | "password_reset";
   verification_token: string;
-  verification_url?: string;
   site_url: string;
 }
 
@@ -29,7 +28,6 @@ serve(async (req) => {
       name, 
       verification_type, 
       verification_token,
-      verification_url,
       site_url 
     } = await req.json() as VerificationRequest;
     
