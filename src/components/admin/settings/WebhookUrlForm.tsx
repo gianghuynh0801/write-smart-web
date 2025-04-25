@@ -3,23 +3,24 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Link, AlertCircle } from "lucide-react";
+import { Link, AlertCircle, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 interface WebhookUrlFormProps {
   initialUrl: string;
+  onSave?: (url: string) => void;
 }
 
-export const WebhookUrlForm = ({ initialUrl }: WebhookUrlFormProps) => {
+export const WebhookUrlForm = ({ initialUrl, onSave }: WebhookUrlFormProps) => {
   const { toast } = useToast();
   const [webhookUrl, setWebhookUrl] = useState(initialUrl);
   const [isValidUrl, setIsValidUrl] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
 
   const validateUrl = (url: string): boolean => {
-    if (!url) return false;
+    if (!url) return true; // Empty URL is considered valid (optional field)
     try {
       new URL(url);
       return true;
@@ -29,20 +30,11 @@ export const WebhookUrlForm = ({ initialUrl }: WebhookUrlFormProps) => {
   };
 
   const handleSaveWebhook = async () => {
-    if (!webhookUrl) {
-      toast({
-        title: "URL không được để trống",
-        description: "Vui lòng nhập URL webhook.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!validateUrl(webhookUrl)) {
+    if (webhookUrl && !validateUrl(webhookUrl)) {
       setIsValidUrl(false);
       toast({
         title: "URL không hợp lệ",
-        description: "Vui lòng nhập một URL hợp lệ.",
+        description: "Vui lòng nhập một URL webhook hợp lệ.",
         variant: "destructive",
       });
       return;
@@ -77,6 +69,11 @@ export const WebhookUrlForm = ({ initialUrl }: WebhookUrlFormProps) => {
         title: "Đã lưu cấu hình",
         description: "URL webhook đã được cập nhật thành công.",
       });
+
+      // Thông báo cho component cha biết URL đã được lưu
+      if (onSave) {
+        onSave(webhookUrl);
+      }
     } catch (error) {
       console.error('Exception khi lưu webhook URL:', error);
       toast({
@@ -127,8 +124,15 @@ export const WebhookUrlForm = ({ initialUrl }: WebhookUrlFormProps) => {
       <Button 
         onClick={handleSaveWebhook} 
         disabled={isLoading}
+        className="flex items-center gap-2"
       >
-        {isLoading ? "Đang lưu..." : "Lưu cấu hình"}
+        {isLoading ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" /> Đang lưu...
+          </>
+        ) : (
+          "Lưu cấu hình"
+        )}
       </Button>
     </div>
   );

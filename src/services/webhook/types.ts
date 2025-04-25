@@ -1,3 +1,4 @@
+
 export interface ContentGenerationParams {
   keywords: {
     main: string;
@@ -36,4 +37,10 @@ export interface WebhookResponse {
   content?: string;
   error?: string;
   rawResponse?: any;
+}
+
+export interface ConsoleLog {
+  timestamp: string;
+  message: string;
+  level: 'info' | 'error' | 'warning' | 'debug';
 }
