@@ -1,12 +1,13 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/common/Navbar";
 import Footer from "@/components/common/Footer";
 import { LoginForm } from "@/components/auth/LoginForm";
+import LoginHeader from "@/components/auth/LoginHeader";
+import LoginContainer from "@/components/auth/LoginContainer";
+import AuthLinks from "@/components/auth/AuthLinks";
 import { Button } from "@/components/ui/button";
 
 const Login = () => {
@@ -100,31 +101,15 @@ const Login = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      <div className="flex-grow flex items-center justify-center py-12">
-        <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow-lg">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold">Đăng nhập</h1>
-            <p className="text-gray-600 mt-2">
-              Chào mừng trở lại WriteSmart
-            </p>
-          </div>
-          
-          <LoginForm 
-            onSubmit={handleLogin}
-            isLoading={isLoading}
-            error={error}
-          />
-          
-          <div className="text-center mt-4">
-            <p className="text-gray-600">
-              Chưa có tài khoản?{" "}
-              <Link to="/register" className="text-primary hover:underline font-medium">
-                Đăng ký
-              </Link>
-            </p>
-          </div>
-        </div>
-      </div>
+      <LoginContainer>
+        <LoginHeader />
+        <LoginForm 
+          onSubmit={handleLogin}
+          isLoading={isLoading}
+          error={error}
+        />
+        <AuthLinks />
+      </LoginContainer>
       <Footer />
     </div>
   );
