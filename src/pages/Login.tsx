@@ -3,26 +3,36 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Navbar from "@/components/common/Navbar";
 import Footer from "@/components/common/Footer";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertTriangle } from "lucide-react";
 
 const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     email: "",
     password: ""
   });
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    // Clear error message when user changes input
+    setError(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Clear error message before processing
+    setError(null);
     
     // Validate form
     if (!formData.email || !formData.password) {
@@ -34,33 +44,44 @@ const Login = () => {
       return;
     }
     
-    // Here would be the integration with Supabase Auth
     setIsLoading(true);
+    
     try {
-      // Placeholder for Supabase Auth
-      // const { user, error } = await supabase.auth.signInWithPassword({ 
-      //   email: formData.email, 
-      //   password: formData.password
-      // });
+      // Sign in with Supabase Auth
+      const { data, error } = await supabase.auth.signInWithPassword({ 
+        email: formData.email, 
+        password: formData.password
+      });
       
-      // if (error) throw error;
+      if (error) throw error;
       
-      setTimeout(() => {
+      if (data.user) {
         toast({
           title: "Đăng nhập thành công!",
           description: "Đang chuyển hướng đến bảng điều khiển...",
         });
+        
         // Redirect to dashboard after successful login
-        // window.location.href = '/dashboard';
-        setIsLoading(false);
-      }, 1500);
+        setTimeout(() => {
+          navigate("/dashboard");
+        }, 1500);
+      }
+    } catch (error: any) {
+      console.error("Login error:", error);
       
-    } catch (error) {
+      // Handle specific error messages
+      if (error.message.includes("Invalid login credentials")) {
+        setError("Email hoặc mật khẩu không chính xác.");
+      } else {
+        setError(error.message || "Đã có lỗi xảy ra khi đăng nhập. Vui lòng thử lại sau.");
+      }
+      
       toast({
-        title: "Lỗi",
+        title: "Lỗi đăng nhập",
         description: "Email hoặc mật khẩu không chính xác.",
         variant: "destructive"
       });
+    } finally {
       setIsLoading(false);
     }
   };
@@ -76,6 +97,13 @@ const Login = () => {
               Chào mừng trở lại WriteSmart
             </p>
           </div>
+          
+          {error && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertTriangle className="h-4 w-4 mr-2" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
           
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
