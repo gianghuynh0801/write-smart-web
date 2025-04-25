@@ -41,7 +41,7 @@ export const useEmailVerification = () => {
 
       console.log("Creating verification token for user:", params.userId);
       
-      // Store verification token in database
+      // Store verification token in database - without checking for existing tokens
       const { error: tokenError } = await supabase
         .from('verification_tokens')
         .insert({
@@ -56,7 +56,7 @@ export const useEmailVerification = () => {
         throw tokenError;
       }
 
-      // Get the site URL from window location - this ensures we use the actual site URL
+      // Get the site URL from window location
       const siteUrl = window.location.origin;
       console.log("Site URL for verification:", siteUrl);
 
@@ -95,7 +95,7 @@ export const useEmailVerification = () => {
         description: `Không thể gửi email xác thực: ${error instanceof Error ? error.message : "Lỗi không xác định"}`,
         variant: "destructive",
       });
-      throw error; // Re-throw to handle in the calling function
+      throw error;
     }
   }, [toast]);
 
