@@ -15,6 +15,7 @@ import { FileText, Eye, Edit, Trash2, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
+import { Json } from "@/integrations/supabase/types";
 
 interface PublishHistoryItem {
   status: string;
@@ -64,18 +65,41 @@ const Articles = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+      
       // Transform the data to ensure publish_history is properly typed
-      const transformedArticles = data.map(article => ({
-        ...article,
-        // Ensure publish_history is an array of PublishHistoryItem
-        publish_history: Array.isArray(article.publish_history) 
-          ? article.publish_history 
-          : [],
-        // Ensure platform is an array
-        platform: Array.isArray(article.platform) 
-          ? article.platform 
-          : []
-      }));
+      const transformedArticles = data.map(article => {
+        // Transform publish_history to the correct type
+        let typedPublishHistory: PublishHistoryItem[] = [];
+        
+        if (article.publish_history) {
+          // Handle the case when publish_history is an array
+          if (Array.isArray(article.publish_history)) {
+            typedPublishHistory = article.publish_history.map((item: any) => ({
+              status: item.status || '',
+              timestamp: item.timestamp || 0,
+              platform: Array.isArray(item.platform) ? item.platform : []
+            }));
+          } 
+          // Handle the case when publish_history is a JSON object but not an array
+          else if (typeof article.publish_history === 'object') {
+            typedPublishHistory = [
+              {
+                status: (article.publish_history as any).status || '',
+                timestamp: (article.publish_history as any).timestamp || 0,
+                platform: Array.isArray((article.publish_history as any).platform) 
+                  ? (article.publish_history as any).platform 
+                  : []
+              }
+            ];
+          }
+        }
+        
+        return {
+          ...article,
+          publish_history: typedPublishHistory,
+          platform: Array.isArray(article.platform) ? article.platform : []
+        } as Article;
+      });
       
       setArticles(transformedArticles);
     } catch (error: any) {
