@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,7 +10,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import AdminLogin from "./pages/AdminLogin";
-import { DashboardLayout, Dashboard, CreateContent, Credits, Connections, Settings, Subscriptions } from "./pages/dashboard";
+import { DashboardLayout, Dashboard, CreateContent, Credits, Connections, Settings, Subscriptions, Articles } from "./pages/dashboard";
 import { AdminLayout, AdminDashboard, AdminUsers, AdminCredits, AdminSubscriptions, AdminSettings } from "./pages/admin";
 import NotFound from "./pages/NotFound";
 
@@ -40,6 +39,7 @@ const App = () => (
               <Route path="subscriptions" element={<Subscriptions />} />
               <Route path="connections" element={<Connections />} />
               <Route path="settings" element={<Settings />} />
+              <Route path="articles" element={<Articles />} />
             </Route>
 
             {/* Admin Routes */}

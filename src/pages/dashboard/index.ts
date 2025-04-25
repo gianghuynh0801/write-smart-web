@@ -1,6 +1,7 @@
 
 export { default as Dashboard } from './Dashboard';
 export { default as DashboardLayout } from './DashboardLayout';
+export { default as Articles } from './Articles';
 export { default as CreateContent } from './CreateContent';
 export { default as Credits } from './Credits';
 export { default as Connections } from './Connections';

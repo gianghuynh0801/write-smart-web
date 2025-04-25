@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 
 const navigation = [
   { name: "Tổng quan", href: "/dashboard", icon: BarChart3 },
+  { name: "Bài viết", href: "/dashboard/articles", icon: FileText },
   { name: "Tạo nội dung", href: "/dashboard/create", icon: FileText },
   { name: "Tín dụng", href: "/dashboard/credits", icon: CreditCard },
   { name: "Gói đăng ký", href: "/dashboard/subscriptions", icon: Package },

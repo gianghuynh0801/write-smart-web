@@ -9,6 +9,45 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      articles: {
+        Row: {
+          content: string | null
+          created_at: string | null
+          id: string
+          keywords: string[] | null
+          published_at: string | null
+          status: Database["public"]["Enums"]["article_status"] | null
+          title: string
+          updated_at: string | null
+          user_id: string
+          view_count: number | null
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          keywords?: string[] | null
+          published_at?: string | null
+          status?: Database["public"]["Enums"]["article_status"] | null
+          title: string
+          updated_at?: string | null
+          user_id: string
+          view_count?: number | null
+        }
+        Update: {
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          keywords?: string[] | null
+          published_at?: string | null
+          status?: Database["public"]["Enums"]["article_status"] | null
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+          view_count?: number | null
+        }
+        Relationships: []
+      }
       payment_history: {
         Row: {
           amount: number
@@ -196,7 +235,7 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      article_status: "draft" | "published" | "archived"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -311,6 +350,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      article_status: ["draft", "published", "archived"],
+    },
   },
 } as const
