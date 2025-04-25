@@ -1,13 +1,12 @@
 
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { useSmtpConfig } from "./SmtpConfigContext";
 
-interface GmailTipProps {
-  show: boolean;
-}
-
-export function GmailTip({ show }: GmailTipProps) {
-  if (!show) return null;
+export function GmailTip() {
+  const { config } = useSmtpConfig();
+  
+  if (!config.host.includes('gmail')) return null;
   
   return (
     <Alert className="mt-4 bg-blue-50">

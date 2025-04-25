@@ -1,18 +1,15 @@
 
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { type SmtpConfig } from "./types";
+import { useSmtpConfig } from "./SmtpConfigContext";
 
-interface SmtpConfigFormProps {
-  config: SmtpConfig;
-  onChange: (config: SmtpConfig) => void;
-}
+export function SmtpConfigForm() {
+  const { config, setConfig } = useSmtpConfig();
 
-export function SmtpConfigForm({ config, onChange }: SmtpConfigFormProps) {
-  const handleChange = (field: keyof SmtpConfig) => (
+  const handleChange = (field: keyof typeof config) => (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
-    onChange({ ...config, [field]: e.target.value });
+    setConfig({ ...config, [field]: e.target.value });
   };
 
   return (

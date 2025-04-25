@@ -3,23 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { type TestResult } from "./types";
+import { useSmtpConfig } from "./SmtpConfigContext";
 
-interface SmtpTestEmailProps {
-  testEmail: string;
-  onTestEmailChange: (email: string) => void;
-  onTest: () => void;
-  isTesting: boolean;
-  testResult: TestResult | null;
-}
+export function SmtpTestEmail() {
+  const { testEmail, setTestEmail, handleTest, isTesting, testResult } = useSmtpConfig();
 
-export function SmtpTestEmail({ 
-  testEmail, 
-  onTestEmailChange, 
-  onTest, 
-  isTesting,
-  testResult 
-}: SmtpTestEmailProps) {
   return (
     <div className="space-y-4">
       <div className="space-y-2">
@@ -29,7 +17,7 @@ export function SmtpTestEmail({
           type="email"
           placeholder="Nhập email để gửi test"
           value={testEmail}
-          onChange={(e) => onTestEmailChange(e.target.value)}
+          onChange={(e) => setTestEmail(e.target.value)}
         />
         <p className="text-xs text-muted-foreground mt-1">
           Nhập email của bạn để nhận email kiểm tra cấu hình SMTP
@@ -46,7 +34,7 @@ export function SmtpTestEmail({
       <div className="flex justify-end">
         <Button
           variant="outline"
-          onClick={onTest}
+          onClick={handleTest}
           disabled={isTesting}
         >
           {isTesting ? "Đang gửi..." : "Gửi email test"}
