@@ -6,6 +6,7 @@ export interface SmtpConfig {
   password: string;
   from_email: string;
   from_name: string;
+  test_email?: string;
 }
 
 export interface TestResult {

@@ -14,6 +14,7 @@ interface SmtpConfig {
   password: string;
   from_email: string;
   from_name: string;
+  test_email?: string;
 }
 
 serve(async (req) => {
@@ -25,6 +26,7 @@ serve(async (req) => {
   try {
     const body = await req.json();
     const config = body.config as SmtpConfig;
+    const testEmail = config.test_email;
     
     console.log("Received SMTP config request with:", {
       host: config.host,
@@ -32,6 +34,7 @@ serve(async (req) => {
       username: config.username,
       from_email: config.from_email,
       from_name: config.from_name,
+      test_email: testEmail,
       // Don't log password
     });
 
@@ -47,17 +50,17 @@ serve(async (req) => {
       throw new Error(`Thiếu trường ${missingFields.join(', ')}`);
     }
 
+    if (!testEmail) {
+      throw new Error("Thiếu email để gửi test");
+    }
+
     console.log("Attempting to connect to SMTP server:", { 
       host: config.host, 
       port: config.port,
       username: config.username,
+      test_email: testEmail,
       // Don't log password for security
     });
-
-    // Make sure we use the same email in the "from" field as the username
-    // This is important because many SMTP servers require the From email to match
-    // the authenticated user's email address
-    const fromEmail = config.from_email || config.username;
     
     const client = new SMTPClient({
       connection: {
@@ -72,9 +75,12 @@ serve(async (req) => {
       debug: true,  // Enable debug logging
     });
 
+    // Make sure we use the correct from email
+    const fromEmail = config.from_email || config.username;
+    
     await client.send({
       from: `${config.from_name || "Test"} <${fromEmail}>`,
-      to: config.username, // Send the test email to the authenticated user
+      to: testEmail,
       subject: "SMTP Test Email",
       content: "Đây là email test từ hệ thống. Nếu bạn nhận được email này, cấu hình SMTP đã hoạt động.",
       html: `
@@ -93,10 +99,13 @@ serve(async (req) => {
     });
 
     await client.close();
-    console.log("Email sent successfully");
+    console.log("Email sent successfully to:", testEmail);
 
     return new Response(
-      JSON.stringify({ success: true }),
+      JSON.stringify({ 
+        success: true, 
+        message: `Đã gửi email test thành công đến ${testEmail}` 
+      }),
       { 
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
@@ -121,12 +130,13 @@ serve(async (req) => {
     
     return new Response(
       JSON.stringify({ 
-        error: errorMessage,
+        success: false,
+        message: errorMessage,
         details: error.toString()
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 500,
+        status: 200, // Return 200 so the frontend can handle the error properly
       }
     );
   }

@@ -140,7 +140,7 @@ export function SmtpConfigCard() {
         body: { 
           config: {
             ...config,
-            username: testEmail
+            test_email: testEmail
           }
         },
       });
@@ -152,15 +152,15 @@ export function SmtpConfigCard() {
       if (data?.success) {
         setTestResult({
           success: true,
-          message: "Đã gửi email test thành công"
+          message: data.message || "Đã gửi email test thành công"
         });
         
         toast({
           title: "Thành công",
-          description: "Đã gửi email test thành công. Vui lòng kiểm tra hộp thư.",
+          description: data.message || "Đã gửi email test thành công. Vui lòng kiểm tra hộp thư.",
         });
-      } else if (data?.error) {
-        throw new Error(data.error);
+      } else if (data?.message) {
+        throw new Error(data.message);
       }
     } catch (error: any) {
       console.error('Error testing SMTP:', error);
