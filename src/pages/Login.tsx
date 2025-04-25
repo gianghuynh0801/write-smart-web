@@ -77,7 +77,21 @@ const Login = () => {
       if (error.message?.includes("Email not confirmed")) {
         setIsEmailNotConfirmed(true);
         setUnconfirmedEmail(formData.email);
-        setError("Email chưa được xác thực. Vui lòng kiểm tra hộp thư của bạn và xác nhận email trước khi đăng nhập.");
+        toast({
+          title: "Email chưa được xác thực",
+          description: "Vui lòng kiểm tra hộp thư của bạn và xác nhận email trước khi đăng nhập.",
+          variant: "destructive",
+          action: (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleResendVerification}
+              disabled={isLoading}
+            >
+              Gửi lại email xác thực
+            </Button>
+          )
+        });
       } else if (error.message.includes("Invalid login credentials")) {
         setError("Email hoặc mật khẩu không chính xác.");
       } else {
@@ -141,29 +155,6 @@ const Login = () => {
               <AlertTriangle className="h-4 w-4 mr-2" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
-          )}
-          
-          {isEmailNotConfirmed && (
-            <div className="p-4 bg-amber-50 border border-amber-200 rounded-md mb-4">
-              <div className="flex items-start">
-                <Mail className="h-5 w-5 text-amber-500 mt-0.5 mr-2" />
-                <div>
-                  <h3 className="font-medium text-amber-800">Email chưa được xác thực</h3>
-                  <p className="text-sm text-amber-700 mt-1">
-                    Vui lòng kiểm tra hộp thư của bạn và nhấn vào liên kết xác thực.
-                  </p>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="mt-2 text-amber-600 border-amber-300 hover:bg-amber-100"
-                    onClick={handleResendVerification}
-                    disabled={isLoading}
-                  >
-                    Gửi lại email xác thực
-                  </Button>
-                </div>
-              </div>
-            </div>
           )}
           
           <form onSubmit={handleSubmit} className="space-y-6">
