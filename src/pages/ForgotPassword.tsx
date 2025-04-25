@@ -54,7 +54,8 @@ const ForgotPassword = () => {
       });
       
       // Use the token (if available) or a placeholder
-      const token = authData?.session?.access_token || "reset-token";
+      // Adding proper null checking for authData.session
+      const token = authData?.session ? authData.session.access_token : "reset-token";
       
       // Send custom reset email
       await sendVerificationEmail({
