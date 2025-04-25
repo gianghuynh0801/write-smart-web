@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +23,12 @@ interface Article {
   created_at: string;
   updated_at: string;
   published_at: string | null;
+  platform: string[];
+  publish_history: {
+    status: string;
+    timestamp: number;
+    platform: string[];
+  }[];
 }
 
 const statusColors = {
@@ -96,6 +101,19 @@ const Articles = () => {
     return format(new Date(date), "dd/MM/yyyy HH:mm");
   };
 
+  const formatPlatforms = (platforms: string[]) => {
+    if (!platforms || platforms.length === 0) return "—";
+    return platforms.join(", ");
+  };
+
+  const getLastPublishInfo = (history: Article['publish_history']) => {
+    if (!history || history.length === 0) return null;
+    const lastPublish = history
+      .filter(h => h.status === 'published')
+      .sort((a, b) => b.timestamp - a.timestamp)[0];
+    return lastPublish;
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -115,6 +133,7 @@ const Articles = () => {
             <TableRow>
               <TableHead>Tiêu đề</TableHead>
               <TableHead>Trạng thái</TableHead>
+              <TableHead>Nền tảng</TableHead>
               <TableHead>Lượt xem</TableHead>
               <TableHead>Ngày tạo</TableHead>
               <TableHead>Xuất bản</TableHead>
@@ -136,6 +155,7 @@ const Articles = () => {
                     {statusLabels[article.status]}
                   </Badge>
                 </TableCell>
+                <TableCell>{formatPlatforms(article.platform)}</TableCell>
                 <TableCell>{article.view_count}</TableCell>
                 <TableCell>{formatDate(article.created_at)}</TableCell>
                 <TableCell>{formatDate(article.published_at)}</TableCell>
@@ -161,7 +181,7 @@ const Articles = () => {
             ))}
             {articles.length === 0 && !isLoading && (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                   Bạn chưa có bài viết nào.
                 </TableCell>
               </TableRow>

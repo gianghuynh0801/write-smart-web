@@ -15,6 +15,8 @@ export type Database = {
           created_at: string | null
           id: string
           keywords: string[] | null
+          platform: string[] | null
+          publish_history: Json | null
           published_at: string | null
           status: Database["public"]["Enums"]["article_status"] | null
           title: string
@@ -27,6 +29,8 @@ export type Database = {
           created_at?: string | null
           id?: string
           keywords?: string[] | null
+          platform?: string[] | null
+          publish_history?: Json | null
           published_at?: string | null
           status?: Database["public"]["Enums"]["article_status"] | null
           title: string
@@ -39,6 +43,8 @@ export type Database = {
           created_at?: string | null
           id?: string
           keywords?: string[] | null
+          platform?: string[] | null
+          publish_history?: Json | null
           published_at?: string | null
           status?: Database["public"]["Enums"]["article_status"] | null
           title?: string
