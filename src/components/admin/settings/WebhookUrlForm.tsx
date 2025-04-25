@@ -68,13 +68,36 @@ export const WebhookUrlForm = ({ initialUrl, onSave }: WebhookUrlFormProps) => {
         return;
       }
       
-      const { error } = await supabase
+      // Đầu tiên kiểm tra xem bản ghi đã tồn tại chưa
+      const { data: existingConfig } = await supabase
         .from('system_configurations')
-        .upsert({ 
-          key: 'webhook_url', 
-          value: webhookUrl || '',
-          updated_at: new Date().toISOString()
-        });
+        .select('*')
+        .eq('key', 'webhook_url')
+        .maybeSingle();
+      
+      let result;
+      
+      if (existingConfig) {
+        // Nếu bản ghi đã tồn tại, sử dụng UPDATE thay vì UPSERT
+        result = await supabase
+          .from('system_configurations')
+          .update({ 
+            value: webhookUrl || '',
+            updated_at: new Date().toISOString()
+          })
+          .eq('key', 'webhook_url');
+      } else {
+        // Nếu bản ghi chưa tồn tại, tạo mới
+        result = await supabase
+          .from('system_configurations')
+          .insert({ 
+            key: 'webhook_url', 
+            value: webhookUrl || '',
+            updated_at: new Date().toISOString()
+          });
+      }
+      
+      const { error } = result;
 
       if (error) {
         console.error('Lỗi khi lưu webhook URL:', error);
