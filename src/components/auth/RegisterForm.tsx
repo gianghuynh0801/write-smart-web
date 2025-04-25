@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,9 +6,8 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertTriangle, Mail } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { isValidEmail } from "@/utils/validation";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useEmailVerification } from "@/hooks/useEmailVerification";
 
 interface RegisterFormData {
@@ -44,7 +42,6 @@ export function RegisterForm() {
     e.preventDefault();
     setError(null);
     
-    // Validation
     if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
       toast({
         title: "Lỗi",
@@ -84,33 +81,39 @@ export function RegisterForm() {
     setIsLoading(true);
     
     try {
-      // Register user with Supabase
       const { data, error } = await supabase.auth.signUp({ 
         email: formData.email, 
         password: formData.password,
         options: {
           data: { 
-            full_name: formData.name 
-          },
-          emailRedirectTo: `${window.location.origin}/email-verified`,
+            full_name: formData.name,
+            email_verified: false
+          }
         }
       });
       
       if (error) throw error;
       
-      if (data.user && data.session) {
-        // Get the access token for verification
-        const token = data.session.access_token;
-        
-        // Send custom verification email
+      if (data.user) {
+        const { error: userUpdateError } = await supabase
+          .from('users')
+          .update({ 
+            name: formData.name, 
+            email_verified: false,
+            status: 'inactive' 
+          })
+          .eq('id', data.user.id);
+
+        if (userUpdateError) throw userUpdateError;
+
         await sendVerificationEmail({
           email: formData.email,
           name: formData.name,
-          token: token,
-          type: "signup"
+          userId: data.user.id,
+          type: "email_verification"
         });
         
-        setShowVerificationDialog(true);
+        navigate("/verify-email-prompt");
       }
     } catch (error: any) {
       console.error("Registration error:", error);

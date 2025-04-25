@@ -207,6 +207,7 @@ export type Database = {
           created_at: string | null
           credits: number | null
           email: string
+          email_verified: boolean | null
           id: string
           name: string
           role: string | null
@@ -218,6 +219,7 @@ export type Database = {
           created_at?: string | null
           credits?: number | null
           email: string
+          email_verified?: boolean | null
           id: string
           name: string
           role?: string | null
@@ -229,6 +231,7 @@ export type Database = {
           created_at?: string | null
           credits?: number | null
           email?: string
+          email_verified?: boolean | null
           id?: string
           name?: string
           role?: string | null
@@ -236,6 +239,41 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      verification_tokens: {
+        Row: {
+          created_at: string | null
+          expires_at: string
+          id: string
+          token: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at: string
+          id?: string
+          token: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          token?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "verification_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
