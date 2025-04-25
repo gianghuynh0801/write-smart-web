@@ -1,16 +1,18 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Mail } from "lucide-react";  // Changed from 'mail' to 'Mail'
+import { Mail } from "lucide-react";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 export function SmtpConfigCard() {
   const [isLoading, setIsLoading] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{success?: boolean; message?: string} | null>(null);
   const [config, setConfig] = useState({
     host: '',
     port: '',
@@ -21,20 +23,37 @@ export function SmtpConfigCard() {
   });
   const { toast } = useToast();
 
+  // Fetch initial config when component mounts
+  useEffect(() => {
+    fetchConfig();
+  }, []);
+
   // Fetch initial config
   const fetchConfig = async () => {
-    const { data, error } = await supabase
-      .from('system_configurations')
-      .select('value')
-      .eq('key', 'smtp_config')
-      .maybeSingle();
+    try {
+      const { data, error } = await supabase
+        .from('system_configurations')
+        .select('value')
+        .eq('key', 'smtp_config')
+        .maybeSingle();
 
-    if (!error && data?.value) {
-      try {
-        setConfig(JSON.parse(data.value));
-      } catch (e) {
-        console.error('Error parsing SMTP config:', e);
+      if (error) throw error;
+      
+      if (data?.value) {
+        try {
+          const parsedConfig = JSON.parse(data.value);
+          setConfig(parsedConfig);
+        } catch (e) {
+          console.error('Error parsing SMTP config:', e);
+          toast({
+            title: "Lỗi",
+            description: "Không thể đọc cấu hình SMTP",
+            variant: "destructive",
+          });
+        }
       }
+    } catch (error) {
+      console.error('Error fetching SMTP config:', error);
     }
   };
 
@@ -55,6 +74,9 @@ export function SmtpConfigCard() {
         title: "Thành công",
         description: "Đã lưu cấu hình SMTP",
       });
+      
+      // Clear previous test results after saving
+      setTestResult(null);
     } catch (error) {
       console.error('Error saving SMTP config:', error);
       toast({
@@ -70,6 +92,8 @@ export function SmtpConfigCard() {
   // Test SMTP config by sending a test email
   const handleTest = async () => {
     setIsTesting(true);
+    setTestResult(null);
+    
     try {
       const { data, error } = await supabase.functions.invoke('test-smtp', {
         body: { config },
@@ -77,12 +101,23 @@ export function SmtpConfigCard() {
 
       if (error) throw error;
 
+      setTestResult({
+        success: true,
+        message: "Đã gửi email test thành công"
+      });
+      
       toast({
         title: "Thành công",
         description: "Đã gửi email test thành công",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error testing SMTP:', error);
+      
+      setTestResult({
+        success: false,
+        message: `Không thể gửi email test: ${error.message || 'Lỗi không xác định'}`
+      });
+      
       toast({
         title: "Lỗi",
         description: "Không thể gửi email test",
@@ -97,7 +132,7 @@ export function SmtpConfigCard() {
     <Card>
       <CardHeader>
         <div className="flex items-center gap-2">
-          <Mail className="h-6 w-6 text-primary" />  {/* Changed from 'mail' to 'Mail' */}
+          <Mail className="h-6 w-6 text-primary" />
           <div>
             <CardTitle>Cấu hình SMTP</CardTitle>
             <CardDescription>
@@ -172,6 +207,13 @@ export function SmtpConfigCard() {
             </div>
           </div>
           
+          {testResult && (
+            <Alert variant={testResult.success ? "default" : "destructive"}>
+              <AlertTitle>{testResult.success ? "Thành công" : "Lỗi"}</AlertTitle>
+              <AlertDescription>{testResult.message}</AlertDescription>
+            </Alert>
+          )}
+          
           <div className="flex gap-2 justify-end">
             <Button
               variant="outline"
@@ -192,3 +234,4 @@ export function SmtpConfigCard() {
     </Card>
   );
 }
+
