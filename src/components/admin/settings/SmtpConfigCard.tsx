@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -22,14 +21,13 @@ export function SmtpConfigCard() {
     from_email: '',
     from_name: ''
   });
+  const [testEmail, setTestEmail] = useState('');
   const { toast } = useToast();
 
-  // Fetch initial config when component mounts
   useEffect(() => {
     fetchConfig();
   }, []);
 
-  // Fetch initial config
   const fetchConfig = async () => {
     try {
       const { data, error } = await supabase
@@ -71,7 +69,6 @@ export function SmtpConfigCard() {
     }
   };
 
-  // Save SMTP config
   const handleSave = async () => {
     if (!validateForm()) return;
     
@@ -86,14 +83,12 @@ export function SmtpConfigCard() {
       };
       
       if (configId) {
-        // Update existing record
         console.log(`Updating existing config with ID: ${configId}`);
         operation = supabase
           .from('system_configurations')
           .update(configData)
           .eq('id', configId);
       } else {
-        // Insert new record
         console.log("Inserting new config record");
         operation = supabase
           .from('system_configurations')
@@ -109,7 +104,6 @@ export function SmtpConfigCard() {
 
       console.log("SMTP config saved successfully:", data);
       
-      // If we just inserted a new record, we need to fetch it to get the ID
       if (!configId) {
         await fetchConfig();
       }
@@ -119,7 +113,6 @@ export function SmtpConfigCard() {
         description: "Đã lưu cấu hình SMTP",
       });
       
-      // Clear previous test results after saving
       setTestResult(null);
     } catch (error) {
       console.error('Error saving SMTP config:', error);
@@ -133,7 +126,6 @@ export function SmtpConfigCard() {
     }
   };
 
-  // Validate form before testing or saving
   const validateForm = () => {
     const requiredFields = ['host', 'port', 'username', 'password', 'from_email'];
     const missingFields = requiredFields.filter(field => !config[field as keyof typeof config]);
@@ -149,24 +141,31 @@ export function SmtpConfigCard() {
     return true;
   };
 
-  // Test SMTP config by sending a test email
   const handleTest = async () => {
     if (!validateForm()) return;
     
+    if (!testEmail) {
+      toast({
+        title: "Thiếu thông tin",
+        description: "Vui lòng nhập email để gửi test",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsTesting(true);
     setTestResult(null);
     
     try {
-      console.log("Testing SMTP configuration with values:", {
-        host: config.host,
-        port: config.port,
-        username: config.username,
-        from_email: config.from_email,
-        // Don't log password
-      });
+      console.log("Testing SMTP configuration with test email:", testEmail);
       
       const response = await supabase.functions.invoke('test-smtp', {
-        body: { config },
+        body: { 
+          config: {
+            ...config,
+            username: testEmail
+          }
+        },
       });
 
       console.log("SMTP test response:", response);
@@ -212,7 +211,6 @@ export function SmtpConfigCard() {
     }
   };
 
-  // Helper to show email provider tips
   const renderEmailProviderTips = () => {
     if (config.host.includes('gmail')) {
       return (
@@ -319,6 +317,20 @@ export function SmtpConfigCard() {
           </div>
           
           {renderEmailProviderTips()}
+          
+          <div className="space-y-2">
+            <Label htmlFor="test-email">Email kiểm tra</Label>
+            <Input 
+              id="test-email"
+              type="email"
+              placeholder="Nhập email để gửi test"
+              value={testEmail}
+              onChange={(e) => setTestEmail(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Nhập email của bạn để nhận email kiểm tra cấu hình SMTP
+            </p>
+          </div>
           
           {testResult && (
             <Alert variant={testResult.success ? "default" : "destructive"}>
