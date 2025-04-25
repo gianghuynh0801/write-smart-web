@@ -37,7 +37,10 @@ export function SmtpConfigCard() {
         .eq('key', 'smtp_config')
         .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching SMTP config:', error);
+        throw error;
+      }
       
       if (data?.value) {
         try {
@@ -54,22 +57,36 @@ export function SmtpConfigCard() {
       }
     } catch (error) {
       console.error('Error fetching SMTP config:', error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể tải cấu hình SMTP",
+        variant: "destructive",
+      });
     }
   };
 
   // Save SMTP config
   const handleSave = async () => {
+    if (!validateForm()) return;
+    
     setIsLoading(true);
     try {
-      const { error } = await supabase
+      console.log("Saving SMTP config:", JSON.stringify(config));
+      
+      const { data, error } = await supabase
         .from('system_configurations')
         .upsert({
           key: 'smtp_config',
           value: JSON.stringify(config)
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error saving SMTP config:', error);
+        throw error;
+      }
 
+      console.log("SMTP config saved successfully:", data);
+      
       toast({
         title: "Thành công",
         description: "Đã lưu cấu hình SMTP",
@@ -89,7 +106,7 @@ export function SmtpConfigCard() {
     }
   };
 
-  // Validate form before testing
+  // Validate form before testing or saving
   const validateForm = () => {
     const requiredFields = ['host', 'port', 'username', 'password', 'from_email'];
     const missingFields = requiredFields.filter(field => !config[field as keyof typeof config]);
