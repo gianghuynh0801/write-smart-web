@@ -17,15 +17,6 @@ interface VerificationRequest {
   site_url: string;
 }
 
-interface SmtpConfig {
-  host: string;
-  port: string;
-  username: string;
-  password: string;
-  from_email: string;
-  from_name: string;
-}
-
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -64,7 +55,7 @@ serve(async (req) => {
       throw new Error("SMTP configuration not found or error fetching it");
     }
 
-    const smtpConfig: SmtpConfig = JSON.parse(configData.value);
+    const smtpConfig = JSON.parse(configData.value);
     
     console.log("SMTP connection details:", {
       host: smtpConfig.host,
@@ -88,7 +79,7 @@ serve(async (req) => {
       debug: true,
     });
 
-    // Generate appropriate verification URL
+    // Generate appropriate verification URL and email template
     let finalVerificationUrl = verification_url;
     let subject = "";
     let emailTemplate = "";
@@ -112,27 +103,6 @@ serve(async (req) => {
         <p>Liên kết này sẽ hết hạn sau 24 giờ.</p>
         <p>Nếu bạn không yêu cầu xác nhận này, vui lòng bỏ qua email.</p>
       `;
-    } else if (verification_type === "password_reset") {
-      finalVerificationUrl = finalVerificationUrl || `${site_url}/reset-password?token=${verification_token}`;
-      subject = "Đặt lại mật khẩu của bạn";
-      emailTemplate = `
-        <h2>Xin chào!</h2>
-        <p>Chúng tôi đã nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn. Vui lòng nhấn vào nút dưới đây để đặt lại mật khẩu:</p>
-        <div style="text-align: center; margin: 30px 0;">
-          <a 
-            href="${finalVerificationUrl}" 
-            style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;"
-          >
-            Đặt lại mật khẩu
-          </a>
-        </div>
-        <p>Hoặc bạn có thể sao chép và dán liên kết sau vào trình duyệt:</p>
-        <p><a href="${finalVerificationUrl}">${finalVerificationUrl}</a></p>
-        <p>Liên kết này sẽ hết hạn sau 24 giờ.</p>
-        <p>Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.</p>
-      `;
-    } else {
-      throw new Error(`Unsupported verification type: ${verification_type}`);
     }
 
     // Send email

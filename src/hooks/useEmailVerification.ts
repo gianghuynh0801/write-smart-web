@@ -39,7 +39,7 @@ export const useEmailVerification = () => {
         throw new Error("Failed to ensure user exists in database");
       }
 
-      // Kiểm tra lại một lần nữa xem người dùng đã tồn tại chưa
+      // Double check that the user exists in our database
       const { data: userExists, error: userCheckError } = await supabase
         .from('users')
         .select('id')
