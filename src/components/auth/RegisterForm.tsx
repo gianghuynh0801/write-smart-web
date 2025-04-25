@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle, Mail } from "lucide-react";
 import { isValidEmail } from "@/utils/validation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { useEmailVerification } from "@/hooks/useEmailVerification";
 
 interface RegisterFormData {
   name: string;
@@ -31,6 +32,7 @@ export function RegisterForm() {
   
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { sendVerificationEmail } = useEmailVerification();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -82,6 +84,7 @@ export function RegisterForm() {
     setIsLoading(true);
     
     try {
+      // Register user with Supabase
       const { data, error } = await supabase.auth.signUp({ 
         email: formData.email, 
         password: formData.password,
@@ -95,7 +98,18 @@ export function RegisterForm() {
       
       if (error) throw error;
       
-      if (data.user) {
+      if (data.user && data.session) {
+        // Get the access token for verification
+        const token = data.session.access_token;
+        
+        // Send custom verification email
+        await sendVerificationEmail({
+          email: formData.email,
+          name: formData.name,
+          token: token,
+          type: "signup"
+        });
+        
         setShowVerificationDialog(true);
       }
     } catch (error: any) {

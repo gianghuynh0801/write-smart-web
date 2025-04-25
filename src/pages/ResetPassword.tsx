@@ -17,6 +17,7 @@ const ResetPassword = () => {
   const [success, setSuccess] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [accessToken, setAccessToken] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
@@ -24,7 +25,12 @@ const ResetPassword = () => {
   useEffect(() => {
     // Check if user came from a password reset link
     const hash = location.hash;
-    if (!hash || !hash.includes("access_token")) {
+    if (hash && hash.includes("access_token")) {
+      // Extract the token
+      const hashParams = new URLSearchParams(hash.substring(1));
+      const token = hashParams.get("access_token");
+      setAccessToken(token);
+    } else {
       setError("Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.");
     }
   }, [location]);
@@ -43,9 +49,21 @@ const ResetPassword = () => {
       return;
     }
 
+    if (!accessToken) {
+      setError("Không tìm thấy token xác thực.");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
+      // Set the session with the access token
+      await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: "",
+      });
+
+      // Update the password
       const { error } = await supabase.auth.updateUser({
         password: password
       });

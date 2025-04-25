@@ -18,18 +18,30 @@ const EmailVerified = () => {
       try {
         // Check if there's an access token in the URL - this means email was verified
         if (location.hash && location.hash.includes("access_token")) {
-          // Email has been verified successfully
-          setStatus("success");
-          setMessage("Email của bạn đã được xác thực thành công!");
+          // Extract the token from the URL hash
+          const hashParams = new URLSearchParams(location.hash.substring(1));
+          const accessToken = hashParams.get("access_token");
           
-          // Try to get the session
-          const { data } = await supabase.auth.getSession();
-          if (data && data.session) {
-            // User is already logged in
-            setMessage("Email của bạn đã được xác thực thành công! Bạn sẽ được chuyển hướng đến trang chủ.");
-            setTimeout(() => {
-              navigate("/dashboard");
-            }, 3000);
+          if (accessToken) {
+            // Email has been verified successfully
+            setStatus("success");
+            setMessage("Email của bạn đã được xác thực thành công!");
+            
+            // Try to exchange the token for a session
+            const { data, error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: hashParams.get("refresh_token") || "",
+            });
+            
+            if (data && data.session) {
+              // User is logged in
+              setMessage("Email của bạn đã được xác thực thành công! Bạn sẽ được chuyển hướng đến trang chủ.");
+              setTimeout(() => {
+                navigate("/dashboard");
+              }, 3000);
+            }
+          } else {
+            throw new Error("Access token not found in URL");
           }
         } else {
           // No access token found
