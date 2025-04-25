@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
+import { isValidEmail } from "@/utils/validation";
 
 interface RegisterFormData {
   name: string;
@@ -28,11 +30,6 @@ export function RegisterForm() {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const validateEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
-
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -43,19 +40,20 @@ export function RegisterForm() {
     e.preventDefault();
     setError(null);
     
-    if (!validateEmail(formData.email)) {
-      toast({
-        title: "Lỗi",
-        description: "Địa chỉ email không hợp lệ. Vui lòng kiểm tra lại.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
+    // Validation
     if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
       toast({
         title: "Lỗi",
         description: "Vui lòng điền đầy đủ thông tin.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!isValidEmail(formData.email)) {
+      toast({
+        title: "Lỗi",
+        description: "Địa chỉ email không hợp lệ.",
         variant: "destructive"
       });
       return;
@@ -69,16 +67,19 @@ export function RegisterForm() {
       });
       return;
     }
+
+    if (formData.password.length < 8) {
+      toast({
+        title: "Lỗi",
+        description: "Mật khẩu phải có ít nhất 8 ký tự.",
+        variant: "destructive"
+      });
+      return;
+    }
     
     setIsLoading(true);
     
     try {
-      const { data: configData } = await supabase
-        .from('system_configurations')
-        .select('value')
-        .eq('key', 'require_email_verification')
-        .maybeSingle();
-
       const { data, error } = await supabase.auth.signUp({ 
         email: formData.email, 
         password: formData.password,
@@ -93,17 +94,10 @@ export function RegisterForm() {
       if (error) throw error;
       
       if (data.user) {
-        if (configData?.value === 'true') {
-          toast({
-            title: "Đăng ký thành công!",
-            description: "Vui lòng kiểm tra email để xác nhận tài khoản.",
-          });
-        } else {
-          toast({
-            title: "Đăng ký thành công!",
-            description: "Đang chuyển hướng đến trang đăng nhập...",
-          });
-        }
+        toast({
+          title: "Đăng ký thành công!",
+          description: "Vui lòng kiểm tra email để xác thực tài khoản của bạn.",
+        });
         
         setTimeout(() => {
           navigate("/login");
@@ -163,10 +157,11 @@ export function RegisterForm() {
           id="password"
           name="password"
           type="password"
-          placeholder="Tạo mật khẩu"
+          placeholder="Tạo mật khẩu (ít nhất 8 ký tự)"
           value={formData.password}
           onChange={handleChange}
           required
+          minLength={8}
         />
       </div>
       
@@ -180,6 +175,7 @@ export function RegisterForm() {
           value={formData.confirmPassword}
           onChange={handleChange}
           required
+          minLength={8}
         />
       </div>
       

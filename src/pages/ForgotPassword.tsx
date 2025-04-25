@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +25,15 @@ const ForgotPassword = () => {
       toast({
         title: "Lỗi",
         description: "Vui lòng nhập địa chỉ email.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!isValidEmail(email)) {
+      toast({
+        title: "Lỗi",
+        description: "Địa chỉ email không hợp lệ.",
         variant: "destructive",
       });
       return;
