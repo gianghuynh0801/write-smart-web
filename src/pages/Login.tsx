@@ -1,114 +1,20 @@
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Link, useNavigate } from "react-router-dom";
-import Navbar from "@/components/common/Navbar";
-import Footer from "@/components/common/Footer";
+import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertTriangle, Mail } from "lucide-react";
+import Navbar from "@/components/common/Navbar";
+import Footer from "@/components/common/Footer";
+import { LoginForm } from "@/components/auth/LoginForm";
+import { Button } from "@/components/ui/button";
 
 const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isEmailNotConfirmed, setIsEmailNotConfirmed] = useState(false);
   const [unconfirmedEmail, setUnconfirmedEmail] = useState<string>("");
-  const [formData, setFormData] = useState({
-    email: "",
-    password: ""
-  });
   const { toast } = useToast();
   const navigate = useNavigate();
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    // Clear error message when user changes input
-    setError(null);
-    setIsEmailNotConfirmed(false);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Clear error message before processing
-    setError(null);
-    setIsEmailNotConfirmed(false);
-    
-    // Validate form
-    if (!formData.email || !formData.password) {
-      toast({
-        title: "Lỗi",
-        description: "Vui lòng điền đầy đủ thông tin.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    setIsLoading(true);
-    
-    try {
-      // Sign in with Supabase Auth
-      const { data, error } = await supabase.auth.signInWithPassword({ 
-        email: formData.email, 
-        password: formData.password
-      });
-      
-      if (error) throw error;
-      
-      if (data.user) {
-        toast({
-          title: "Đăng nhập thành công!",
-          description: "Đang chuyển hướng đến bảng điều khiển...",
-        });
-        
-        // Redirect to dashboard after successful login
-        setTimeout(() => {
-          navigate("/dashboard");
-        }, 1500);
-      }
-    } catch (error: any) {
-      console.error("Login error:", error);
-      
-      // Check specifically for email not confirmed error
-      if (error.message?.includes("Email not confirmed")) {
-        setIsEmailNotConfirmed(true);
-        setUnconfirmedEmail(formData.email);
-        toast({
-          title: "Email chưa được xác thực",
-          description: "Vui lòng kiểm tra hộp thư của bạn và xác nhận email trước khi đăng nhập.",
-          variant: "destructive",
-          action: (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleResendVerification}
-              disabled={isLoading}
-            >
-              Gửi lại email xác thực
-            </Button>
-          )
-        });
-      } else if (error.message.includes("Invalid login credentials")) {
-        setError("Email hoặc mật khẩu không chính xác.");
-      } else {
-        setError(error.message || "Đã có lỗi xảy ra khi đăng nhập. Vui lòng thử lại sau.");
-      }
-      
-      toast({
-        title: "Lỗi đăng nhập",
-        description: error.message?.includes("Email not confirmed") 
-          ? "Email chưa được xác thực. Vui lòng xác nhận email trước khi đăng nhập." 
-          : "Email hoặc mật khẩu không chính xác.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleResendVerification = async () => {
     if (!unconfirmedEmail) return;
@@ -138,6 +44,59 @@ const Login = () => {
     }
   };
 
+  const handleLogin = async (email: string, password: string) => {
+    setError(null);
+    setIsLoading(true);
+    
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ 
+        email, 
+        password 
+      });
+      
+      if (error) throw error;
+      
+      if (data.user) {
+        toast({
+          title: "Đăng nhập thành công!",
+          description: "Đang chuyển hướng đến bảng điều khiển...",
+        });
+        
+        setTimeout(() => {
+          navigate("/dashboard");
+        }, 1500);
+      }
+    } catch (error: any) {
+      console.error("Login error:", error);
+      
+      if (error.message?.includes("Email not confirmed")) {
+        setUnconfirmedEmail(email);
+        toast({
+          title: "Email chưa được xác thực",
+          description: "Vui lòng kiểm tra hộp thư của bạn và xác nhận email trước khi đăng nhập.",
+          variant: "destructive",
+          action: (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleResendVerification}
+              disabled={isLoading}
+            >
+              Gửi lại email xác thực
+            </Button>
+          )
+        });
+      } else {
+        setError(error.message?.includes("Invalid login credentials") 
+          ? "Email hoặc mật khẩu không chính xác."
+          : "Đã có lỗi xảy ra khi đăng nhập. Vui lòng thử lại sau."
+        );
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -150,52 +109,11 @@ const Login = () => {
             </p>
           </div>
           
-          {error && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertTriangle className="h-4 w-4 mr-2" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-          
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="Nhập email"
-                value={formData.email}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Mật khẩu</Label>
-                <Link 
-                  to="/forgot-password" 
-                  className="text-sm text-primary hover:underline"
-                >
-                  Quên mật khẩu?
-                </Link>
-              </div>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                placeholder="Nhập mật khẩu"
-                value={formData.password}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Đang xử lý..." : "Đăng nhập"}
-            </Button>
-          </form>
+          <LoginForm 
+            onSubmit={handleLogin}
+            isLoading={isLoading}
+            error={error}
+          />
           
           <div className="text-center mt-4">
             <p className="text-gray-600">
