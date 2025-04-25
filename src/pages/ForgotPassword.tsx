@@ -52,14 +52,10 @@ const ForgotPassword = () => {
         }
       });
       
-      // Use a placeholder token since we can't reliably get the actual token
-      // We're using a placeholder because the actual token structure might have changed
-      const token = "reset-token";
-      
       // Send custom reset email
       await sendVerificationEmail({
         email: email,
-        token: token,
+        userId: "placeholder", // We don't have the actual user ID here
         type: "password_reset"
       });
 

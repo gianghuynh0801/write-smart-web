@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -14,8 +15,8 @@ import EmailVerified from "./pages/EmailVerified";
 import AdminLogin from "./pages/AdminLogin";
 import EmailVerification from "./pages/EmailVerification";
 import VerifyEmailPrompt from "./pages/VerifyEmailPrompt";
-import DashboardLayout, { Dashboard, CreateContent, Credits, Connections, Settings, Subscriptions, Articles } from "./pages/dashboard";
-import AdminLayout, { AdminDashboard, AdminUsers, AdminCredits, AdminSubscriptions, AdminSettings } from "./pages/admin";
+import { DashboardLayout, Dashboard, CreateContent, Credits, Connections, Settings, Subscriptions, Articles } from "./pages/dashboard";
+import { AdminLayout, AdminDashboard, AdminUsers, AdminCredits, AdminSubscriptions, AdminSettings } from "./pages/admin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
