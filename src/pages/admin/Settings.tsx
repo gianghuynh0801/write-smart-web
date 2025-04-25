@@ -1,6 +1,7 @@
 
 import { Settings } from "lucide-react";
 import { WebhookUrlCard } from "@/components/admin/settings/WebhookUrlCard";
+import { EmailVerificationCard } from "@/components/admin/settings/EmailVerificationCard";
 
 const AdminSettings = () => {
   return (
@@ -15,6 +16,7 @@ const AdminSettings = () => {
         </div>
       </div>
       
+      <EmailVerificationCard />
       <WebhookUrlCard />
     </div>
   );

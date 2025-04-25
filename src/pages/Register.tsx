@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,8 +31,6 @@ const Register = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Xóa thông báo lỗi trước khi xử lý
     setError(null);
     
     // Validate form
@@ -58,60 +55,42 @@ const Register = () => {
     setIsLoading(true);
     
     try {
-      // Kiểm tra xem email đã tồn tại chưa
-      const { data: existingUser, error: checkError } = await supabase
-        .from('users')
-        .select('email')
-        .eq('email', formData.email)
+      // Check email verification requirement
+      const { data: configData } = await supabase
+        .from('system_configurations')
+        .select('value')
+        .eq('key', 'require_email_verification')
         .maybeSingle();
-      
-      if (checkError) {
-        console.error("Lỗi khi kiểm tra email:", checkError);
-        throw new Error("Có lỗi xảy ra khi kiểm tra email. Vui lòng thử lại sau.");
-      }
-      
-      if (existingUser) {
-        setError("Email này đã được sử dụng. Vui lòng chọn email khác hoặc đăng nhập.");
-        setIsLoading(false);
-        return;
-      }
-      
-      // Đăng ký với Supabase Auth
+
+      // Register with Supabase Auth
       const { data, error } = await supabase.auth.signUp({ 
         email: formData.email, 
         password: formData.password,
         options: {
           data: { 
             full_name: formData.name 
-          }
+          },
+          emailRedirectTo: `${window.location.origin}/login`,
         }
       });
       
       if (error) throw error;
       
-      // Nếu đăng ký thành công
       if (data.user) {
-        // Chèn vào bảng users, phải truyền id đúng và bổ sung các trường cần thiết
-        const { error: profileError } = await supabase.from('users').insert([
-          { 
-            id: data.user.id,
-            name: formData.name,
-            email: formData.email,
-            credits: 0,
-            role: 'user',
-            status: 'active',
-            avatar: '' // Có thể thay đổi thành URL mặc định
-          }
-        ]);
+        // If email verification is required
+        if (configData?.value === 'true') {
+          toast({
+            title: "Đăng ký thành công!",
+            description: "Vui lòng kiểm tra email để xác nhận tài khoản.",
+          });
+        } else {
+          toast({
+            title: "Đăng ký thành công!",
+            description: "Đang chuyển hướng đến trang đăng nhập...",
+          });
+        }
         
-        if (profileError) throw profileError;
-        
-        toast({
-          title: "Đăng ký thành công!",
-          description: "Vui lòng kiểm tra email để xác nhận tài khoản.",
-        });
-        
-        // Delay navigation để có thời gian cho toast hiển thị
+        // Delay navigation to show toast
         setTimeout(() => {
           navigate("/login");
         }, 2000);
@@ -119,7 +98,7 @@ const Register = () => {
     } catch (error: any) {
       console.error("Registration error:", error);
       
-      // Xử lý lỗi cụ thể
+      // Handle specific error messages
       if (error.code === "23505" || error.message?.includes("users_email_key")) {
         setError("Email này đã được sử dụng. Vui lòng chọn email khác hoặc đăng nhập.");
       } else {
