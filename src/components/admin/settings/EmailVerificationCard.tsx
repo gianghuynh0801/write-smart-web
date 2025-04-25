@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -12,7 +12,7 @@ export function EmailVerificationCard() {
   const { toast } = useToast();
 
   // Fetch initial state
-  useState(() => {
+  useEffect(() => {
     const fetchConfig = async () => {
       const { data, error } = await supabase
         .from('system_configurations')
