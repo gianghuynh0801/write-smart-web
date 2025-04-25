@@ -4,3 +4,4 @@ project_id = "lxhawtndkubaeljbaylp"
 [functions]
 [functions.sync-user]
 verify_jwt = false
+

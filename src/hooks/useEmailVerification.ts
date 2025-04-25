@@ -18,46 +18,27 @@ export const useEmailVerification = () => {
     try {
       console.log("Sending verification email for:", params.email, "userId:", params.userId);
       
-      // Check if user exists in the database
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('id, email')
-        .eq('id', params.userId)
-        .maybeSingle();
-        
-      if (userError) {
-        console.error("Error checking for user:", userError);
-        throw new Error(`User not found: ${userError.message}`);
+      // First ensure the user exists in our users table by using the sync-user function
+      console.log("Syncing user to ensure existence in database");
+      const { data: syncData, error: syncError } = await supabase.functions.invoke("sync-user", {
+        body: { 
+          user_id: params.userId, 
+          email: params.email, 
+          name: params.name 
+        }
+      });
+      
+      if (syncError) {
+        console.error("Error syncing user:", syncError);
+        throw new Error(`Failed to sync user: ${syncError.message}`);
       }
       
-      if (!userData) {
-        console.error("User not found in database:", params.userId);
-        
-        // Try to get user info from auth.users through admin functions
-        const { error: createUserError } = await supabase.functions.invoke("sync-user", {
-          body: { user_id: params.userId, email: params.email, name: params.name }
-        });
-        
-        if (createUserError) {
-          console.error("Error syncing user from auth:", createUserError);
-          throw new Error("User not found in database and couldn't be synchronized");
-        }
-        
-        // Wait a moment for the user to be created
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Verify again
-        const { data: newUserData, error: recheckError } = await supabase
-          .from('users')
-          .select('id')
-          .eq('id', params.userId)
-          .maybeSingle();
-        
-        if (recheckError || !newUserData) {
-          throw new Error("Failed to find or create user record");
-        }
-      }
+      console.log("User sync response:", syncData);
       
+      if (!syncData?.success) {
+        throw new Error("Failed to ensure user exists in database");
+      }
+
       // Generate verification token
       const token = generateRandomToken(32);
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
@@ -85,7 +66,7 @@ export const useEmailVerification = () => {
 
       // Call our custom edge function to send email using SMTP settings
       console.log("Invoking send-verification function");
-      const response = await supabase.functions.invoke("send-verification", {
+      const { data, error } = await supabase.functions.invoke("send-verification", {
         body: {
           email: params.email,
           name: params.name,
@@ -96,10 +77,14 @@ export const useEmailVerification = () => {
         }
       });
 
-      console.log("Edge function response:", response);
+      console.log("Edge function response:", data, error);
       
-      if (response.error) {
-        throw new Error(response.error.message || "Error sending verification email");
+      if (error) {
+        throw new Error(`Error sending verification email: ${error.message}`);
+      }
+      
+      if (!data?.success) {
+        throw new Error(data?.message || "Failed to send verification email");
       }
 
       toast({
@@ -107,7 +92,7 @@ export const useEmailVerification = () => {
         description: "Chúng tôi đã gửi email xác thực. Vui lòng kiểm tra hộp thư của bạn.",
       });
 
-      return { success: true, data: response.data };
+      return { success: true, data };
     } catch (error) {
       console.error("Error sending verification email:", error);
       toast({

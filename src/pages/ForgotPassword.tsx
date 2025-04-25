@@ -47,25 +47,27 @@ const ForgotPassword = () => {
         // Don't reveal that the user doesn't exist for security reasons
         // But log it for debugging
         console.log("Password reset requested for non-existent user:", email);
+        
+        // Still pretend we sent the email, for security
+        setIsSubmitted(true);
+        return;
       }
       
-      const userId = userData?.id || "placeholder";
+      const userId = userData.id;
 
-      // Generate a password reset token
-      const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+      // Generate a password reset token via Supabase Auth
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/reset-password`,
       });
 
       if (error) throw error;
       
-      // Send custom reset email if user exists
-      if (userData) {
-        await sendVerificationEmail({
-          email: email,
-          userId: userId,
-          type: "password_reset"
-        });
-      }
+      // Send custom reset email
+      await sendVerificationEmail({
+        email: email,
+        userId: userId,
+        type: "password_reset"
+      });
 
       setIsSubmitted(true);
     } catch (error: any) {

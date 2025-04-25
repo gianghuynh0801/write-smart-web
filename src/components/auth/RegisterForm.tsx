@@ -116,71 +116,38 @@ export function RegisterForm() {
       
       if (error) throw error;
       
-      if (data.user) {
-        console.log("Đã tạo tài khoản thành công, ID:", data.user.id);
-        
-        try {
-          // Wait for the user record to be created in the database
-          // This wait is important because sometimes user data might not be immediately accessible
-          console.log("Đợi 1.5 giây để đảm bảo user record được tạo...");
-          await new Promise(resolve => setTimeout(resolve, 1500));
-          
-          // Double-check that the user exists in our database
-          console.log("Xác nhận user tồn tại:", data.user.id);
-          const { data: userData, error: userCheckError } = await supabase
-            .from('users')
-            .select('id, email')
-            .eq('id', data.user.id)
-            .maybeSingle();
-          
-          if (userCheckError) {
-            console.error("Lỗi kiểm tra user:", userCheckError);
-            throw new Error("Không thể xác minh tài khoản: " + userCheckError.message);
-          }
-          
-          if (!userData) {
-            console.error("Không tìm thấy user trong database:", data.user.id);
-            throw new Error("Tài khoản đã được tạo nhưng không tìm thấy trong hệ thống. Vui lòng thử đăng nhập.");
-          }
-          
-          console.log("Đã xác nhận user tồn tại:", userData);
-          
-          // Update user profile in our custom users table
-          console.log("Cập nhật thông tin user:", data.user.id);
-          const { error: userUpdateError } = await supabase
-            .from('users')
-            .update({ 
-              name: formData.name, 
-              email_verified: false,
-              status: 'inactive' 
-            })
-            .eq('id', data.user.id);
-
-          if (userUpdateError) throw userUpdateError;
-          
-          // After the user record is confirmed, send the verification email
-          console.log("Gửi email xác thực cho:", formData.email);
-          await sendVerificationEmail({
-            email: formData.email,
-            name: formData.name,
-            userId: data.user.id,
-            type: "email_verification"
-          });
-          
-          console.log("Đã gửi email xác thực thành công");
-          navigate("/verify-email-prompt");
-        } catch (emailError: any) {
-          console.error("Lỗi gửi email xác thực:", emailError);
-          // Even if email sending fails, we've created the user, so navigate to the prompt page
-          toast({
-            title: "Cảnh báo",
-            description: "Đã tạo tài khoản nhưng không thể gửi email xác thực. Vui lòng liên hệ hỗ trợ.",
-            variant: "destructive"
-          });
-          navigate("/verify-email-prompt");
-        }
-      } else {
+      if (!data?.user) {
         throw new Error("Không thể tạo tài khoản. Vui lòng thử lại sau.");
+      }
+
+      const userId = data.user.id;
+      console.log("Đã tạo tài khoản thành công, ID:", userId);
+      
+      // Wait a moment to ensure the auth record is fully created
+      console.log("Đợi 1 giây để đảm bảo tài khoản được tạo đầy đủ...");
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      try {
+        // Send verification email through our hooked flow
+        console.log("Gửi email xác thực cho:", formData.email);
+        await sendVerificationEmail({
+          email: formData.email,
+          name: formData.name,
+          userId: userId,
+          type: "email_verification"
+        });
+        
+        console.log("Đã gửi email xác thực thành công");
+        navigate("/verify-email-prompt");
+      } catch (emailError: any) {
+        console.error("Lỗi gửi email xác thực:", emailError);
+        // Even if email sending fails, we've created the user, so navigate to the prompt page
+        toast({
+          title: "Cảnh báo",
+          description: "Đã tạo tài khoản nhưng không thể gửi email xác thực. Vui lòng liên hệ hỗ trợ.",
+          variant: "destructive"
+        });
+        navigate("/verify-email-prompt");
       }
     } catch (error: any) {
       console.error("Registration error:", error);

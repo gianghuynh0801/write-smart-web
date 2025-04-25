@@ -28,7 +28,7 @@ serve(async (req) => {
 
     console.log(`Syncing user data for user ID: ${user_id}, email: ${email}`);
     
-    // Create Supabase admin client
+    // Create Supabase admin client with service role key
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
     
@@ -41,9 +41,14 @@ serve(async (req) => {
     // Check if user exists in auth.users
     const { data: authUser, error: authUserError } = await supabaseAdmin.auth.admin.getUserById(user_id);
 
-    if (authUserError || !authUser.user) {
+    if (authUserError) {
       console.error("User not found in auth.users:", authUserError);
-      throw new Error(`User not found in authentication system: ${authUserError?.message || "Unknown error"}`);
+      throw new Error(`User not found in authentication system: ${authUserError.message}`);
+    }
+
+    if (!authUser.user) {
+      console.error("User not found in auth system:", user_id);
+      throw new Error("User not found in authentication system");
     }
 
     console.log(`Confirmed user exists in auth system: ${user_id}`);
@@ -60,10 +65,12 @@ serve(async (req) => {
       throw existingUserError;
     }
 
+    // Create or update user record
+    let operation;
     if (!existingUser) {
-      // Create user record in public.users
+      // Create new user record
       console.log(`Creating user record in database for: ${user_id}`);
-      const { error: createError } = await supabaseAdmin
+      operation = supabaseAdmin
         .from('users')
         .insert({
           id: user_id,
@@ -71,23 +78,37 @@ serve(async (req) => {
           name: name || email.split('@')[0],
           status: 'inactive',
           email_verified: false,
-          role: 'user'
+          role: 'user',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         });
-
-      if (createError) {
-        console.error("Error creating user record:", createError);
-        throw createError;
-      }
-
-      console.log(`User record created successfully for ${user_id}`);
     } else {
-      console.log(`User ${user_id} already exists in the database, no need to create`);
+      // Update existing user
+      console.log(`User ${user_id} already exists, updating information`);
+      operation = supabaseAdmin
+        .from('users')
+        .update({
+          email: email,
+          name: name || existingUser.name,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user_id);
     }
+
+    const { error: operationError } = await operation;
+    if (operationError) {
+      console.error("Error creating/updating user record:", operationError);
+      throw operationError;
+    }
+
+    console.log(`User record operation successful for ${user_id}`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: "User synchronized successfully" 
+        message: "User synchronized successfully",
+        user_id: user_id,
+        is_new: !existingUser
       }),
       { 
         headers: { ...corsHeaders, "Content-Type": "application/json" },

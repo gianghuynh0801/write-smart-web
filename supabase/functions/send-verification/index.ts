@@ -11,8 +11,9 @@ const corsHeaders = {
 interface VerificationRequest {
   email: string;
   name?: string;
-  verification_type: "signup" | "password_reset";
+  verification_type: "email_verification" | "password_reset";
   verification_token: string;
+  verification_url?: string;
   site_url: string;
 }
 
@@ -32,14 +33,25 @@ serve(async (req) => {
   }
 
   try {
-    const { email, name, verification_type, verification_token, site_url } = await req.json() as VerificationRequest;
+    const { 
+      email, 
+      name, 
+      verification_type, 
+      verification_token,
+      verification_url,
+      site_url 
+    } = await req.json() as VerificationRequest;
+    
+    if (!email || !verification_type || !verification_token) {
+      throw new Error("Missing required parameters");
+    }
     
     console.log(`Processing ${verification_type} verification for ${email}`);
 
     // Create Supabase client to access the database
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Fetch SMTP configuration from the database
     const { data: configData, error: configError } = await supabase
@@ -49,7 +61,7 @@ serve(async (req) => {
       .maybeSingle();
 
     if (configError || !configData?.value) {
-      throw new Error("SMTP configuration not found");
+      throw new Error("SMTP configuration not found or error fetching it");
     }
 
     const smtpConfig: SmtpConfig = JSON.parse(configData.value);
@@ -60,7 +72,6 @@ serve(async (req) => {
       username: smtpConfig.username,
       from_email: smtpConfig.from_email,
       from_name: smtpConfig.from_name,
-      // Don't log password
     });
 
     // Create SMTP client
@@ -78,51 +89,54 @@ serve(async (req) => {
     });
 
     // Generate appropriate verification URL
-    let verificationUrl = "";
+    let finalVerificationUrl = verification_url;
     let subject = "";
     let emailTemplate = "";
     
-    if (verification_type === "signup") {
-      verificationUrl = `${site_url}/#access_token=${verification_token}`;
+    if (verification_type === "email_verification") {
+      finalVerificationUrl = finalVerificationUrl || `${site_url}/verify-email?token=${verification_token}`;
       subject = "Xác nhận địa chỉ email của bạn";
       emailTemplate = `
         <h2>Xin chào ${name || "bạn"}!</h2>
         <p>Cảm ơn bạn đã đăng ký tài khoản. Vui lòng xác nhận địa chỉ email của bạn bằng cách nhấn vào nút dưới đây:</p>
         <div style="text-align: center; margin: 30px 0;">
           <a 
-            href="${verificationUrl}" 
+            href="${finalVerificationUrl}" 
             style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;"
           >
             Xác nhận email
           </a>
         </div>
         <p>Hoặc bạn có thể sao chép và dán liên kết sau vào trình duyệt:</p>
-        <p><a href="${verificationUrl}">${verificationUrl}</a></p>
+        <p><a href="${finalVerificationUrl}">${finalVerificationUrl}</a></p>
         <p>Liên kết này sẽ hết hạn sau 24 giờ.</p>
         <p>Nếu bạn không yêu cầu xác nhận này, vui lòng bỏ qua email.</p>
       `;
     } else if (verification_type === "password_reset") {
-      verificationUrl = `${site_url}/reset-password/#access_token=${verification_token}`;
+      finalVerificationUrl = finalVerificationUrl || `${site_url}/reset-password?token=${verification_token}`;
       subject = "Đặt lại mật khẩu của bạn";
       emailTemplate = `
         <h2>Xin chào!</h2>
         <p>Chúng tôi đã nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn. Vui lòng nhấn vào nút dưới đây để đặt lại mật khẩu:</p>
         <div style="text-align: center; margin: 30px 0;">
           <a 
-            href="${verificationUrl}" 
+            href="${finalVerificationUrl}" 
             style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;"
           >
             Đặt lại mật khẩu
           </a>
         </div>
         <p>Hoặc bạn có thể sao chép và dán liên kết sau vào trình duyệt:</p>
-        <p><a href="${verificationUrl}">${verificationUrl}</a></p>
-        <p>Liên kết này sẽ hết hạn sau 1 giờ.</p>
+        <p><a href="${finalVerificationUrl}">${finalVerificationUrl}</a></p>
+        <p>Liên kết này sẽ hết hạn sau 24 giờ.</p>
         <p>Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.</p>
       `;
+    } else {
+      throw new Error(`Unsupported verification type: ${verification_type}`);
     }
 
     // Send email
+    console.log(`Sending email to ${email} with subject "${subject}"`);
     await client.send({
       from: `${smtpConfig.from_name || "WriteSmart"} <${smtpConfig.from_email}>`,
       to: email,
