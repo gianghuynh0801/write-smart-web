@@ -9,6 +9,7 @@ import i18n from "./utils/i18n";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword";
 import AdminLogin from "./pages/AdminLogin";
 import { DashboardLayout, Dashboard, CreateContent, Credits, Connections, Settings, Subscriptions } from "./pages/dashboard";
 import { AdminLayout, AdminDashboard, AdminUsers, AdminCredits, AdminSubscriptions, AdminSettings } from "./pages/admin";
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/admin-login" element={<AdminLogin />} />
 
             {/* Dashboard Routes */}
