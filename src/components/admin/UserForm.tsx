@@ -18,9 +18,10 @@ interface UserFormProps {
 }
 
 const UserForm = ({ user, onSubmit, onCancel, isSubmitting = false }: UserFormProps) => {
-  const { form, subscriptions, isLoading, internalSubmitting, handleSubmit } = useUserForm(user, onSubmit);
+  const { form, subscriptions, isLoading, handleSubmit } = useUserForm(user, onSubmit);
   
-  const buttonDisabled = isLoading || isSubmitting || internalSubmitting;
+  const buttonDisabled = isLoading || isSubmitting;
+  const showSpinner = isLoading || isSubmitting;
   
   return (
     <Form {...form}>
@@ -42,7 +43,7 @@ const UserForm = ({ user, onSubmit, onCancel, isSubmitting = false }: UserFormPr
             Hủy bỏ
           </Button>
           <Button type="submit" disabled={buttonDisabled}>
-            {(isLoading || isSubmitting || internalSubmitting) && 
+            {showSpinner && 
               <Loader className="mr-2 h-4 w-4 animate-spin" />
             }
             {user ? "Cập nhật" : "Tạo mới"}

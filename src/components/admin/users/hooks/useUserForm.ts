@@ -19,7 +19,6 @@ const formSchema = z.object({
 export const useUserForm = (user?: User, onSubmit?: (data: UserFormValues) => Promise<void>) => {
   const [subscriptions, setSubscriptions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [internalSubmitting, setInternalSubmitting] = useState(false);
   const [originalSubscription, setOriginalSubscription] = useState<string>(user?.subscription || "Không có");
   const { toast } = useToast();
 
@@ -43,33 +42,51 @@ export const useUserForm = (user?: User, onSubmit?: (data: UserFormValues) => Pr
   });
 
   useEffect(() => {
+    let mounted = true;
+
     if (user) {
       setOriginalSubscription(user.subscription || "Không có");
     }
     
     const loadSubscriptions = async () => {
+      if (!mounted) return;
+      
       setIsLoading(true);
       try {
         const options = await getSubscriptionOptions();
-        setSubscriptions(options);
+        if (mounted) {
+          setSubscriptions(options);
+        }
       } catch (error) {
-        toast({
-          title: "Lỗi",
-          description: "Không thể tải danh sách gói đăng ký",
-          variant: "destructive"
-        });
+        if (mounted) {
+          console.error("Lỗi khi tải gói đăng ký:", error);
+          toast({
+            title: "Lỗi",
+            description: "Không thể tải danh sách gói đăng ký",
+            variant: "destructive"
+          });
+        }
       } finally {
-        setIsLoading(false);
+        if (mounted) {
+          setIsLoading(false);
+        }
       }
     };
     
     loadSubscriptions();
+
+    return () => {
+      mounted = false;
+    };
   }, [toast, user]);
 
   const handleFormSubmit = async (data: UserFormValues) => {
-    if (internalSubmitting) return;
+    if (isLoading) {
+      console.log("Đang xử lý, bỏ qua submit mới");
+      return;
+    }
     
-    setInternalSubmitting(true);
+    setIsLoading(true);
     try {
       if (user && data.subscription !== originalSubscription) {
         console.log(`Thay đổi gói đăng ký từ ${originalSubscription} thành ${data.subscription}`);
@@ -87,13 +104,14 @@ export const useUserForm = (user?: User, onSubmit?: (data: UserFormValues) => Pr
         await onSubmit(data);
       }
     } catch (error) {
+      console.error("Lỗi khi xử lý form:", error);
       toast({
         title: "Lỗi",
         description: error instanceof Error ? error.message : "Đã xảy ra lỗi khi lưu thông tin",
         variant: "destructive"
       });
     } finally {
-      setInternalSubmitting(false);
+      setIsLoading(false);
     }
   };
 
@@ -101,7 +119,6 @@ export const useUserForm = (user?: User, onSubmit?: (data: UserFormValues) => Pr
     form,
     subscriptions,
     isLoading,
-    internalSubmitting,
     handleSubmit: handleFormSubmit
   };
 };

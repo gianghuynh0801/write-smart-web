@@ -1,7 +1,6 @@
 
 import { useEffect, useState } from "react";
 import { Loader } from "lucide-react";
-
 import {
   Dialog,
   DialogContent,
@@ -24,54 +23,68 @@ interface UserDialogProps {
 const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) => {
   const [user, setUser] = useState<User | undefined>();
   const [isLoading, setIsLoading] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
   
   useEffect(() => {
+    let mounted = true;
+
     const fetchUser = async () => {
       if (!userId || !isOpen) {
-        setUser(undefined);
+        if (mounted) {
+          setUser(undefined);
+        }
         return;
       }
       
-      setIsLoading(true);
+      if (mounted) {
+        setIsLoading(true);
+      }
+
       try {
         console.log("Fetching user with ID:", userId);
         const userData = await getUserById(userId);
-        console.log("Fetched user data:", userData);
-        setUser(userData);
+        if (mounted) {
+          console.log("Fetched user data:", userData);
+          setUser(userData);
+        }
       } catch (error: any) {
         console.error("Error fetching user:", error);
-        toast({
-          title: "Lỗi",
-          description: error.message || "Không thể tải thông tin người dùng",
-          variant: "destructive"
-        });
+        if (mounted) {
+          toast({
+            title: "Lỗi",
+            description: error.message || "Không thể tải thông tin người dùng",
+            variant: "destructive"
+          });
+        }
       } finally {
-        setIsLoading(false);
+        if (mounted) {
+          setIsLoading(false);
+        }
       }
     };
     
     if (isOpen) {
       fetchUser();
     }
+
+    return () => {
+      mounted = false;
+    };
   }, [userId, isOpen, toast]);
   
   const handleSubmit = async (data: UserFormValues) => {
-    if (isSaving) return;
+    if (isLoading) return;
     
-    setIsSaving(true);
+    setIsLoading(true);
     try {
       console.log("Saving user data:", data);
       if (userId) {
-        // Cố gắng cập nhật người dùng hiện có
         await updateUser(userId, data);
         toast({
           title: "Thành công",
           description: "Cập nhật thông tin người dùng thành công"
         });
       } else {
-        // Tạo người dùng mới
         await createUser(data);
         toast({
           title: "Thành công",
@@ -79,30 +92,19 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
         });
       }
       
-      // Đảm bảo callback được gọi trước khi đóng dialog
       onUserSaved();
-      
-      // Đặt timeout nhỏ để đảm bảo UI được cập nhật trước khi đóng dialog
-      setTimeout(() => {
-        onClose();
-        setIsSaving(false);
-      }, 300);
+      onClose();
     } catch (error: any) {
       console.error("Lỗi khi lưu người dùng:", error);
       
-      // Thử dùng dữ liệu giả khi API lỗi
       if (!userId) {
-        // Tạo người dùng giả nếu đây là thêm mới
         console.log("Tạo người dùng giả lập vì API lỗi");
         toast({
           title: "Đã xử lý",
           description: "Tạo người dùng thành công (chế độ giả lập)"
         });
-        onUserSaved(); // Vẫn gọi callback để UI được cập nhật
-        setTimeout(() => {
-          onClose();
-          setIsSaving(false);
-        }, 300);
+        onUserSaved();
+        onClose();
         return;
       }
       
@@ -111,19 +113,15 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
         description: error.message || "Có lỗi xảy ra khi lưu thông tin",
         variant: "destructive"
       });
-      setIsSaving(false); // Đảm bảo reset trạng thái
+    } finally {
+      setIsLoading(false);
     }
   };
   
-  // Đảm bảo dialog đóng đúng cách
+  // Đảm bảo dialog không đóng khi đang xử lý
   const handleDialogClose = () => {
-    if (!isSaving) {
+    if (!isLoading) {
       onClose();
-    } else {
-      toast({
-        title: "Đang xử lý",
-        description: "Vui lòng đợi trong khi chúng tôi lưu thông tin của bạn",
-      });
     }
   };
   
@@ -137,7 +135,7 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
           </DialogDescription>
         </DialogHeader>
         
-        {isLoading ? (
+        {isLoading && !user ? (
           <div className="flex justify-center items-center py-8">
             <Loader className="h-8 w-8 animate-spin text-primary" />
           </div>
@@ -146,7 +144,7 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
             user={user} 
             onSubmit={handleSubmit} 
             onCancel={handleDialogClose}
-            isSubmitting={isSaving}
+            isSubmitting={isLoading}
           />
         )}
       </DialogContent>
