@@ -11,12 +11,15 @@ import { useToast } from "@/hooks/use-toast";
 import WebhookAlert from "./components/WebhookAlert";
 import { useWebhookCheck } from "./hooks/useWebhookCheck";
 import { useContentForm } from "./hooks/useContentForm";
+import { supabase } from "@/integrations/supabase/client";
+import { checkUserCredits, deductCredits, getArticleCost } from "@/services/creditService";
 
 const CreateContent = () => {
   const [activeTab, setActiveTab] = useState("keywords");
   const [openDialog, setOpenDialog] = useState(false);
   const [editableContent, setEditableContent] = useState("");
   const [savedContent, setSavedContent] = useState("");
+  const [isPublishing, setIsPublishing] = useState(false);
   
   const { toast } = useToast();
   const { isGenerating, generateContent } = useContentGeneration();
@@ -46,20 +49,116 @@ const CreateContent = () => {
     }
   };
 
-  const handleSave = () => {
-    setSavedContent(editableContent);
-    toast({
-      title: "Đã lưu nháp",
-      description: "Nội dung bài viết đã được lưu vào bộ nhớ tạm.",
-    });
+  const handleSave = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast({
+        title: "Chưa đăng nhập",
+        description: "Vui lòng đăng nhập để lưu bài viết.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      // Kiểm tra credit
+      const [userCredits, articleCost] = await Promise.all([
+        checkUserCredits(user.id),
+        getArticleCost()
+      ]);
+
+      if (userCredits < articleCost) {
+        toast({
+          title: "Không đủ credit",
+          description: `Bạn cần ${articleCost} credit để lưu bài viết. Số dư hiện tại: ${userCredits} credit.`,
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Lưu bài viết
+      const { data: article, error: articleError } = await supabase
+        .from('articles')
+        .insert([{
+          user_id: user.id,
+          content: editableContent,
+          title: formState.mainKeyword,
+          keywords: [formState.mainKeyword, ...formState.subKeywords],
+          status: 'draft'
+        }])
+        .select()
+        .single();
+
+      if (articleError) throw articleError;
+
+      // Trừ credit
+      const deducted = await deductCredits(
+        user.id, 
+        articleCost,
+        `Tạo bài viết: ${formState.mainKeyword}`
+      );
+
+      if (!deducted) throw new Error("Không thể trừ credit");
+
+      setSavedContent(editableContent);
+      toast({
+        title: "Đã lưu bài viết",
+        description: `Đã trừ ${articleCost} credit cho bài viết này.`,
+      });
+
+    } catch (error) {
+      console.error('Lỗi khi lưu bài:', error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể lưu bài viết. Vui lòng thử lại sau.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handlePublish = () => {
-    console.log("Nội dung sẽ đăng:", editableContent);
-    toast({
-      title: "Đăng bài viết",
-      description: "Đã gửi nội dung lên hệ thống (demo - log ra console).",
-    });
+  const handlePublish = async () => {
+    if (isPublishing) return;
+    setIsPublishing(true);
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Chưa đăng nhập",
+          description: "Vui lòng đăng nhập để đăng bài viết.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Cập nhật trạng thái bài viết
+      const { error: publishError } = await supabase
+        .from('articles')
+        .update({ 
+          status: 'published',
+          content: editableContent,
+          published_at: new Date().toISOString()
+        })
+        .eq('user_id', user.id)
+        .eq('title', formState.mainKeyword);
+
+      if (publishError) throw publishError;
+
+      toast({
+        title: "Đã đăng bài viết",
+        description: "Bài viết của bạn đã được đăng công khai.",
+      });
+
+    } catch (error) {
+      console.error('Lỗi khi đăng bài:', error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể đăng bài viết. Vui lòng thử lại sau.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsPublishing(false);
+    }
   };
 
   return (
