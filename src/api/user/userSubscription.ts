@@ -6,31 +6,27 @@ import { Subscription } from "@/types/subscriptions";
 // Handle subscription changes for a user
 export async function handleSubscriptionChange(userId: string, subscriptionName: string) {
   try {
-    console.log("Handling subscription change for user:", userId, "to:", subscriptionName);
+    console.log("Xử lý thay đổi gói đăng ký cho người dùng:", userId, "thành:", subscriptionName);
     
+    // Luôn hủy các gói đăng ký hiện tại trước khi thêm gói mới
+    try {
+      console.log("Hủy tất cả gói đăng ký đang hoạt động cho người dùng:", userId);
+      await createUserSubscriptionAsAdmin(userId, -1, '', '', 'inactive');
+    } catch (deactivateErr) {
+      console.error(`Lỗi khi hủy gói đăng ký hiện tại: ${deactivateErr}`);
+      throw new Error(`Không thể hủy gói đăng ký hiện tại: ${deactivateErr instanceof Error ? deactivateErr.message : 'Lỗi không xác định'}`);
+    }
+    
+    // Nếu người dùng chọn "Không có" thì chỉ cần hủy các gói đang hoạt động
     if (subscriptionName === "Không có") {
-      // Logic xử lý khi người dùng không còn gói đăng ký
-      console.log("Removing all active subscriptions for user:", userId);
-      
-      // Deactivate existing subscriptions using admin client to bypass RLS
-      try {
-        // Instead of using RPC which is causing the type error,
-        // we'll directly use the admin operations to deactivate subscriptions
-        console.log("Deactivating all active subscriptions for user:", userId);
-        await createUserSubscriptionAsAdmin(userId, -1, '', '', 'inactive');
-      } catch (deactivateErr) {
-        console.error(`Error deactivating subscriptions: ${deactivateErr}`);
-        // Try direct database update as fallback
-        await createUserSubscriptionAsAdmin(userId, -1, '', '', 'inactive');
-      }
-      
+      console.log("Người dùng đã chọn không sử dụng gói đăng ký nào");
       return {
         success: true,
         message: "Đã hủy tất cả gói đăng ký"
       };
     }
     
-    // Get subscription info from name
+    // Lấy thông tin gói đăng ký từ tên
     const { data: subscriptionData, error: subscriptionError } = await supabase
       .from("subscriptions")
       .select("id")
@@ -39,40 +35,7 @@ export async function handleSubscriptionChange(userId: string, subscriptionName:
 
     if (subscriptionError) {
       console.error(`Lỗi khi tìm gói đăng ký: ${subscriptionError.message}`);
-      
-      // Xử lý giả lập khi gặp lỗi hoặc không có môi trường Supabase thực tế
-      console.log("Sử dụng dữ liệu giả lập cho subscription");
-      
-      const mockSubscriptionId = {
-        "Không có": -1,
-        "Cơ bản": 1,
-        "Chuyên nghiệp": 2, 
-        "Doanh nghiệp": 3
-      }[subscriptionName] || 1;
-      
-      // Calculate subscription dates
-      const startDate = new Date().toISOString().split('T')[0];
-      const endDate = new Date();
-      endDate.setMonth(endDate.getMonth() + 1); // 1 month subscription
-      const endDateStr = endDate.toISOString().split('T')[0];
-
-      console.log("Creating mock subscription with dates:", { startDate, endDateStr, mockSubscriptionId });
-      
-      // Thực hiện tạo subscription thật với admin client
-      try {
-        await createUserSubscriptionAsAdmin(userId, mockSubscriptionId, startDate, endDateStr, 'active');
-        return {
-          success: true,
-          message: `Đã cập nhật gói đăng ký thành ${subscriptionName}`
-        };
-      } catch (adminError) {
-        console.error("Không thể tạo subscription thật:", adminError);
-        // Return error message
-        return {
-          success: false,
-          message: `Không thể cập nhật gói đăng ký: ${adminError instanceof Error ? adminError.message : 'Lỗi không xác định'}`
-        };
-      }
+      throw new Error(`Không tìm thấy thông tin gói đăng ký: ${subscriptionError.message}`);
     }
 
     if (!subscriptionData) {
@@ -80,18 +43,18 @@ export async function handleSubscriptionChange(userId: string, subscriptionName:
       throw new Error(`Không tìm thấy gói đăng ký có tên: ${subscriptionName}`);
     }
 
-    console.log("Found subscription data:", subscriptionData);
+    console.log("Đã tìm thấy thông tin gói đăng ký:", subscriptionData);
     const subscriptionId = subscriptionData.id;
 
-    // Calculate subscription dates
+    // Tính toán ngày bắt đầu và kết thúc gói đăng ký
     const startDate = new Date().toISOString().split('T')[0];
     const endDate = new Date();
-    endDate.setMonth(endDate.getMonth() + 1); // 1 month subscription
+    endDate.setMonth(endDate.getMonth() + 1); // Gói 1 tháng
     const endDateStr = endDate.toISOString().split('T')[0];
 
-    console.log("Creating subscription with dates:", { startDate, endDateStr });
+    console.log("Tạo gói đăng ký mới với thông tin:", { startDate, endDateStr, subscriptionId });
 
-    // Use admin operations to bypass RLS
+    // Tạo gói đăng ký mới với quyền admin để bypass RLS
     await createUserSubscriptionAsAdmin(userId, subscriptionId, startDate, endDateStr, 'active');
 
     return {
@@ -112,28 +75,28 @@ export async function handleSubscriptionChange(userId: string, subscriptionName:
 // Get subscription options list
 export const getSubscriptionOptions = async (): Promise<string[]> => {
   try {
-    console.log("Fetching subscription options...");
+    console.log("Đang lấy danh sách gói đăng ký...");
     const { data, error } = await supabase
       .from("subscriptions")
       .select("name")
       .order('price', { ascending: true });
       
     if (error) {
-      console.error("Error fetching subscription options:", error.message);
+      console.error("Lỗi khi lấy danh sách gói đăng ký:", error.message);
       // Trả về các giá trị mặc định nếu không thể truy vấn từ database
       return ["Không có", "Cơ bản", "Chuyên nghiệp", "Doanh nghiệp"];
     }
     
-    // Always ensure "Không có" (None) is an option
+    // Luôn đảm bảo "Không có" (None) là một tùy chọn
     const options = data ? data.map(row => row.name) : [];
     if (!options.includes("Không có")) {
       options.unshift("Không có");
     }
     
-    console.log("Available subscription options:", options);
+    console.log("Các gói đăng ký có sẵn:", options);
     return options;
   } catch (error) {
-    console.error("Error processing subscription options:", error);
+    console.error("Lỗi khi xử lý danh sách gói đăng ký:", error);
     return ["Không có", "Cơ bản", "Chuyên nghiệp", "Doanh nghiệp"];
   }
 };

@@ -45,12 +45,68 @@ export const createUserSubscriptionAsAdmin = async (
   status: string = 'active'
 ): Promise<boolean> => {
   try {
-    console.log("Creating subscription with admin privileges:", { userId, subscriptionId, startDate, endDate, status });
+    console.log("Thực hiện thao tác gói đăng ký với quyền admin:", { userId, subscriptionId, startDate, endDate, status });
+    
+    // Kiểm tra user_id hợp lệ
+    if (!userId) {
+      throw new Error("ID người dùng không được để trống");
+    }
     
     const client = getAdminClient();
     
-    // If we're setting a new active subscription, deactivate all existing ones first
+    // Nếu đang hủy gói đăng ký hiện tại (status = 'inactive')
+    if (status === 'inactive') {
+      console.log("Đang hủy tất cả gói đăng ký hiện tại của người dùng:", userId);
+      
+      const { error: updateError } = await client
+        .from("user_subscriptions")
+        .update({ status: "inactive" })
+        .eq("user_id", userId)
+        .eq("status", "active");
+        
+      if (updateError) {
+        console.error("Lỗi khi hủy gói đăng ký hiện tại:", updateError.message);
+        throw new Error(`Không thể hủy gói đăng ký hiện tại: ${updateError.message}`);
+      }
+      
+      console.log("Đã hủy thành công tất cả gói đăng ký hiện tại");
+      
+      // Nếu chỉ cần hủy gói đăng ký hiện tại thì dừng tại đây
+      if (subscriptionId === -1 || !startDate || !endDate) {
+        console.log("Không tạo gói đăng ký mới, chỉ hủy gói hiện tại");
+        return true;
+      }
+    }
+    
+    // Nếu đang tạo gói đăng ký mới (status = 'active')
     if (status === 'active') {
+      // Kiểm tra các tham số bắt buộc
+      if (subscriptionId <= 0) {
+        throw new Error("ID gói đăng ký không hợp lệ");
+      }
+      
+      if (!startDate || !endDate) {
+        throw new Error("Ngày bắt đầu và kết thúc là bắt buộc");
+      }
+      
+      // Kiểm tra gói đăng ký tồn tại trong hệ thống
+      const { data: subscriptionExists, error: checkError } = await client
+        .from("subscriptions")
+        .select("id")
+        .eq("id", subscriptionId)
+        .maybeSingle();
+        
+      if (checkError) {
+        console.error("Lỗi khi kiểm tra gói đăng ký:", checkError.message);
+        throw new Error(`Không thể kiểm tra gói đăng ký: ${checkError.message}`);
+      }
+      
+      if (!subscriptionExists) {
+        console.error("Gói đăng ký không tồn tại trong hệ thống:", subscriptionId);
+        throw new Error(`Gói đăng ký ID=${subscriptionId} không tồn tại trong hệ thống`);
+      }
+      
+      // Đảm bảo đã hủy các gói đăng ký cũ trước khi tạo gói mới
       const { error: updateError } = await client
         .from("user_subscriptions")
         .update({ status: "inactive" })
@@ -59,42 +115,40 @@ export const createUserSubscriptionAsAdmin = async (
         
       if (updateError) {
         console.error("Lỗi khi cập nhật gói đăng ký cũ:", updateError.message);
-        throw new Error(`Could not deactivate old subscriptions: ${updateError.message}`);
+        throw new Error(`Không thể hủy gói đăng ký cũ: ${updateError.message}`);
       }
-    }
-    
-    // If subscription ID is -1 or we're just deactivating, don't create a new subscription
-    if (subscriptionId === -1 || (status === 'inactive' && !startDate)) {
-      console.log("No new subscription created - just deactivated existing ones");
-      return true;
-    }
-    
-    // Create the new subscription with direct database access
-    const { error: insertError } = await client
-      .from("user_subscriptions")
-      .insert({
-        user_id: userId,
-        subscription_id: subscriptionId,
-        start_date: startDate,
-        end_date: endDate,
-        status: status
-      });
       
-    if (insertError) {
-      console.error("Lỗi khi tạo gói đăng ký mới:", insertError.message);
-      throw new Error(`Could not create new subscription: ${insertError.message}`);
+      // Tạo gói đăng ký mới với quyền truy cập cơ sở dữ liệu trực tiếp
+      console.log("Đang tạo gói đăng ký mới:", { userId, subscriptionId, startDate, endDate, status });
+      
+      const { error: insertError } = await client
+        .from("user_subscriptions")
+        .insert({
+          user_id: userId,
+          subscription_id: subscriptionId,
+          start_date: startDate,
+          end_date: endDate,
+          status: status
+        });
+        
+      if (insertError) {
+        console.error("Lỗi khi tạo gói đăng ký mới:", insertError.message);
+        throw new Error(`Không thể tạo gói đăng ký mới: ${insertError.message}`);
+      }
+      
+      console.log("Đã tạo gói đăng ký mới thành công");
     }
     
     return true;
   } catch (error) {
-    console.error("Lỗi trong quá trình xử lý:", error);
-    throw error; // Re-throw to allow proper error handling upstream
+    console.error("Lỗi trong quá trình xử lý gói đăng ký:", error);
+    throw error; // Re-throw để xử lý lỗi ở các hàm gọi
   }
 };
 
 export const getUserActiveSubscription = async (userId: string) => {
   try {
-    console.log("Fetching active subscription for user:", userId);
+    console.log("Đang lấy thông tin gói đăng ký hiện tại cho người dùng:", userId);
     
     const client = getAdminClient();
 
