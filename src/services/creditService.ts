@@ -39,7 +39,48 @@ export const checkUserCredits = async (userId: string): Promise<number> => {
       throw new Error("Không thể kiểm tra số dư tín dụng: Thiếu thông tin người dùng");
     }
     
-    const { data, error } = await supabase
+    // Kiểm tra xem người dùng có tồn tại không
+    const { data: userExists, error: checkError } = await supabase
+      .from("users")
+      .select("id")
+      .eq("id", userId)
+      .maybeSingle();
+    
+    if (checkError) {
+      console.error("Lỗi khi kiểm tra người dùng tồn tại:", checkError);
+      throw new Error("Không thể kiểm tra số dư tín dụng");
+    }
+
+    if (!userExists) {
+      console.log("Không tìm thấy người dùng với ID:", userId);
+      
+      // Nếu không tìm thấy người dùng, thử tạo bản ghi mới
+      // Điều này có thể xảy ra nếu người dùng vừa đăng ký và chưa có bản ghi trong bảng users
+      try {
+        console.log("Đang thử tạo bản ghi người dùng mới...");
+        const { data: newUser, error: insertError } = await supabase
+          .from("users")
+          .insert([{ id: userId, credits: 0 }])
+          .select()
+          .maybeSingle();
+        
+        if (insertError) {
+          console.error("Không thể tạo bản ghi người dùng mới:", insertError);
+          throw new Error("Không thể tạo bản ghi tín dụng cho người dùng mới");
+        }
+        
+        if (newUser) {
+          console.log("Đã tạo bản ghi người dùng mới với số dư tín dụng: 0");
+          return 0;
+        }
+      } catch (createError) {
+        console.error("Lỗi khi tạo bản ghi người dùng mới:", createError);
+        throw new Error("Không thể tạo bản ghi tín dụng cho người dùng mới");
+      }
+    }
+    
+    // Lấy số dư tín dụng
+    const { data: userData, error } = await supabase
       .from("users")
       .select("credits")
       .eq("id", userId)
@@ -50,12 +91,12 @@ export const checkUserCredits = async (userId: string): Promise<number> => {
       throw new Error("Không thể kiểm tra số dư tín dụng");
     }
 
-    if (!data) {
+    if (!userData) {
       console.error("Không tìm thấy thông tin người dùng cho userId:", userId);
       throw new Error("Không tìm thấy thông tin tín dụng của người dùng");
     }
 
-    const credits = data.credits ?? 0;
+    const credits = userData.credits ?? 0;
     console.log("Số dư tín dụng hiện tại của user", userId, ":", credits);
     return credits;
   } catch (error) {
