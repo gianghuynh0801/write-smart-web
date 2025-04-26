@@ -1,7 +1,7 @@
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Save, FileUp } from "lucide-react";
+import { Save, FileUp, Loader2 } from "lucide-react";
 import RichTextEditor from "@/components/RichTextEditor";
 
 interface PreviewDialogProps {
@@ -12,6 +12,8 @@ interface PreviewDialogProps {
   mainKeyword: string;
   onSave: () => void;
   onPublish: () => void;
+  isSaving?: boolean;
+  isPublishing?: boolean;
 }
 
 const PreviewDialog = ({
@@ -22,6 +24,8 @@ const PreviewDialog = ({
   mainKeyword,
   onSave,
   onPublish,
+  isSaving = false,
+  isPublishing = false,
 }: PreviewDialogProps) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -39,13 +43,29 @@ const PreviewDialog = ({
           className="mb-2"
         />
         <div className="flex justify-end gap-2 mt-3">
-          <Button variant="outline" onClick={onSave}>
-            <Save className="w-4 h-4 mr-1" />
-            Lưu bài viết
+          <Button 
+            variant="outline" 
+            onClick={onSave} 
+            disabled={isSaving}
+          >
+            {isSaving ? (
+              <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+            ) : (
+              <Save className="w-4 h-4 mr-1" />
+            )}
+            {isSaving ? "Đang lưu..." : "Lưu bài viết"}
           </Button>
-          <Button variant="default" onClick={onPublish}>
-            <FileUp className="w-4 h-4 mr-1" />
-            Đăng bài viết
+          <Button 
+            variant="default" 
+            onClick={onPublish}
+            disabled={isPublishing}
+          >
+            {isPublishing ? (
+              <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+            ) : (
+              <FileUp className="w-4 h-4 mr-1" />
+            )}
+            {isPublishing ? "Đang đăng..." : "Đăng bài viết"}
           </Button>
           <Button onClick={() => onOpenChange(false)}>
             Đóng

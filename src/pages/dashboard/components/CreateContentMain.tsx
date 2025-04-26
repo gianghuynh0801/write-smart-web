@@ -100,7 +100,7 @@ const CreateContentMain = ({
   setFormality
 }: CreateContentMainProps) => {
   const [activeTab, setActiveTab] = useState("keywords");
-  const { isPublishing, handleSave, handlePublish } = useArticleActions();
+  const { isPublishing, isSaving, handleSave, handlePublish } = useArticleActions();
 
   return (
     <div className="w-full min-h-screen py-8 px-2 md:px-10 flex flex-col bg-background">
@@ -178,6 +178,8 @@ const CreateContentMain = ({
         mainKeyword={mainKeyword}
         onSave={() => handleSave(editableContent, mainKeyword, subKeywords)}
         onPublish={() => handlePublish(editableContent, mainKeyword)}
+        isSaving={isSaving}
+        isPublishing={isPublishing}
       />
     </div>
   );

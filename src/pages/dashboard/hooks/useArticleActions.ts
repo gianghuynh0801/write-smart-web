@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,26 +5,54 @@ import { checkUserCredits, deductCredits, getArticleCost } from "@/services/cred
 
 export const useArticleActions = () => {
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
 
   const handleSave = async (editableContent: string, mainKeyword: string, subKeywords: string[]) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      toast({
-        title: "Chưa đăng nhập",
-        description: "Vui lòng đăng nhập để lưu bài viết.",
-        variant: "destructive"
-      });
-      return;
-    }
+    if (isSaving) return;
+    setIsSaving(true);
 
     try {
+      console.log("=== Bắt đầu lưu bài viết ===");
+      
+      // Kiểm tra người dùng đã đăng nhập
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Chưa đăng nhập",
+          description: "Vui lòng đăng nhập để lưu bài viết.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Kiểm tra nội dung bài viết
+      if (!editableContent.trim()) {
+        toast({
+          title: "Thiếu nội dung",
+          description: "Vui lòng nhập nội dung bài viết trước khi lưu.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Kiểm tra từ khoá chính
+      if (!mainKeyword.trim()) {
+        toast({
+          title: "Thiếu từ khoá chính",
+          description: "Vui lòng nhập từ khoá chính trước khi lưu.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      console.log("Kiểm tra credit cho user:", user.id);
       const [userCredits, articleCost] = await Promise.all([
         checkUserCredits(user.id),
         getArticleCost()
       ]);
 
-      console.log(`Kiểm tra credit: Số dư hiện tại ${userCredits}, cần ${articleCost}`);
+      console.log(`Số dư hiện tại: ${userCredits}, chi phí bài viết: ${articleCost}`);
 
       if (userCredits < articleCost) {
         toast({
@@ -36,7 +63,7 @@ export const useArticleActions = () => {
         return;
       }
 
-      console.log("Bắt đầu lưu bài viết...");
+      console.log("Bắt đầu lưu bài viết vào database...");
       const { data: article, error: articleError } = await supabase
         .from('articles')
         .insert([{
@@ -51,10 +78,10 @@ export const useArticleActions = () => {
 
       if (articleError) {
         console.error("Lỗi khi lưu bài viết:", articleError);
-        throw articleError;
+        throw new Error(articleError.message);
       }
 
-      console.log("Đã lưu bài viết, bắt đầu trừ credit");
+      console.log("Đã lưu bài viết, bắt đầu trừ credit...");
       const deducted = await deductCredits(
         user.id, 
         articleCost,
@@ -68,7 +95,7 @@ export const useArticleActions = () => {
           description: "Bài viết đã được lưu nhưng có lỗi khi trừ credit.",
           variant: "default"
         });
-        return;
+        return article;
       }
 
       toast({
@@ -79,12 +106,15 @@ export const useArticleActions = () => {
       return article;
 
     } catch (error) {
-      console.error('Lỗi khi lưu bài:', error);
+      console.error('Lỗi chi tiết khi lưu bài:', error);
       toast({
-        title: "Lỗi",
-        description: "Không thể lưu bài viết. Vui lòng thử lại sau.",
+        title: "Lỗi khi lưu bài viết",
+        description: error instanceof Error ? error.message : "Không thể lưu bài viết. Vui lòng th�� lại sau.",
         variant: "destructive"
       });
+      return null;
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -134,6 +164,7 @@ export const useArticleActions = () => {
 
   return {
     isPublishing,
+    isSaving,
     handleSave,
     handlePublish
   };
