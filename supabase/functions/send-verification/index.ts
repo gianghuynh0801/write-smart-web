@@ -1,7 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,6 +16,11 @@ interface VerificationRequest {
   site_url: string;
 }
 
+const supabase = createClient(
+  Deno.env.get("SUPABASE_URL") || "",
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "",
+);
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -23,182 +28,133 @@ serve(async (req) => {
   }
 
   try {
-    // Log request information
-    console.log("Received request:", req.method, req.url);
-    
-    const { 
-      email, 
-      name, 
-      verification_type, 
-      verification_token,
-      site_url 
-    } = await req.json() as VerificationRequest;
-    
-    console.log("Request payload:", { 
-      email, 
-      name, 
-      verification_type, 
-      verification_token: verification_token ? "**token-exists**" : "**missing**", 
-      site_url 
-    });
-    
-    if (!email || !verification_type || !verification_token) {
-      throw new Error("Missing required parameters");
-    }
+    const { email, name, verification_type, verification_token, site_url } = await req.json() as VerificationRequest;
     
     console.log(`Processing ${verification_type} verification for ${email}`);
-
-    // Create Supabase client to access the database
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
     
-    console.log("Supabase URL available:", !!supabaseUrl);
-    console.log("Supabase Service Key available:", !!supabaseServiceKey);
+    // Check if required environment variables are set
+    if (!Deno.env.get("SUPABASE_URL") || !Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")) {
+      console.log("Required environment variables are not set");
+      throw new Error("Required environment variables are not set");
+    }
     
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Fetch SMTP and site configurations
+    console.log("Supabase URL available:", !!Deno.env.get("SUPABASE_URL"));
+    console.log("Supabase Service Key available:", !!Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"));
+    
     console.log("Fetching system configurations");
-    const { data: configData, error: configError } = await supabase
+    const { data: configs, error: configError } = await supabase
       .from('system_configurations')
-      .select('key, value')
-      .in('key', ['smtp_config', 'site_url', 'site_name'])
-      .order('key');
+      .select('key, value');
 
     if (configError) {
       console.error("Error fetching configurations:", configError);
-      throw new Error("System configuration not found or error fetching it");
+      throw configError;
     }
-    
-    if (!configData?.length) {
-      console.error("No configurations found");
-      throw new Error("System configurations not found");
-    }
-    
-    console.log("Found configurations:", configData.map(c => c.key));
 
-    // Convert config array to object for easier access
-    const config = configData.reduce((acc: any, item) => {
-      acc[item.key] = item.value;
-      return acc;
-    }, {});
+    console.log("Found configurations:", configs?.map(c => c.key));
 
-    // Parse SMTP config
-    let smtpConfig;
-    try {
-      smtpConfig = JSON.parse(config.smtp_config || '{}');
-      console.log("Successfully parsed SMTP config");
-    } catch (error) {
-      console.error("Error parsing SMTP config:", error);
-      throw new Error("Invalid SMTP configuration format");
+    const smtpConfig = configs?.find(c => c.key === 'smtp_config')?.value;
+    if (!smtpConfig) {
+      throw new Error("SMTP configuration not found");
     }
+
+    console.log("Successfully parsed SMTP config");
     
-    // Get site information
-    const siteUrl = config.site_url || site_url; // Fallback to provided URL if not configured
-    const siteName = config.site_name || "WriteSmart"; // Fallback name
+    const { host, port, username, password, from_email, from_name } = JSON.parse(smtpConfig);
     
     console.log("SMTP connection details:", {
-      host: smtpConfig.host,
-      port: parseInt(smtpConfig.port),
-      username: smtpConfig.username,
-      from_email: smtpConfig.from_email,
-      from_name: smtpConfig.from_name,
+      host,
+      port,
+      username,
+      from_email,
+      from_name,
+      // Don't log password
     });
-    
-    if (!smtpConfig.host || !smtpConfig.port || !smtpConfig.username || !smtpConfig.password || !smtpConfig.from_email) {
-      console.error("Incomplete SMTP configuration");
-      throw new Error("SMTP configuration is incomplete");
-    }
 
-    // Create SMTP client with proper configuration
     console.log("Creating SMTP client");
     const client = new SMTPClient({
       connection: {
-        hostname: smtpConfig.host,
-        port: parseInt(smtpConfig.port),
-        tls: smtpConfig.port === "465", // Use TLS for port 465
-        secure: smtpConfig.port === "465", // Use secure for port 465
+        hostname: host,
+        port: parseInt(port),
+        tls: true,
         auth: {
-          username: smtpConfig.username,
-          password: smtpConfig.password,
+          username: username,
+          password: password,
         },
       },
-      debug: true,
     });
 
-    // Generate appropriate verification URL and email template
     console.log("Generating verification URL and email template");
-    let finalVerificationUrl = "";
-    let subject = "";
-    let emailTemplate = "";
-    
-    if (verification_type === "email_verification") {
-      // Important: Use the email-verified route for our site instead of Supabase's redirect
-      finalVerificationUrl = `${siteUrl}/email-verified#access_token=${verification_token}`;
-      subject = "Xác nhận địa chỉ email của bạn";
-      emailTemplate = `
-        <h2>Xin chào ${name || "bạn"}!</h2>
-        <p>Cảm ơn bạn đã đăng ký tài khoản. Vui lòng xác nhận địa chỉ email của bạn bằng cách nhấn vào nút dưới đây:</p>
-        <div style="text-align: center; margin: 30px 0;">
-          <a 
-            href="${finalVerificationUrl}" 
-            style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;"
-          >
-            Xác nhận email
-          </a>
-        </div>
-        <p>Hoặc bạn có thể sao chép và dán liên kết sau vào trình duyệt:</p>
-        <p><a href="${finalVerificationUrl}">${finalVerificationUrl}</a></p>
-        <p>Liên kết này sẽ hết hạn sau 72 giờ.</p>
-        <p>Nếu bạn không yêu cầu xác nhận này, vui lòng bỏ qua email.</p>
-      `;
-    }
-    
-    console.log("Verification URL:", finalVerificationUrl);
+    const verificationUrl = `${site_url}/email-verified#access_token=${verification_token}`;
+    console.log("Verification URL:", verificationUrl);
 
-    // Send email with more detailed logging
+    const subject = verification_type === "email_verification" 
+      ? "Xác nhận địa chỉ email của bạn"
+      : "Đặt lại mật khẩu của bạn";
+
     console.log(`Attempting to send email to ${email} with subject "${subject}"`);
-    console.log(`Using SMTP server ${smtpConfig.host}:${smtpConfig.port}`);
+    console.log(`Using SMTP server ${host}:${port}`);
+
+    console.log("Sending email...");
+    await client.send({
+      from: `${from_name || "Admin"} <${from_email}>`,
+      to: email,
+      subject: subject,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #333;">Xin chào ${name || "bạn"}!</h2>
+          
+          ${verification_type === "email_verification" ? `
+            <p>Cảm ơn bạn đã đăng ký tài khoản. Vui lòng xác nhận địa chỉ email của bạn bằng cách nhấp vào liên kết dưới đây:</p>
+          ` : `
+            <p>Chúng tôi đã nhận được yêu cầu đặt lại mật khẩu của bạn. Vui lòng nhấp vào liên kết dưới đây để đặt lại mật khẩu:</p>
+          `}
+          
+          <p style="margin: 20px 0;">
+            <a href="${verificationUrl}" 
+               style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px;">
+              ${verification_type === "email_verification" ? "Xác nhận Email" : "Đặt lại Mật khẩu"}
+            </a>
+          </p>
+          
+          <p>Hoặc copy liên kết này vào trình duyệt của bạn:</p>
+          <p style="background-color: #f8f9fa; padding: 10px; word-break: break-all;">
+            ${verificationUrl}
+          </p>
+          
+          <p style="color: #666; font-size: 0.9em;">
+            Nếu bạn không yêu cầu thao tác này, vui lòng bỏ qua email này.
+          </p>
+        </div>
+      `,
+    });
     
-    try {
-      console.log("Sending email...");
-      await client.send({
-        from: `${smtpConfig.from_name || siteName} <${smtpConfig.from_email}>`,
-        to: email,
-        subject: subject,
-        html: emailTemplate,
-      });
-      
-      console.log(`Email sent successfully to: ${email}`);
-      await client.close();
-      console.log("SMTP connection closed");
-    } catch (emailError) {
-      console.error("SMTP send error:", emailError);
-      throw new Error(`SMTP error: ${emailError.message}`);
-    }
+    console.log("Email sent successfully to:", email);
+    await client.close();
+    console.log("SMTP connection closed");
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         message: `Email sent successfully to ${email}` 
       }),
-      { 
+      {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       }
     );
+
   } catch (error) {
-    console.error("Error sending email:", error);
+    console.error("Error:", error);
     
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         success: false,
-        message: error.message,
-        details: error.toString()
+        message: error instanceof Error ? error.message : "An unknown error occurred",
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200, // Return 200 so the frontend can handle the error properly
+        status: 500,
       }
     );
   }
