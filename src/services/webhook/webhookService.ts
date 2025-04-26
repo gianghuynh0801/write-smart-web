@@ -6,7 +6,7 @@ const getWebhookUrl = async (): Promise<string> => {
   try {
     // Phương pháp 1: Sử dụng RPC function để lấy webhook URL (cách này bỏ qua RLS)
     const { data: rpcData, error: rpcError } = await supabase
-      .rpc('get_webhook_url');
+      .rpc('get_webhook_url') as { data: string | null, error: any };
       
     if (!rpcError && rpcData) {
       console.log("Lấy webhook URL từ RPC function thành công:", rpcData);
