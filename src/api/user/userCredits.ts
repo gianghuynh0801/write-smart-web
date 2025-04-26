@@ -39,7 +39,7 @@ export const addUserCredits = async (id: string | number, amount: number): Promi
   }
   if (!data) {
     console.error(`[API] Không có dữ liệu trả về sau khi cập nhật`);
-    throw new Error("Không thể cập nhật credits");
+    throw new Error("Không thể cập nhật tín dụng");
   }
   
   // Ghi log giao dịch vào payment_history

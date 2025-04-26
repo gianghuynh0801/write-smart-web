@@ -21,7 +21,7 @@ export const UserCreditBalance = () => {
           return;
         }
         
-        // Lấy số credit của người dùng
+        // Lấy số tín dụng của người dùng
         const { data, error } = await supabase
           .from('users')
           .select('credits')
@@ -29,14 +29,14 @@ export const UserCreditBalance = () => {
           .single();
 
         if (error) {
-          console.error("Lỗi khi lấy thông tin credit:", error);
+          console.error("Lỗi khi lấy thông tin tín dụng:", error);
           setIsLoading(false);
           return;
         }
         
         if (data) {
           setCredits(data.credits);
-          console.log("Đã lấy số dư credit:", data.credits);
+          console.log("Đã lấy số dư tín dụng:", data.credits);
         }
         setIsLoading(false);
       } catch (err) {
@@ -47,7 +47,7 @@ export const UserCreditBalance = () => {
 
     fetchUserAndCredits();
 
-    // Đăng ký theo dõi thay đổi realtime cho credits
+    // Đăng ký theo dõi thay đổi realtime cho tín dụng
     const setupRealtimeSubscription = async () => {
       try {
         // Lấy userId từ session hiện tại
@@ -67,7 +67,7 @@ export const UserCreditBalance = () => {
               filter: `id=eq.${user.id}`
             },
             (payload) => {
-              console.log("Nhận thông tin credit mới:", payload.new.credits);
+              console.log("Nhận thông tin tín dụng mới:", payload.new.credits);
               setCredits(payload.new.credits);
             }
           )
@@ -102,7 +102,7 @@ export const UserCreditBalance = () => {
   return (
     <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-md">
       <Wallet className="w-4 h-4 text-primary" />
-      <span className="text-sm font-medium">{credits} credit</span>
+      <span className="text-sm font-medium">{credits} tín dụng</span>
     </div>
   );
 };

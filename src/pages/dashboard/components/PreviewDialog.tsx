@@ -58,7 +58,7 @@ const PreviewDialog = ({
           <Button 
             variant="default" 
             onClick={onPublish}
-            disabled={isPublishing}
+            disabled={isPublishing || isSaving}
           >
             {isPublishing ? (
               <Loader2 className="w-4 h-4 mr-1 animate-spin" />

@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,7 +24,7 @@ export const useArticleActions = () => {
           description: "Vui lòng đăng nhập để lưu bài viết.",
           variant: "destructive"
         });
-        return;
+        return null;
       }
 
       // Kiểm tra nội dung bài viết
@@ -33,7 +34,7 @@ export const useArticleActions = () => {
           description: "Vui lòng nhập nội dung bài viết trước khi lưu.",
           variant: "destructive"
         });
-        return;
+        return null;
       }
 
       // Kiểm tra từ khoá chính
@@ -43,24 +44,46 @@ export const useArticleActions = () => {
           description: "Vui lòng nhập từ khoá chính trước khi lưu.",
           variant: "destructive"
         });
-        return;
+        return null;
       }
 
-      console.log("Kiểm tra credit cho user:", user.id);
-      const [userCredits, articleCost] = await Promise.all([
-        checkUserCredits(user.id),
-        getArticleCost()
-      ]);
+      console.log("Kiểm tra tín dụng cho user:", user.id);
+      
+      try {
+        // Tách riêng việc kiểm tra tín dụng để dễ debug
+        const userCredits = await checkUserCredits(user.id);
+        const articleCost = await getArticleCost();
 
-      console.log(`Số dư hiện tại: ${userCredits}, chi phí bài viết: ${articleCost}`);
+        console.log(`Số dư tín dụng hiện tại: ${userCredits}, chi phí bài viết: ${articleCost}`);
 
-      if (userCredits < articleCost) {
+        // Kiểm tra kỹ lưỡng số dư tín dụng
+        if (typeof userCredits !== 'number') {
+          console.error("Lỗi: Không thể đọc số dư tín dụng", userCredits);
+          throw new Error("Không thể đọc số dư tín dụng. Vui lòng thử lại sau.");
+        }
+
+        if (typeof articleCost !== 'number') {
+          console.error("Lỗi: Không thể đọc chi phí bài viết", articleCost);
+          throw new Error("Không thể xác định chi phí bài viết. Vui lòng thử lại sau.");
+        }
+
+        if (userCredits < articleCost) {
+          toast({
+            title: "Không đủ tín dụng",
+            description: `Bạn cần ${articleCost} tín dụng để lưu bài viết. Số dư hiện tại: ${userCredits} tín dụng.`,
+            variant: "destructive"
+          });
+          return null;
+        }
+
+      } catch (creditError) {
+        console.error("Lỗi khi kiểm tra tín dụng:", creditError);
         toast({
-          title: "Không đủ credit",
-          description: `Bạn cần ${articleCost} credit để lưu bài viết. Số dư hiện tại: ${userCredits} credit.`,
+          title: "Lỗi kiểm tra tín dụng",
+          description: "Không thể kiểm tra số dư tín dụng. Vui lòng thử lại sau.",
           variant: "destructive"
         });
-        return;
+        return null;
       }
 
       console.log("Bắt đầu lưu bài viết vào database...");
@@ -81,18 +104,18 @@ export const useArticleActions = () => {
         throw new Error(articleError.message);
       }
 
-      console.log("Đã lưu bài viết, bắt đầu trừ credit...");
+      console.log("Đã lưu bài viết, bắt đầu trừ tín dụng...");
       const deducted = await deductCredits(
         user.id, 
-        articleCost,
+        await getArticleCost(), // Lấy lại chi phí bài viết để đảm bảo chính xác
         `Tạo bài viết: ${mainKeyword}`
       );
 
       if (!deducted) {
-        console.error("Không thể trừ credit cho bài viết");
+        console.error("Không thể trừ tín dụng cho bài viết");
         toast({
           title: "Đã lưu bài viết",
-          description: "Bài viết đã được lưu nhưng có lỗi khi trừ credit.",
+          description: "Bài viết đã được lưu nhưng có lỗi khi trừ tín dụng.",
           variant: "default"
         });
         return article;
@@ -100,7 +123,7 @@ export const useArticleActions = () => {
 
       toast({
         title: "Đã lưu bài viết",
-        description: `Đã trừ ${articleCost} credit cho bài viết này.`,
+        description: `Đã trừ ${await getArticleCost()} tín dụng cho bài viết này.`,
       });
 
       return article;
@@ -109,7 +132,7 @@ export const useArticleActions = () => {
       console.error('Lỗi chi tiết khi lưu bài:', error);
       toast({
         title: "Lỗi khi lưu bài viết",
-        description: error instanceof Error ? error.message : "Không thể lưu bài viết. Vui lòng th�� lại sau.",
+        description: error instanceof Error ? error.message : "Không thể lưu bài viết. Vui lòng thử lại sau.",
         variant: "destructive"
       });
       return null;
