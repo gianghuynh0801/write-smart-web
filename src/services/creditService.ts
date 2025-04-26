@@ -81,79 +81,56 @@ export const deductCredits = async (
       return false;
     }
     
-    // Phương pháp 1: Sử dụng RPC nếu đã được cấu hình
-    try {
-      const { data, error } = await supabase.rpc(
-        'deduct_user_credits',
-        { 
-          user_uuid: userId,
-          amount: amount,
-          action_type: 'create_article',
-          description_text: description
-        }
-      );
-
-      if (error) {
-        console.error("Lỗi khi trừ tín dụng qua RPC:", error);
-        // Nếu RPC lỗi, thử phương pháp 2
-        throw error;
-      }
-
-      console.log("Trừ tín dụng thành công qua RPC:", data);
-      return true;
-    } catch (rpcError) {
-      console.warn("RPC không khả dụng, chuyển sang phương pháp thay thế:", rpcError);
-      
-      // Phương pháp 2: Sử dụng update trực tiếp nếu RPC không khả dụng
-      // Đầu tiên lấy số tín dụng hiện tại
-      const { data: userData, error: getUserError } = await supabase
-        .from("users")
-        .select("credits")
-        .eq("id", userId)
-        .single();
-      
-      if (getUserError) {
-        console.error("Lỗi khi lấy thông tin user:", getUserError);
-        return false;
-      }
-      
-      const currentCredits = userData?.credits ?? 0;
-      const newCredits = Math.max(0, currentCredits - amount);
-      
-      // Cập nhật số tín dụng mới
-      const { error: updateError } = await supabase
-        .from("users")
-        .update({ credits: newCredits })
-        .eq("id", userId);
-      
-      if (updateError) {
-        console.error("Lỗi khi cập nhật tín dụng:", updateError);
-        return false;
-      }
-      
-      // Ghi log giao dịch vào payment_history nếu có thể
-      try {
-        const { error: logError } = await supabase
-          .from("payment_history")
-          .insert({
-            user_id: userId,
-            amount: -amount, // Số âm để thể hiện việc trừ tín dụng
-            description: description,
-            status: "completed"
-          });
-          
-        if (logError) {
-          console.warn("Không thể ghi log giao dịch:", logError);
-          // Vẫn tiếp tục vì đã trừ tín dụng thành công
-        }
-      } catch (logErr) {
-        console.warn("Lỗi khi ghi log giao dịch:", logErr);
-        // Vẫn coi là thành công vì đã trừ tín dụng
-      }
-      
-      console.log(`Đã trừ thành công ${amount} tín dụng cho user ${userId} bằng phương pháp thay thế`);
-      return true;
+    // Đầu tiên lấy số tín dụng hiện tại
+    const { data: userData, error: getUserError } = await supabase
+      .from("users")
+      .select("credits")
+      .eq("id", userId)
+      .single();
+    
+    if (getUserError) {
+      console.error("Lỗi khi lấy thông tin user:", getUserError);
+      return false;
     }
+    
+    const currentCredits = userData?.credits ?? 0;
+    const newCredits = Math.max(0, currentCredits - amount);
+    
+    console.log(`Trừ tín dụng: Hiện tại=${currentCredits}, Trừ=${amount}, Còn lại=${newCredits}`);
+    
+    // Cập nhật số tín dụng mới
+    const { error: updateError } = await supabase
+      .from("users")
+      .update({ credits: newCredits })
+      .eq("id", userId);
+    
+    if (updateError) {
+      console.error("Lỗi khi cập nhật tín dụng:", updateError);
+      return false;
+    }
+    
+    // Ghi log giao dịch vào payment_history
+    try {
+      const { error: logError } = await supabase
+        .from("payment_history")
+        .insert({
+          user_id: userId,
+          amount: -amount, // Số âm để thể hiện việc trừ tín dụng
+          description: description,
+          status: "completed"
+        });
+        
+      if (logError) {
+        console.warn("Không thể ghi log giao dịch:", logError);
+        // Vẫn tiếp tục vì đã trừ tín dụng thành công
+      }
+    } catch (logErr) {
+      console.warn("Lỗi khi ghi log giao dịch:", logErr);
+      // Vẫn coi là thành công vì đã trừ tín dụng
+    }
+    
+    console.log(`Đã trừ thành công ${amount} tín dụng cho user ${userId}`);
+    return true;
   } catch (error) {
     console.error("Lỗi không mong đợi khi trừ tín dụng:", error);
     return false;
