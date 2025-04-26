@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { checkAdminRole } from "@/services/admin/adminService";
 
 export const useAdminRequired = () => {
   const navigate = useNavigate();
@@ -24,14 +25,10 @@ export const useAdminRequired = () => {
           return;
         }
 
-        // Kiểm tra vai trò admin
-        const { data: userData, error } = await supabase
-          .from("users")
-          .select("role")
-          .eq("id", session.user.id)
-          .single();
+        // Kiểm tra vai trò admin bằng hàm trong adminService
+        const { roleData, roleError } = await checkAdminRole(session.user.id);
 
-        if (error || !userData || userData.role !== "admin") {
+        if (roleError || !roleData) {
           console.log("Không có quyền admin");
           toast({
             title: "Truy cập bị từ chối",
@@ -44,6 +41,8 @@ export const useAdminRequired = () => {
           navigate("/admin-login");
           return;
         }
+
+        console.log("Vai trò admin xác thực thành công");
 
       } catch (error) {
         console.error("Lỗi kiểm tra quyền admin:", error);
