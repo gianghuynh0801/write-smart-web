@@ -42,9 +42,9 @@ const Dashboard = () => {
       },
       {
         name: "Gói subscription",
-        value: stats?.subscription.name || "Không có",
+        value: stats?.subscription?.name || "Không có",
         icon: Package,
-        change: stats?.subscription.daysLeft ? `${stats.subscription.daysLeft} ngày còn lại` : "",
+        change: stats?.subscription?.daysLeft ? `${stats.subscription.daysLeft} ngày còn lại` : "",
         link: "/dashboard/subscriptions"
       }
     ];
@@ -67,12 +67,12 @@ const Dashboard = () => {
               </p>
             )}
             <div className="mt-4">
-              <Link to={stat.link}>
+              <RouterLink to={stat.link}>
                 <Button variant="outline" size="sm" className="w-full">
                   Xem chi tiết
                   <ArrowUpRight className="ml-2 h-3 w-3" />
                 </Button>
-              </Link>
+              </RouterLink>
             </div>
           </CardContent>
         </Card>
@@ -109,9 +109,9 @@ const Dashboard = () => {
                     <p className="font-medium">Bài viết về SEO #{i}</p>
                     <p className="text-sm text-gray-500">Tạo lúc: {new Date().toLocaleDateString()}</p>
                   </div>
-                  <Link to={`/dashboard/articles/${i}`}>
+                  <RouterLink to={`/dashboard/articles/${i}`}>
                     <Button variant="ghost" size="sm">Xem</Button>
-                  </Link>
+                  </RouterLink>
                 </div>
               ))}
               {[1, 2, 3].length === 0 && (

@@ -21,7 +21,18 @@ export const useDashboardStats = () => {
     const fetchStats = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error("Không tìm thấy người dùng");
+        if (!user) {
+          // Provide default stats when user is not found
+          setStats({
+            articleCount: 0,
+            credits: 0,
+            subscription: {
+              name: 'Không có',
+              daysLeft: 0
+            }
+          });
+          return;
+        }
 
         // Lấy số lượng bài viết
         const { count: articleCount, error: articleError } = await supabase
@@ -29,16 +40,20 @@ export const useDashboardStats = () => {
           .select('*', { count: 'exact', head: true })
           .eq('user_id', user.id);
 
-        if (articleError) throw articleError;
+        if (articleError) {
+          console.error('Error fetching articles:', articleError);
+        }
 
         // Lấy thông tin người dùng (credits)
         const { data: userData, error: userError } = await supabase
           .from('users')
           .select('credits')
           .eq('id', user.id)
-          .single();
+          .maybeSingle();
 
-        if (userError) throw userError;
+        if (userError) {
+          console.error('Error fetching user data:', userError);
+        }
 
         // Lấy thông tin gói đăng ký
         const { data: subscriptionData, error: subscriptionError } = await supabase
@@ -52,10 +67,10 @@ export const useDashboardStats = () => {
           `)
           .eq('user_id', user.id)
           .eq('status', 'active')
-          .single();
+          .maybeSingle();
 
         if (subscriptionError && subscriptionError.code !== 'PGRST116') {
-          throw subscriptionError;
+          console.error('Error fetching subscription data:', subscriptionError);
         }
 
         // Tính số ngày còn lại của gói đăng ký
@@ -74,9 +89,20 @@ export const useDashboardStats = () => {
         });
       } catch (error) {
         console.error('Error fetching dashboard stats:', error);
+        
+        // Set default stats even when there's an error
+        setStats({
+          articleCount: 0,
+          credits: 0,
+          subscription: {
+            name: 'Không có',
+            daysLeft: 0
+          }
+        });
+        
         toast({
           title: "Lỗi",
-          description: "Không thể tải thông tin bảng điều khiển",
+          description: "Không thể tải thông tin bảng điều khiển. Vui lòng thử lại sau.",
           variant: "destructive"
         });
       } finally {
