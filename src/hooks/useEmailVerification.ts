@@ -35,7 +35,7 @@ export const useEmailVerification = () => {
       
       console.log("User sync response:", syncData);
       
-      // Generate verification token - with longer expiration time
+      // Generate verification token with longer expiration time
       const token = generateRandomToken(32);
       const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000); // Extended to 72 hours for testing
       

@@ -63,12 +63,13 @@ serve(async (req) => {
       from_name: smtpConfig.from_name,
     });
 
-    // Create SMTP client
+    // Create SMTP client with proper configuration
     const client = new SMTPClient({
       connection: {
         hostname: smtpConfig.host,
         port: parseInt(smtpConfig.port),
-        tls: true,
+        tls: smtpConfig.port === "465", // Use TLS for port 465
+        secure: smtpConfig.port === "465", // Use secure for port 465
         auth: {
           username: smtpConfig.username,
           password: smtpConfig.password,
@@ -99,22 +100,29 @@ serve(async (req) => {
         </div>
         <p>Hoặc bạn có thể sao chép và dán liên kết sau vào trình duyệt:</p>
         <p><a href="${finalVerificationUrl}">${finalVerificationUrl}</a></p>
-        <p>Liên kết này sẽ hết hạn sau 24 giờ.</p>
+        <p>Liên kết này sẽ hết hạn sau 72 giờ.</p>
         <p>Nếu bạn không yêu cầu xác nhận này, vui lòng bỏ qua email.</p>
       `;
     }
 
-    // Send email
-    console.log(`Sending email to ${email} with subject "${subject}"`);
-    await client.send({
-      from: `${smtpConfig.from_name || "WriteSmart"} <${smtpConfig.from_email}>`,
-      to: email,
-      subject: subject,
-      html: emailTemplate,
-    });
-
-    await client.close();
-    console.log(`Email sent successfully to: ${email}`);
+    // Send email with more detailed logging
+    console.log(`Attempting to send email to ${email} with subject "${subject}"`);
+    console.log(`Using SMTP server ${smtpConfig.host}:${smtpConfig.port}`);
+    
+    try {
+      await client.send({
+        from: `${smtpConfig.from_name || "WriteSmart"} <${smtpConfig.from_email}>`,
+        to: email,
+        subject: subject,
+        html: emailTemplate,
+      });
+      
+      console.log(`Email sent successfully to: ${email}`);
+      await client.close();
+    } catch (emailError) {
+      console.error("SMTP send error:", emailError);
+      throw new Error(`SMTP error: ${emailError.message}`);
+    }
 
     return new Response(
       JSON.stringify({ 
