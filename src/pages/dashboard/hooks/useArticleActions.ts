@@ -3,11 +3,13 @@ import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { checkUserCredits, deductCredits, getArticleCost } from "@/services/creditService";
+import { useNavigate } from "react-router-dom";
 
 export const useArticleActions = () => {
   const [isPublishing, setIsPublishing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleSave = async (editableContent: string, mainKeyword: string, subKeywords: string[]) => {
     if (isSaving) return;
@@ -78,7 +80,15 @@ export const useArticleActions = () => {
           toast({
             title: "Không đủ tín dụng",
             description: `Bạn cần ${articleCost} tín dụng để lưu bài viết. Số dư hiện tại: ${userCredits} tín dụng.`,
-            variant: "destructive"
+            variant: "destructive",
+            action: (
+              <button 
+                className="bg-primary text-white px-2 py-1 rounded hover:bg-primary/80 text-xs"
+                onClick={() => navigate('/dashboard/subscriptions')}
+              >
+                Nâng cấp ngay
+              </button>
+            ),
           });
           return null;
         }

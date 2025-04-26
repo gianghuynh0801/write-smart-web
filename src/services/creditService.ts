@@ -39,79 +39,71 @@ export const checkUserCredits = async (userId: string): Promise<number> => {
       throw new Error("Không thể kiểm tra số dư tín dụng: Thiếu thông tin người dùng");
     }
     
-    // Kiểm tra xem người dùng có tồn tại không
-    const { data: userExists, error: checkError } = await supabase
+    // Kiểm tra thông tin người dùng trong bảng users
+    const { data: userData, error: userError } = await supabase
       .from("users")
-      .select("id")
+      .select("id, credits, name, email")
       .eq("id", userId)
       .maybeSingle();
     
-    if (checkError) {
-      console.error("Lỗi khi kiểm tra người dùng tồn tại:", checkError);
-      throw new Error("Không thể kiểm tra số dư tín dụng");
+    if (userError) {
+      console.error("Lỗi khi kiểm tra thông tin người dùng:", userError);
+      throw new Error("Không thể kiểm tra số dư tín dụng: Lỗi truy vấn");
     }
 
-    if (!userExists) {
-      console.log("Không tìm thấy người dùng với ID:", userId);
-      
-      // Thay vì sử dụng admin API, chúng ta sẽ tạo người dùng mới từ thông tin session
-      try {
-        console.log("Đang thử tạo bản ghi người dùng mới...");
-        
-        // Lấy thông tin người dùng từ session hiện tại
-        const { data: { user: currentUser } } = await supabase.auth.getUser();
-        
-        if (!currentUser) {
-          console.error("Không thể lấy thông tin người dùng hiện tại từ session");
-          throw new Error("Không thể tìm thấy thông tin người dùng");
-        }
-        
-        const { data: newUser, error: insertError } = await supabase
-          .from("users")
-          .insert({
-            id: userId,
-            credits: 0,
-            name: currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || "Người dùng mới",
-            email: currentUser.email || `user_${userId}@example.com`
-          })
-          .select()
-          .maybeSingle();
-        
-        if (insertError) {
-          console.error("Không thể tạo bản ghi người dùng mới:", insertError);
-          throw new Error("Không thể tạo bản ghi tín dụng cho người dùng mới");
-        }
-        
-        if (newUser) {
-          console.log("Đã tạo bản ghi người dùng mới với số dư tín dụng: 0");
-          return 0;
-        }
-      } catch (createError) {
-        console.error("Lỗi khi tạo bản ghi người dùng mới:", createError);
-        throw new Error("Không thể tạo bản ghi tín dụng cho người dùng mới");
-      }
-    }
-    
-    // Lấy số dư tín dụng
-    const { data: userData, error } = await supabase
-      .from("users")
-      .select("credits")
-      .eq("id", userId)
-      .maybeSingle();
-
-    if (error) {
-      console.error("Lỗi khi kiểm tra số dư tín dụng:", error);
-      throw new Error("Không thể kiểm tra số dư tín dụng");
-    }
-
+    // Nếu không tìm thấy người dùng trong bảng users
     if (!userData) {
-      console.error("Không tìm thấy thông tin người dùng cho userId:", userId);
-      throw new Error("Không tìm thấy thông tin tín dụng của người dùng");
+      console.log("Không tìm thấy thông tin người dùng trong database cho ID:", userId);
+      
+      // Lấy thông tin người dùng hiện tại từ session
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      
+      if (!currentUser) {
+        console.error("Không thể lấy thông tin người dùng từ session");
+        throw new Error("Không thể xác thực người dùng hiện tại");
+      }
+      
+      console.log("Đã lấy được thông tin người dùng từ session:", currentUser.id);
+      
+      if (userId !== currentUser.id) {
+        console.error("ID người dùng không khớp giữa tham số và session");
+        throw new Error("Thông tin người dùng không hợp lệ");
+      }
+      
+      // Tạo bản ghi người dùng mới trong bảng users
+      console.log("Tạo bản ghi người dùng mới trong database...");
+      
+      const { data: newUser, error: insertError } = await supabase
+        .from("users")
+        .insert({
+          id: currentUser.id,
+          name: currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || "Người dùng mới",
+          email: currentUser.email || `user_${currentUser.id}@example.com`,
+          credits: 0,
+          status: 'active',
+          role: 'user'
+        })
+        .select()
+        .maybeSingle();
+      
+      if (insertError) {
+        console.error("Lỗi khi tạo bản ghi người dùng mới:", insertError);
+        throw new Error("Không thể tạo thông tin người dùng trong hệ thống");
+      }
+      
+      if (!newUser) {
+        console.error("Không nhận được thông tin sau khi tạo người dùng mới");
+        throw new Error("Không thể hoàn tất việc tạo người dùng");
+      }
+      
+      console.log("Đã tạo bản ghi người dùng mới với ID:", newUser.id);
+      return newUser.credits || 0;
     }
-
+    
     const credits = userData.credits ?? 0;
-    console.log("Số dư tín dụng hiện tại của user", userId, ":", credits);
+    console.log("Số dư tín dụng của người dùng:", credits);
     return credits;
+    
   } catch (error) {
     console.error("Lỗi không xác định khi kiểm tra số dư tín dụng:", error);
     throw error;
