@@ -42,6 +42,7 @@ export const useEmailVerification = () => {
       console.log("Creating verification token for user:", params.userId);
       
       // Delete any existing tokens for this user and type
+      console.log("Cleaning up existing tokens for user:", params.userId);
       const { error: deleteError } = await supabase
         .from('verification_tokens')
         .delete()
@@ -53,6 +54,7 @@ export const useEmailVerification = () => {
       }
       
       // Create new token
+      console.log("Creating new verification token");
       const { error: tokenError } = await supabase
         .from('verification_tokens')
         .insert({
@@ -67,18 +69,33 @@ export const useEmailVerification = () => {
         throw tokenError;
       }
 
+      console.log("Verification token created successfully");
+
       // Get the site URL from system configurations
-      const { data: configData } = await supabase
+      console.log("Fetching site URL from system configurations");
+      const { data: configData, error: configError } = await supabase
         .from('system_configurations')
         .select('value')
         .eq('key', 'site_url')
         .single();
       
-      const siteUrl = configData?.value || window.location.origin;
+      if (configError) {
+        console.error("Error fetching site URL:", configError);
+      }
+      
+      // Fallback to a default URL if we can't get from config
+      const siteUrl = configData?.value || "https://lxhawtndkubaeljbaylp.supabase.co";
       console.log("Site URL for verification:", siteUrl);
 
       // Call our custom edge function to send email using SMTP settings
-      console.log("Invoking send-verification function");
+      console.log("Invoking send-verification function with params:", {
+        email: params.email,
+        name: params.name,
+        verification_type: params.type,
+        verification_token: token,
+        site_url: siteUrl
+      });
+      
       const { data, error } = await supabase.functions.invoke("send-verification", {
         body: {
           email: params.email,
@@ -92,10 +109,12 @@ export const useEmailVerification = () => {
       console.log("Edge function response:", data, error);
       
       if (error) {
+        console.error("Error from edge function:", error);
         throw new Error(`Error sending verification email: ${error.message}`);
       }
       
       if (!data?.success) {
+        console.error("Edge function reported failure:", data?.message);
         throw new Error(data?.message || "Failed to send verification email");
       }
 

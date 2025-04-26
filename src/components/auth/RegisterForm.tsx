@@ -173,6 +173,10 @@ export function RegisterForm() {
       
       console.log("Người dùng đã được tạo thành công trong database:", checkUser);
       
+      // Đăng xuất người dùng ngay sau khi đăng ký để tránh lỗi token
+      await supabase.auth.signOut();
+      console.log("Đã đăng xuất người dùng sau khi đăng ký");
+      
       // Bước 5: Gửi email xác thực
       try {
         console.log("Gửi email xác thực cho:", formData.email);
