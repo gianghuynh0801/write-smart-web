@@ -1,10 +1,9 @@
 
-import { TabsContent } from "@/components/ui/tabs";
 import { OutlineItem } from "./ContentOutline";
 import KeywordsPanel from "./tab-panels/KeywordsPanel";
 import OutlinePanel from "./tab-panels/OutlinePanel";
 import ContentPanel from "./tab-panels/ContentPanel";
-import KnowledgePanel from "./tab-panels/KnowledgePanel";
+import KnowledgePanelWrapper from "./tab-panels/KnowledgePanel";
 import FormatPanel from "./tab-panels/FormatPanel";
 import LinksPanel from "./tab-panels/LinksPanel";
 import ImagesPanel from "./tab-panels/ImagesPanel";
@@ -33,12 +32,6 @@ interface ContentTabPanelsProps {
   setLinks: (links: Array<{ keyword: string; url: string }>) => void;
   imageSize: string;
   setImageSize: (size: string) => void;
-  resolution: number;
-  setResolution: (value: number) => void;
-  keepAspectRatio: boolean;
-  setKeepAspectRatio: (value: boolean) => void;
-  optimizeImages: boolean;
-  setOptimizeImages: (value: boolean) => void;
   language: string;
   setLanguage: (value: string) => void;
   country: string;
@@ -84,7 +77,7 @@ const ContentTabPanels = (props: ContentTabPanelsProps) => {
         setFormality={props.setFormality}
       />
 
-      <KnowledgePanel
+      <KnowledgePanelWrapper
         activeTab={props.activeTab}
         webConnection={props.webConnection}
         setWebConnection={props.setWebConnection}
