@@ -106,11 +106,11 @@ const CreateContent = () => {
 
       if (!deducted) {
         console.error("Không thể trừ credit cho bài viết");
-        // Tiếp tục vì bài viết đã được lưu
+        // Thay đổi variant từ "warning" sang "default"
         toast({
           title: "Đã lưu bài viết",
           description: "Bài viết đã được lưu nhưng có lỗi khi trừ credit.",
-          variant: "warning"
+          variant: "default"
         });
         return;
       }
