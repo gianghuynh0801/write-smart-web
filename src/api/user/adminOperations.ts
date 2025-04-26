@@ -125,8 +125,8 @@ export const getUserActiveSubscription = async (userId: string) => {
         end_date: data.end_date,
         status: data.status,
         subscriptions: data.subscriptions ? {
-          id: data.subscriptions.id,
-          name: data.subscriptions.name,
+          id: (data.subscriptions as any).id,
+          name: (data.subscriptions as any).name,
           description: null,
           price: 0,
           period: '',
