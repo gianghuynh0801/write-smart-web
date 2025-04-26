@@ -68,6 +68,8 @@ export async function handleSubscriptionChange(userId: string, subscriptionName:
       'active'
     );
 
+    console.log("Đã hoàn thành việc cập nhật gói đăng ký thành:", subscriptionName);
+    
     return {
       success: true,
       message: `Đã cập nhật gói đăng ký thành ${subscriptionName}`

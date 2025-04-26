@@ -78,8 +78,15 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
           description: "Tạo người dùng mới thành công"
         });
       }
+      
+      // Đảm bảo callback được gọi trước khi đóng dialog
       onUserSaved();
-      onClose();
+      
+      // Đặt timeout nhỏ để đảm bảo UI được cập nhật trước khi đóng dialog
+      setTimeout(() => {
+        onClose();
+        setIsSaving(false);
+      }, 300);
     } catch (error: any) {
       console.error("Lỗi khi lưu người dùng:", error);
       
@@ -92,7 +99,10 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
           description: "Tạo người dùng thành công (chế độ giả lập)"
         });
         onUserSaved(); // Vẫn gọi callback để UI được cập nhật
-        onClose();
+        setTimeout(() => {
+          onClose();
+          setIsSaving(false);
+        }, 300);
         return;
       }
       
@@ -101,12 +111,11 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
         description: error.message || "Có lỗi xảy ra khi lưu thông tin",
         variant: "destructive"
       });
-    } finally {
-      setIsSaving(false); // Always reset saving state, regardless of success or error
+      setIsSaving(false); // Đảm bảo reset trạng thái
     }
   };
   
-  // Ensure dialog closes properly
+  // Đảm bảo dialog đóng đúng cách
   const handleDialogClose = () => {
     if (!isSaving) {
       onClose();

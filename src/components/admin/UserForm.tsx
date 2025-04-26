@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -33,6 +34,7 @@ const UserForm = ({ user, onSubmit, onCancel, isSubmitting = false }: UserFormPr
   const [subscriptions, setSubscriptions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [internalSubmitting, setInternalSubmitting] = useState(false);
+  const [originalSubscription, setOriginalSubscription] = useState<string>(user?.subscription || "Không có");
   const { toast } = useToast();
   
   const form = useForm<UserFormValues>({
@@ -55,6 +57,11 @@ const UserForm = ({ user, onSubmit, onCancel, isSubmitting = false }: UserFormPr
   });
   
   useEffect(() => {
+    // Lưu lại giá trị gói đăng ký ban đầu để so sánh khi submit
+    if (user) {
+      setOriginalSubscription(user.subscription || "Không có");
+    }
+    
     const loadSubscriptions = async () => {
       setIsLoading(true);
       try {
@@ -72,18 +79,23 @@ const UserForm = ({ user, onSubmit, onCancel, isSubmitting = false }: UserFormPr
     };
     
     loadSubscriptions();
-  }, [toast]);
+  }, [toast, user]);
   
   const handleSubmit = async (data: UserFormValues) => {
     if (isSubmitting || internalSubmitting) return;
     
     setInternalSubmitting(true);
     try {
-      if (user && user.subscription !== data.subscription) {
+      if (user && data.subscription !== originalSubscription) {
+        console.log(`Thay đổi gói đăng ký từ ${originalSubscription} thành ${data.subscription}`);
         const result = await handleSubscriptionChange(user.id.toString(), data.subscription);
         if (!result.success) {
           throw new Error(result.message);
         }
+        toast({
+          title: "Thành công",
+          description: `Đã cập nhật gói đăng ký thành ${data.subscription}`,
+        });
       }
       
       await onSubmit(data);
@@ -111,7 +123,7 @@ const UserForm = ({ user, onSubmit, onCancel, isSubmitting = false }: UserFormPr
               <FormItem>
                 <FormLabel>Tên</FormLabel>
                 <FormControl>
-                  <Input placeholder="Nhập tên người dùng" {...field} />
+                  <Input placeholder="Nhập tên người dùng" {...field} disabled={buttonDisabled} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -125,7 +137,7 @@ const UserForm = ({ user, onSubmit, onCancel, isSubmitting = false }: UserFormPr
               <FormItem>
                 <FormLabel>Email</FormLabel>
                 <FormControl>
-                  <Input placeholder="email@example.com" type="email" {...field} />
+                  <Input placeholder="email@example.com" type="email" {...field} disabled={buttonDisabled} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -139,7 +151,7 @@ const UserForm = ({ user, onSubmit, onCancel, isSubmitting = false }: UserFormPr
               <FormItem>
                 <FormLabel>Tín dụng</FormLabel>
                 <FormControl>
-                  <Input placeholder="0" type="number" {...field} />
+                  <Input placeholder="0" type="number" {...field} disabled={buttonDisabled} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -152,7 +164,7 @@ const UserForm = ({ user, onSubmit, onCancel, isSubmitting = false }: UserFormPr
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Gói đăng ký</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} defaultValue={field.value} disabled={buttonDisabled}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Chọn gói đăng ký" />
@@ -180,6 +192,7 @@ const UserForm = ({ user, onSubmit, onCancel, isSubmitting = false }: UserFormPr
                     onValueChange={field.onChange}
                     defaultValue={field.value}
                     className="flex flex-col space-y-1"
+                    disabled={buttonDisabled}
                   >
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="active" id="active" />
@@ -211,6 +224,7 @@ const UserForm = ({ user, onSubmit, onCancel, isSubmitting = false }: UserFormPr
                     onValueChange={field.onChange}
                     defaultValue={field.value}
                     className="flex flex-col space-y-1"
+                    disabled={buttonDisabled}
                   >
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="user" id="user" />
