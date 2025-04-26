@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useRef } from "react";
 import { Loader } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
@@ -18,14 +18,30 @@ interface UserFormProps {
 }
 
 const UserForm = ({ user, onSubmit, onCancel, isSubmitting = false }: UserFormProps) => {
-  const { form, subscriptions, isLoading, handleSubmit } = useUserForm(user, onSubmit);
+  const formSubmitCount = useRef(0);
+  const { form, subscriptions, isLoading, handleSubmit, resetLoading } = useUserForm(user, onSubmit);
   
   const buttonDisabled = isLoading || isSubmitting;
   const showSpinner = isLoading || isSubmitting;
   
+  const handleFormSubmit = async (data: UserFormValues) => {
+    // Tránh submit nhiều lần
+    const currentCount = ++formSubmitCount.current;
+    
+    try {
+      await handleSubmit(data);
+    } catch (error) {
+      console.error("Lỗi khi xử lý form:", error);
+      // Đảm bảo reset trạng thái khi có lỗi
+      if (currentCount === formSubmitCount.current) {
+        resetLoading();
+      }
+    }
+  };
+  
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <BasicInfoFields form={form} isDisabled={buttonDisabled} />
           <SubscriptionField form={form} subscriptions={subscriptions} isDisabled={buttonDisabled} />
@@ -42,7 +58,10 @@ const UserForm = ({ user, onSubmit, onCancel, isSubmitting = false }: UserFormPr
           >
             Hủy bỏ
           </Button>
-          <Button type="submit" disabled={buttonDisabled}>
+          <Button 
+            type="submit" 
+            disabled={buttonDisabled}
+          >
             {showSpinner && 
               <Loader className="mr-2 h-4 w-4 animate-spin" />
             }
