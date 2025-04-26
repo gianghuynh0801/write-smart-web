@@ -1,10 +1,10 @@
+
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Edit, CreditCard, Trash, MoreHorizontal, Loader, RefreshCw } from "lucide-react";
+import { Loader } from "lucide-react";
 import { User } from "@/types/user";
+import UserActions from "./UserActions";
 
 type UserTableProps = {
   users: User[];
@@ -77,39 +77,13 @@ const UserTable = ({
               </TableCell>
               <TableCell>{new Date(user.registeredAt).toLocaleDateString("vi-VN")}</TableCell>
               <TableCell className="text-right">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm">
-                      <MoreHorizontal className="h-4 w-4" />
-                      <span className="sr-only">Mở menu</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Thao tác</DropdownMenuLabel>
-                    <DropdownMenuItem onClick={() => onEditUser(user.id)}>
-                      <Edit className="mr-2 h-4 w-4" />
-                      Chỉnh sửa
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onAddCredits(user)}>
-                      <CreditCard className="mr-2 h-4 w-4" />
-                      Thêm tín dụng
-                    </DropdownMenuItem>
-                    {onResendVerification && (
-                      <DropdownMenuItem onClick={() => onResendVerification(user)}>
-                        <RefreshCw className="mr-2 h-4 w-4" />
-                        Gửi lại xác thực
-                      </DropdownMenuItem>
-                    )}
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={() => onDeleteUser(user)}
-                      className="text-red-600"
-                    >
-                      <Trash className="mr-2 h-4 w-4" />
-                      Xóa
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <UserActions
+                  user={user}
+                  onEditUser={onEditUser}
+                  onAddCredits={onAddCredits}
+                  onDeleteUser={onDeleteUser}
+                  onResendVerification={onResendVerification}
+                />
               </TableCell>
             </TableRow>
           ))

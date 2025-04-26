@@ -1,0 +1,174 @@
+
+import { useState, useCallback } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { fetchUsers, deleteUser, addUserCredits } from "@/api/userService";
+import { User } from "@/types/user";
+import { useEmailVerification } from "@/hooks/useEmailVerification";
+
+export const useUserManagement = () => {
+  const [users, setUsers] = useState<User[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [status, setStatus] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [addCreditsDialogOpen, setAddCreditsDialogOpen] = useState(false);
+  const [userDialogOpen, setUserDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [editUserId, setEditUserId] = useState<string | number | undefined>(undefined);
+  const pageSize = 5;
+  const { toast } = useToast();
+  const { sendVerificationEmail } = useEmailVerification();
+
+  const loadUsers = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const result = await fetchUsers(currentPage, pageSize, status, searchTerm);
+      setUsers(result.data);
+      setTotalUsers(result.total);
+    } catch (error) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể tải danh sách người dùng",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentPage, pageSize, status, searchTerm, toast]);
+
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    setCurrentPage(1);
+  };
+
+  const handleStatusChange = (value: string) => {
+    setStatus(value);
+    setCurrentPage(1);
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleDeleteUser = (user: User) => {
+    setSelectedUser(user);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteUser = async () => {
+    if (!selectedUser) return;
+
+    try {
+      await deleteUser(selectedUser.id);
+      toast({
+        title: "Đã xóa người dùng",
+        description: `Người dùng ${selectedUser.name} đã được xóa thành công`
+      });
+      loadUsers();
+    } catch (error) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể xóa người dùng",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleAddCredits = (user: User) => {
+    setSelectedUser(user);
+    setAddCreditsDialogOpen(true);
+  };
+
+  const confirmAddCredits = async (amount: number) => {
+    if (!selectedUser) return;
+
+    try {
+      await addUserCredits(selectedUser.id, amount);
+      toast({
+        title: "Thêm tín dụng",
+        description: `Đã thêm ${amount} tín dụng cho người dùng ${selectedUser.name}`
+      });
+      loadUsers();
+    } catch (error) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể thêm tín dụng",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleEditUser = (userId: string | number) => {
+    setEditUserId(userId);
+    setUserDialogOpen(true);
+  };
+
+  const handleAddUser = () => {
+    setEditUserId(undefined);
+    setUserDialogOpen(true);
+  };
+
+  const handleResendVerification = async (user: User) => {
+    try {
+      await sendVerificationEmail({
+        email: user.email,
+        userId: String(user.id),
+        name: user.name,
+        type: "email_verification"
+      });
+      
+      toast({
+        title: "Đã gửi email xác thực",
+        description: `Email xác thực đã được gửi đến ${user.email}`
+      });
+    } catch (error) {
+      console.error("Error sending verification email:", error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể gửi email xác thực",
+        variant: "destructive"
+      });
+    }
+  };
+
+  return {
+    users,
+    totalUsers,
+    isLoading,
+    searchTerm,
+    status,
+    currentPage,
+    pageSize,
+    selectedUser,
+    deleteDialogOpen,
+    addCreditsDialogOpen,
+    userDialogOpen,
+    editUserId,
+    loadUsers,
+    handleSearch,
+    handleStatusChange,
+    handlePageChange,
+    handleDeleteUser,
+    confirmDeleteUser,
+    handleAddCredits,
+    confirmAddCredits,
+    handleEditUser,
+    handleAddUser,
+    handleResendVerification,
+    setDeleteDialogOpen,
+    setAddCreditsDialogOpen,
+    setUserDialogOpen,
+    getRoleColor: (role: string) => {
+      switch (role) {
+        case "admin":
+          return "bg-red-100 text-red-800";
+        case "editor":
+          return "bg-blue-100 text-blue-800";
+        default:
+          return "bg-gray-100 text-gray-800";
+      }
+    }
+  };
+};
