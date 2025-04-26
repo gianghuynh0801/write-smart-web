@@ -8,7 +8,7 @@ export const getArticleCost = async (): Promise<number> => {
       .from("system_configurations")
       .select("value")
       .eq("key", "article_cost")
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error("Lỗi khi lấy giá bài viết:", error);
@@ -31,7 +31,8 @@ export const getArticleCost = async (): Promise<number> => {
 
 export const checkUserCredits = async (userId: string): Promise<number> => {
   try {
-    console.log("Đang kiểm tra số dư tín dụng cho user:", userId);
+    console.log("=== Bắt đầu kiểm tra số dư tín dụng ===");
+    console.log("userId:", userId);
     
     if (!userId) {
       console.error("Lỗi: userId không được cung cấp");
@@ -50,12 +51,12 @@ export const checkUserCredits = async (userId: string): Promise<number> => {
     }
 
     if (!data) {
-      console.error("Không tìm thấy thông tin người dùng");
+      console.error("Không tìm thấy thông tin người dùng cho userId:", userId);
       throw new Error("Không tìm thấy thông tin tín dụng của người dùng");
     }
 
     const credits = data.credits ?? 0;
-    console.log("Số dư tín dụng hiện tại:", credits);
+    console.log("Số dư tín dụng hiện tại của user", userId, ":", credits);
     return credits;
   } catch (error) {
     console.error("Lỗi không xác định khi kiểm tra số dư tín dụng:", error);
@@ -69,7 +70,10 @@ export const deductCredits = async (
   description: string
 ): Promise<boolean> => {
   try {
-    console.log(`Bắt đầu trừ ${amount} tín dụng cho user ${userId}, mô tả: ${description}`);
+    console.log("=== Bắt đầu trừ tín dụng ===");
+    console.log("userId:", userId);
+    console.log("Số tín dụng cần trừ:", amount);
+    console.log("Mô tả giao dịch:", description);
     
     if (!userId) {
       console.error("Lỗi: userId không được cung cấp");
@@ -86,14 +90,24 @@ export const deductCredits = async (
       .from("users")
       .select("credits")
       .eq("id", userId)
-      .single();
+      .maybeSingle();
     
     if (getUserError) {
       console.error("Lỗi khi lấy thông tin user:", getUserError);
       return false;
     }
+
+    if (!userData) {
+      console.error("Không tìm thấy thông tin user cho userId:", userId);
+      return false;
+    }
     
-    const currentCredits = userData?.credits ?? 0;
+    const currentCredits = userData.credits ?? 0;
+    if (currentCredits < amount) {
+      console.error(`Số dư không đủ: Hiện tại=${currentCredits}, Cần=${amount}`);
+      return false;
+    }
+
     const newCredits = Math.max(0, currentCredits - amount);
     
     console.log(`Trừ tín dụng: Hiện tại=${currentCredits}, Trừ=${amount}, Còn lại=${newCredits}`);
@@ -129,7 +143,7 @@ export const deductCredits = async (
       // Vẫn coi là thành công vì đã trừ tín dụng
     }
     
-    console.log(`Đã trừ thành công ${amount} tín dụng cho user ${userId}`);
+    console.log(`=== Đã trừ thành công ${amount} tín dụng cho user ${userId} ===`);
     return true;
   } catch (error) {
     console.error("Lỗi không mong đợi khi trừ tín dụng:", error);
