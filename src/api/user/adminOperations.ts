@@ -3,38 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { UserSubscription } from "@/types/subscriptions";
 import { createClient } from "@supabase/supabase-js";
 
-// Create a separate admin client that can bypass RLS
-// This function creates an admin client that can bypass Row Level Security
-const createAdminClient = () => {
-  const supabaseUrl = "https://lxhawtndkubaeljbaylp.supabase.co";
-  const supabaseServiceRoleKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx4aGF3dG5ka3ViYWVsamJheWxwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NTM5OTExMSwiZXhwIjoyMDYwOTc1MTExfQ.9hsOts4HHM4tvqp5JkESOLuAJLHNYOsME7O4ekOq4oE";
-  
-  console.log("Khởi tạo admin client với service role key");
-  
-  // Cấu hình client để tránh lỗi nhiều instance và đảm bảo hoạt động chính xác
-  return createClient(
-    supabaseUrl, 
-    supabaseServiceRoleKey,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-        storage: undefined
-      }
-    }
-  );
-};
-
-// Create a single admin client instance to be reused
-let adminClient: ReturnType<typeof createAdminClient>;
-
-// Ensure we only initialize the client once
+// Thay vì tạo client admin mới, hãy sử dụng client supabase hiện có
+// Điều này sẽ giúp tránh lỗi "Invalid API key"
 const getAdminClient = () => {
-  if (!adminClient) {
-    adminClient = createAdminClient();
-    console.log("Admin client đã được khởi tạo");
-  }
-  return adminClient;
+  console.log("Sử dụng client Supabase hiện có thay vì tạo client admin mới");
+  return supabase;
 };
 
 export const createUserSubscriptionAsAdmin = async (
@@ -45,7 +18,7 @@ export const createUserSubscriptionAsAdmin = async (
   status: string = 'active'
 ): Promise<boolean> => {
   try {
-    console.log("Thực hiện thao tác gói đăng ký với quyền admin:", { userId, subscriptionId, startDate, endDate, status });
+    console.log("Thực hiện thao tác gói đăng ký:", { userId, subscriptionId, startDate, endDate, status });
     
     // Kiểm tra user_id hợp lệ
     if (!userId) {
