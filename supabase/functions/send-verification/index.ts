@@ -84,8 +84,14 @@ serve(async (req) => {
       },
     });
 
-    console.log("Generating verification URL and email template");
-    const verificationUrl = `${site_url}/email-verified#access_token=${verification_token}`;
+    // Determine correct verification URL based on verification type
+    let verificationUrl: string;
+    if (verification_type === "email_verification") {
+      verificationUrl = `${site_url}/email-verified#access_token=${verification_token}`;
+    } else {
+      verificationUrl = `${site_url}/reset-password#token=${verification_token}`;
+    }
+    
     console.log("Verification URL:", verificationUrl);
 
     const subject = verification_type === "email_verification" 

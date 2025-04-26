@@ -7,8 +7,9 @@ export interface User {
   subscription: string;
   status: "active" | "inactive";
   registeredAt: string;
-  avatar: string;  // Đã chuyển thành bắt buộc
+  avatar: string;
   role: "user" | "admin" | "editor";
+  email_verified?: boolean;
 }
 
 export interface UserFormValues {
@@ -18,4 +19,5 @@ export interface UserFormValues {
   subscription: string;
   status: "active" | "inactive";
   role: "user" | "admin" | "editor";
+  email_verified?: boolean;
 }

@@ -112,6 +112,11 @@ export const useUserManagement = () => {
 
   const handleResendVerification = async (user: User) => {
     try {
+      toast({
+        title: "Đang gửi",
+        description: `Đang gửi email xác thực đến ${user.email}...`,
+      });
+      
       await sendVerificationEmail({
         email: user.email,
         userId: String(user.id),

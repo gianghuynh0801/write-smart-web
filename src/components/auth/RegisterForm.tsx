@@ -111,7 +111,8 @@ export function RegisterForm() {
         throw new Error("Email này đã được sử dụng. Vui lòng chọn email khác hoặc đăng nhập.");
       }
 
-      // Bước 1: Tạo tài khoản trong auth
+      // Bước 1: Tạo tài khoản trong auth SỬ DỤNG signUp VỚI autoconfirm=true 
+      // để không gửi email xác nhận của Supabase
       console.log("Bắt đầu tạo tài khoản:", formData.email);
       const { data, error } = await supabase.auth.signUp({ 
         email: formData.email, 
@@ -120,7 +121,8 @@ export function RegisterForm() {
           data: { 
             full_name: formData.name,
             email_verified: false
-          }
+          },
+          emailRedirectTo: `${window.location.origin}/email-verified`
         }
       });
       
@@ -137,13 +139,14 @@ export function RegisterForm() {
       console.log("Đợi để đảm bảo tài khoản được tạo đầy đủ...");
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // Bước 3: Đồng bộ người dùng vào bảng users
+      // Bước 3: Đồng bộ người dùng vào bảng users với email_verified=false
       console.log("Đồng bộ người dùng vào bảng users...");
       const { data: syncData, error: syncError } = await supabase.functions.invoke("sync-user", {
         body: { 
           user_id: userId, 
           email: formData.email, 
-          name: formData.name 
+          name: formData.name,
+          email_verified: false
         }
       });
       
@@ -177,7 +180,7 @@ export function RegisterForm() {
       await supabase.auth.signOut();
       console.log("Đã đăng xuất người dùng sau khi đăng ký");
       
-      // Bước 5: Gửi email xác thực
+      // Bước 5: Gửi email xác thực SMTP tùy chỉnh bằng edge function
       try {
         console.log("Gửi email xác thực cho:", formData.email);
         await sendVerificationEmail({
@@ -188,11 +191,7 @@ export function RegisterForm() {
         });
         
         console.log("Đã gửi email xác thực thành công");
-        toast({
-          title: "Đăng ký thành công",
-          description: "Chúng tôi đã gửi email xác thực. Vui lòng kiểm tra hộp thư của bạn.",
-        });
-        navigate("/verify-email-prompt");
+        setShowVerificationDialog(true);
       } catch (emailError: any) {
         console.error("Lỗi gửi email xác thực:", emailError);
         // Đã tạo người dùng thành công, nhưng không gửi được email
@@ -224,7 +223,7 @@ export function RegisterForm() {
 
   const closeVerificationDialog = () => {
     setShowVerificationDialog(false);
-    navigate("/login");
+    navigate("/verify-email-prompt");
   };
 
   return (

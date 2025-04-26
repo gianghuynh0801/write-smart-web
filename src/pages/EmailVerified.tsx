@@ -1,94 +1,99 @@
 
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import Navbar from "@/components/common/Navbar";
 import Footer from "@/components/common/Footer";
 import { Check, AlertTriangle } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 
 const EmailVerified = () => {
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [message, setMessage] = useState<string>("Đang xác thực email của bạn...");
   const navigate = useNavigate();
   const location = useLocation();
-  const { toast } = useToast();
 
   useEffect(() => {
     const verifyEmail = async () => {
       try {
-        // Check if there's an access token in the URL - this means email was verified
-        if (location.hash && location.hash.includes("access_token")) {
-          // Extract the token from the URL hash
-          const hashParams = new URLSearchParams(location.hash.substring(1));
-          const accessToken = hashParams.get("access_token");
-          const refreshToken = hashParams.get("refresh_token");
-          
-          if (accessToken) {
-            console.log("Found access token in URL, setting up session");
-            
-            // Try to exchange the token for a session
-            const { data, error } = await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken || "",
-            });
-            
-            if (error) {
-              console.error("Error setting session:", error);
-              throw error;
-            }
-            
-            // Email has been verified successfully
-            setStatus("success");
-            setMessage("Email của bạn đã được xác thực thành công!");
-            
-            if (data && data.session) {
-              // Update user's email_verified status in the database
-              const { error: updateError } = await supabase
-                .from('users')
-                .update({ email_verified: true })
-                .eq('id', data.session.user.id);
-                
-              if (updateError) {
-                console.error("Error updating email verified status:", updateError);
-              }
-              
-              // User is logged in
-              setMessage("Email của bạn đã được xác thực thành công! Bạn sẽ được chuyển hướng đến trang chủ.");
-              
-              toast({
-                title: "Xác thực thành công",
-                description: "Email của bạn đã được xác thực thành công.",
-              });
-              
-              setTimeout(() => {
-                navigate("/dashboard");
-              }, 3000);
-            }
-          } else {
-            throw new Error("Access token not found in URL");
-          }
-        } else {
-          // No access token found
-          setStatus("error");
-          setMessage("Không thể xác thực email. Liên kết không hợp lệ hoặc đã hết hạn.");
+        console.log("Starting email verification process");
+        console.log("URL hash:", location.hash);
+        
+        // Extract token from URL hash fragment
+        const hashParams = new URLSearchParams(location.hash.substring(1));
+        const token = hashParams.get("access_token");
+        
+        if (!token) {
+          console.error("No verification token found in URL");
+          throw new Error("Không tìm thấy mã xác thực");
         }
+
+        console.log("Found verification token:", token);
+
+        // Verify token in our verification_tokens table
+        const { data: tokenData, error: tokenError } = await supabase
+          .from('verification_tokens')
+          .select('*')
+          .eq('token', token)
+          .eq('type', 'email_verification')
+          .maybeSingle();
+
+        if (tokenError) {
+          console.error("Error fetching token:", tokenError);
+          throw new Error("Không thể kiểm tra mã xác thực");
+        }
+
+        if (!tokenData) {
+          console.error("Token not found in database");
+          throw new Error("Mã xác thực không hợp lệ hoặc đã hết hạn");
+        }
+
+        console.log("Token verified in database:", tokenData);
+
+        // Check token expiration
+        const expiresAt = new Date(tokenData.expires_at);
+        if (expiresAt < new Date()) {
+          console.error("Token expired at:", expiresAt);
+          throw new Error("Mã xác thực đã hết hạn");
+        }
+
+        // Update user's email_verified status in our users table
+        console.log("Updating user verification status for user:", tokenData.user_id);
+        const { error: updateError } = await supabase
+          .from('users')
+          .update({ email_verified: true })
+          .eq('id', tokenData.user_id);
+
+        if (updateError) {
+          console.error("Error updating user verification status:", updateError);
+          throw updateError;
+        }
+
+        // Delete the used token
+        console.log("Deleting used verification token");
+        await supabase
+          .from('verification_tokens')
+          .delete()
+          .eq('id', tokenData.id);
+
+        console.log("Email verification completed successfully!");
+        setStatus("success");
+        setMessage("Email của bạn đã được xác thực thành công!");
+        
+        // Redirect to login after 3 seconds
+        setTimeout(() => {
+          navigate("/login");
+        }, 3000);
+
       } catch (error) {
         console.error("Email verification error:", error);
         setStatus("error");
-        setMessage("Đã xảy ra lỗi khi xác thực email.");
-        
-        toast({
-          title: "Lỗi xác thực",
-          description: "Đã xảy ra lỗi khi xác thực email. Vui lòng thử lại hoặc liên hệ hỗ trợ.",
-          variant: "destructive"
-        });
+        setMessage(error instanceof Error ? error.message : "Đã xảy ra lỗi khi xác thực email.");
       }
     };
 
     verifyEmail();
-  }, [location, navigate, toast]);
+  }, [location, navigate]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -115,8 +120,8 @@ const EmailVerified = () => {
               <h1 className="text-2xl font-bold">Xác thực thành công!</h1>
               <p className="text-gray-600">{message}</p>
               <div className="pt-4">
-                <Button onClick={() => navigate("/dashboard")}>
-                  Đến trang chủ
+                <Button onClick={() => navigate("/login")}>
+                  Đến trang đăng nhập
                 </Button>
               </div>
             </>

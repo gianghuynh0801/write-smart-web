@@ -19,6 +19,9 @@ const UserActions = ({
   onDeleteUser,
   onResendVerification,
 }: UserActionsProps) => {
+  // Show resend verification option only if user is not verified
+  const showResendVerification = onResendVerification && user.email_verified === false;
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -37,7 +40,7 @@ const UserActions = ({
           <CreditCard className="mr-2 h-4 w-4" />
           Thêm tín dụng
         </DropdownMenuItem>
-        {onResendVerification && (
+        {showResendVerification && (
           <DropdownMenuItem onClick={() => onResendVerification(user)}>
             <RefreshCw className="mr-2 h-4 w-4" />
             Gửi lại xác thực

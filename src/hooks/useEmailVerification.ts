@@ -24,7 +24,8 @@ export const useEmailVerification = () => {
         body: { 
           user_id: params.userId, 
           email: params.email, 
-          name: params.name 
+          name: params.name,
+          email_verified: false
         }
       });
       
@@ -83,8 +84,8 @@ export const useEmailVerification = () => {
         console.error("Error fetching site URL:", configError);
       }
       
-      // Fallback to a default URL if we can't get from config
-      const siteUrl = configData?.value || "https://lxhawtndkubaeljbaylp.supabase.co";
+      // Use origin as default site URL if not configured in database
+      const siteUrl = configData?.value || window.location.origin;
       console.log("Site URL for verification:", siteUrl);
 
       // Call our custom edge function to send email using SMTP settings
