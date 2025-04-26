@@ -5,8 +5,9 @@ import { ContentGenerationParams, WebhookResponse } from "./types";
 const getWebhookUrl = async (): Promise<string> => {
   try {
     // Phương pháp 1: Sử dụng RPC function để lấy webhook URL (cách này bỏ qua RLS)
-    const { data: rpcData, error: rpcError } = await supabase
-      .rpc('get_webhook_url') as { data: string | null, error: any };
+    // Sửa lỗi TypeScript bằng cách sử dụng "any" cho hàm RPC không được định nghĩa trong types
+    const { data: rpcData, error: rpcError } = await supabase.functions
+      .invoke<string>('get_webhook_url');
       
     if (!rpcError && rpcData) {
       console.log("Lấy webhook URL từ RPC function thành công:", rpcData);
