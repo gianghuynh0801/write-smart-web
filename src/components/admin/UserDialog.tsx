@@ -24,14 +24,12 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
   const [user, setUser] = useState<User | undefined>();
   const [isLoading, setIsLoading] = useState(false);
   const isMounted = useRef(true);
-  const isSubmitting = useRef(false);
   const { toast } = useToast();
   
   // Reset state khi dialog đóng
   useEffect(() => {
     if (!isOpen) {
       setUser(undefined);
-      isSubmitting.current = false;
     }
   }, [isOpen]);
   
@@ -41,7 +39,6 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
     
     return () => {
       isMounted.current = false;
-      isSubmitting.current = false;
     };
   }, []);
   
@@ -86,13 +83,11 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
   }, [fetchUser, isOpen, userId]);
   
   const handleSubmit = async (data: UserFormValues) => {
-    // Ngăn chặn submit nhiều lần
-    if (isLoading || isSubmitting.current) {
-      console.log("Đang xử lý, bỏ qua submit mới");
+    // Ngăn chặn xử lý khi đang loading
+    if (isLoading) {
       return;
     }
     
-    isSubmitting.current = true;
     setIsLoading(true);
     
     try {
@@ -116,18 +111,14 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
       }
       
       if (isMounted.current) {
-        // Đảm bảo reset trạng thái trước khi đóng dialog
-        setIsLoading(false);
-        isSubmitting.current = false;
-        
-        // Đóng dialog và làm mới danh sách
+        // Đóng dialog
         onClose();
         
-        // Thêm window.location.reload() để làm mới hoàn toàn trang
-        // và khắc phục vấn đề UI bị khóa
-        window.setTimeout(() => {
-          onUserSaved();
-        }, 100);
+        // Thêm thời gian chờ nhỏ trước khi làm mới trang
+        setTimeout(() => {
+          // Tải lại toàn bộ trang để đảm bảo mọi trạng thái đều mới
+          window.location.reload();
+        }, 300);
       }
     } catch (error: any) {
       console.error("Lỗi khi lưu người dùng:", error);
@@ -140,11 +131,12 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
         });
         
         setIsLoading(false);
-        isSubmitting.current = false;
         onClose();
-        window.setTimeout(() => {
-          onUserSaved();
-        }, 100);
+        
+        // Tải lại trang sau khi tạo người dùng giả lập
+        setTimeout(() => {
+          window.location.reload();
+        }, 300);
         return;
       }
       
@@ -155,14 +147,13 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
           variant: "destructive"
         });
         setIsLoading(false);
-        isSubmitting.current = false;
       }
     }
   };
   
   // Chỉ đóng dialog khi không đang xử lý
   const handleDialogClose = () => {
-    if (!isLoading && !isSubmitting.current) {
+    if (!isLoading) {
       onClose();
     }
   };
@@ -171,7 +162,7 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
     <Dialog open={isOpen} onOpenChange={handleDialogClose}>
       <DialogContent className="sm:max-w-[600px]" onInteractOutside={(e) => {
         // Ngăn chặn tương tác bên ngoài khi đang xử lý
-        if (isLoading || isSubmitting.current) {
+        if (isLoading) {
           e.preventDefault();
         }
       }}>

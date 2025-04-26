@@ -1,5 +1,5 @@
 
-import React, { useRef, useEffect } from "react";
+import React from "react";
 import { Loader } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
@@ -18,32 +18,18 @@ interface UserFormProps {
 }
 
 const UserForm = ({ user, onSubmit, onCancel, isSubmitting = false }: UserFormProps) => {
-  const submitting = useRef(false);
-  const { form, subscriptions, isLoading, handleSubmit } = useUserForm(user, onSubmit);
+  const { form, subscriptions, isLoading } = useUserForm(user);
   
-  const buttonDisabled = isLoading || isSubmitting || submitting.current;
-  const showSpinner = isLoading || isSubmitting || submitting.current;
-  
-  // Reset khi component unmount
-  useEffect(() => {
-    return () => {
-      submitting.current = false;
-    };
-  }, []);
+  const buttonDisabled = isLoading || isSubmitting;
+  const showSpinner = isLoading || isSubmitting;
   
   const handleFormSubmit = async (data: UserFormValues) => {
-    // Tránh submit nhiều lần
-    if (submitting.current || isLoading || isSubmitting) return;
-    
-    submitting.current = true;
+    if (buttonDisabled) return;
     
     try {
-      await handleSubmit(data);
+      await onSubmit(data);
     } catch (error) {
       console.error("Lỗi khi xử lý form:", error);
-    } finally {
-      // Vì có thể component đã unmount khi đến đây, nên cần kiểm tra
-      submitting.current = false;
     }
   };
   
