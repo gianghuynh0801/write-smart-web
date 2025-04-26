@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -139,7 +140,7 @@ const AdminUsers = () => {
     try {
       await sendVerificationEmail({
         email: user.email,
-        userId: user.id,
+        userId: String(user.id), // Convert user.id to string explicitly
         name: user.name,
         type: "email_verification"
       });
