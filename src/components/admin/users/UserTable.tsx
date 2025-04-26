@@ -63,7 +63,7 @@ const UserTable = ({
                 </div>
               </TableCell>
               <TableCell>{user.credits}</TableCell>
-              <TableCell>{user.subscription}</TableCell>
+              <TableCell>{user.subscription || "Không có"}</TableCell>
               <TableCell>
                 <Badge variant={user.status === "active" ? "default" : "secondary"}>
                   {user.status === "active" ? "Hoạt động" : "Không hoạt động"}

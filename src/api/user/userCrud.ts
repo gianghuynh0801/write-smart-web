@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { User, UserFormValues } from "@/types/user";
 import { createUserSubscriptionAsAdmin, getUserActiveSubscription } from "./adminOperations";
@@ -22,14 +23,15 @@ const mockUsers: User[] = [
 export function parseUser(row: any): User {
   return {
     id: row.id,
-    name: row.name,
-    email: row.email,
+    name: row.name || "",
+    email: row.email || "",
     credits: row.credits ?? 0,
     subscription: row.subscription ?? "Không có",
     status: row.status === "inactive" ? "inactive" : "active",
     registeredAt: row.created_at ? new Date(row.created_at).toISOString().split("T")[0] : "",
-    avatar: row.avatar || "",
-    role: row.role === "admin" || row.role === "editor" ? row.role : "user"
+    avatar: row.avatar || `https://i.pravatar.cc/150?u=${row.id}`,
+    role: row.role === "admin" || row.role === "editor" ? row.role : "user",
+    email_verified: !!row.email_verified
   };
 }
 
@@ -108,8 +110,42 @@ export const fetchUsers = async (
     }
 
     console.log(`Đã lấy được ${data?.length || 0} người dùng, tổng số: ${count || 0}`);
+    
+    // Lấy thông tin gói đăng ký cho mỗi người dùng
+    const usersWithSubscription = await Promise.all((data || []).map(async (user) => {
+      try {
+        // Lấy thông tin gói đăng ký
+        const { data: subData, error: subError } = await supabase
+          .from("user_subscriptions")
+          .select(`
+            subscription_id,
+            status,
+            subscriptions (
+              name
+            )
+          `)
+          .eq("user_id", user.id)
+          .eq("status", "active")
+          .maybeSingle();
+          
+        if (subError && subError.code !== "PGRST116") {
+          console.error(`Lỗi khi lấy gói đăng ký cho user ${user.id}:`, subError);
+        }
+        
+        const subscriptionName = subData?.subscriptions?.name || "Không có";
+        
+        return {
+          ...parseUser(user),
+          subscription: subscriptionName
+        };
+      } catch (err) {
+        console.error(`Lỗi khi xử lý user ${user.id}:`, err);
+        return parseUser(user);
+      }
+    }));
+
     return {
-      data: (data || []).map(parseUser),
+      data: usersWithSubscription,
       total: count || 0
     };
   } catch (error) {

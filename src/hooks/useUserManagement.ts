@@ -25,7 +25,14 @@ export const useUserManagement = () => {
     setIsLoading(true);
     try {
       const result = await fetchUsers(currentPage, pageSize, status, searchTerm);
-      setUsers(result.data);
+      
+      // Đảm bảo người dùng có thuộc tính subscription đúng
+      const enhancedUsers = result.data.map(user => ({
+        ...user,
+        subscription: user.subscription || "Không có"
+      }));
+      
+      setUsers(enhancedUsers);
       setTotalUsers(result.total);
     } catch (error) {
       toast({

@@ -76,14 +76,16 @@ export const useDashboardStats = () => {
         // Tính số ngày còn lại của gói đăng ký
         const endDate = subscriptionData?.end_date ? new Date(subscriptionData.end_date) : null;
         const daysLeft = endDate ? 
-          Math.ceil((endDate.getTime() - new Date().getTime()) / (1000 * 3600 * 24)) : 
+          Math.max(0, Math.ceil((endDate.getTime() - new Date().getTime()) / (1000 * 3600 * 24))) : 
           0;
 
+        const subscriptionName = subscriptionData?.subscriptions?.name;
+        
         setStats({
           articleCount: articleCount || 0,
           credits: userData?.credits || 0,
           subscription: {
-            name: subscriptionData?.subscriptions?.name || 'Không có',
+            name: subscriptionName || 'Không có',
             daysLeft: daysLeft
           }
         });
