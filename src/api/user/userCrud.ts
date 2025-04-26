@@ -1,7 +1,7 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { User, UserFormValues } from "@/types/user";
 import { createUserSubscriptionAsAdmin, getUserActiveSubscription } from "./adminOperations";
+import { handleSubscriptionChange } from "./userSubscription";
 
 // === MOCK DATA, chỉ sử dụng để insert vào DB nếu DB đang trống ===
 const mockUsers: User[] = [
@@ -269,38 +269,16 @@ export const updateUser = async (id: string | number, userData: UserFormValues):
   // Check if subscription has changed and update if needed
   if (currentUser && currentUser.subscription !== userData.subscription) {
     try {
-      if (userData.subscription !== "Không có") {
-        // Get subscription id from name
-        const { data: subscriptionData, error: subError } = await supabase
-          .from("subscriptions")
-          .select("id")
-          .eq("name", userData.subscription)
-          .maybeSingle();
-        
-        if (subError || !subscriptionData) {
-          throw new Error(`Could not find subscription: ${subError?.message || "Unknown error"}`);
-        }
-        
-        // Calculate subscription dates
-        const startDate = new Date().toISOString().split('T')[0];
-        const endDate = new Date();
-        endDate.setMonth(endDate.getMonth() + 1); // 1 month subscription
-        const endDateStr = endDate.toISOString().split('T')[0];
-        
-        await createUserSubscriptionAsAdmin(
-          userId,
-          subscriptionData.id,
-          startDate,
-          endDateStr
-        );
-      } else {
-        // If changing to "No subscription", deactivate all active subscriptions
-        // This is handled by the admin client in createUserSubscriptionAsAdmin
-        // by setting all existing subscriptions to inactive before creating a new one
+      // Sử dụng hàm riêng để xử lý thay đổi gói đăng ký
+      const result = await handleSubscriptionChange(userId, userData.subscription);
+      
+      if (!result.success) {
+        console.error("Lỗi khi thay đổi gói đăng ký:", result.message);
+        // Vẫn tiếp tục vì không muốn toàn bộ quá trình cập nhật bị lỗi
       }
     } catch (error) {
       console.error("Error updating subscription:", error);
-      throw new Error(`Could not update subscription: ${error instanceof Error ? error.message : String(error)}`);
+      // Vẫn tiếp tục vì không muốn toàn bộ quá trình cập nhật bị lỗi
     }
   }
 

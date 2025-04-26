@@ -11,8 +11,18 @@ export async function handleSubscriptionChange(userId: string, subscriptionName:
     if (subscriptionName === "Không có") {
       // Logic xử lý khi người dùng không còn gói đăng ký
       console.log("Removing all active subscriptions for user:", userId);
-      // Tạo một subscription_id giả để hệ thống ghi nhận đã hủy tất cả gói đăng ký
-      await createUserSubscriptionAsAdmin(userId, -1, new Date().toISOString().split('T')[0], new Date().toISOString().split('T')[0]);
+      
+      // Deactivate existing subscriptions
+      const { error: deactivateError } = await supabase
+        .from("user_subscriptions")
+        .update({ status: "inactive" })
+        .eq("user_id", userId)
+        .eq("status", "active");
+      
+      if (deactivateError) {
+        console.error(`Lỗi khi hủy gói đăng ký hiện tại: ${deactivateError.message}`);
+      }
+      
       return {
         success: true,
         message: "Đã hủy tất cả gói đăng ký"
@@ -70,8 +80,7 @@ export async function handleSubscriptionChange(userId: string, subscriptionName:
     }
 
     console.log("Found subscription data:", subscriptionData);
-    const typedSubscriptionData = subscriptionData as unknown as Subscription;
-    const subscriptionId = typedSubscriptionData.id;
+    const subscriptionId = subscriptionData.id;
 
     // Calculate subscription dates
     const startDate = new Date().toISOString().split('T')[0];
@@ -115,8 +124,7 @@ export const getSubscriptionOptions = async (): Promise<string[]> => {
     }
     
     // Always ensure "Không có" (None) is an option
-    const typedData = data as unknown as Subscription[];
-    const options = typedData ? typedData.map(row => row.name) : [];
+    const options = data ? data.map(row => row.name) : [];
     if (!options.includes("Không có")) {
       options.unshift("Không có");
     }

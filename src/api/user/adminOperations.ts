@@ -116,11 +116,7 @@ export const getUserActiveSubscription = async (userId: string) => {
     
     // Explicitly type the result to match UserSubscription
     if (data) {
-      // Fix: Handle subscriptions as an array and access the first item
-      const subscriptionsData = Array.isArray(data.subscriptions) 
-        ? data.subscriptions[0] 
-        : data.subscriptions;
-      
+      // Handle subscriptions data appropriately
       const subscription: UserSubscription = {
         id: data.id,
         user_id: data.user_id,
@@ -128,15 +124,16 @@ export const getUserActiveSubscription = async (userId: string) => {
         start_date: data.start_date,
         end_date: data.end_date,
         status: data.status,
-        subscriptions: subscriptionsData ? {
-          id: subscriptionsData.id,
-          name: subscriptionsData.name,
+        subscriptions: data.subscriptions ? {
+          id: data.subscriptions.id,
+          name: data.subscriptions.name,
           description: null,
           price: 0,
           period: '',
           features: null
         } : undefined
       };
+      
       return subscription;
     }
     
