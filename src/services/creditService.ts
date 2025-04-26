@@ -3,8 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const getArticleCost = async (): Promise<number> => {
   const { data, error } = await supabase
-    .from("article_cost")
-    .select("cost")
+    .from("system_configurations")
+    .select("value")
+    .eq("key", "article_cost")
     .single();
 
   if (error) {
@@ -12,7 +13,7 @@ export const getArticleCost = async (): Promise<number> => {
     return 1; // Giá mặc định nếu không lấy được
   }
 
-  return data?.cost ?? 1;
+  return parseInt(data?.value || "1");
 };
 
 export const checkUserCredits = async (userId: string): Promise<number> => {

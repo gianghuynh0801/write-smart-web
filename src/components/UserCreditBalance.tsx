@@ -8,7 +8,8 @@ export const UserCreditBalance = () => {
 
   useEffect(() => {
     const fetchCredits = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const authResponse = await supabase.auth.getUser();
+      const user = authResponse.data.user;
       if (!user) return;
 
       const { data, error } = await supabase
@@ -33,7 +34,7 @@ export const UserCreditBalance = () => {
           event: 'UPDATE',
           schema: 'public',
           table: 'users',
-          filter: `id=eq.${supabase.auth.getUser()?.data?.user?.id}`
+          filter: `id=eq.${supabase.auth.getUser().then(res => res.data.user?.id)}`
         },
         (payload) => {
           setCredits(payload.new.credits);

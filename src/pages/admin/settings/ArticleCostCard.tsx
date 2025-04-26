@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -11,15 +11,51 @@ export const ArticleCostCard = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
+  useEffect(() => {
+    const fetchCost = async () => {
+      const { data, error } = await supabase
+        .from("system_configurations")
+        .select("value")
+        .eq("key", "article_cost")
+        .maybeSingle();
+
+      if (!error && data) {
+        setCost(parseInt(data.value) || 1);
+      }
+    };
+
+    fetchCost();
+  }, []);
+
   const handleSave = async () => {
     setIsLoading(true);
     try {
-      const { error } = await supabase
-        .from('article_cost')
-        .update({ cost })
-        .eq('id', (await supabase.from('article_cost').select('id').single()).data?.id);
+      // Kiểm tra xem cấu hình đã tồn tại chưa
+      const { data: existingConfig, error: checkError } = await supabase
+        .from('system_configurations')
+        .select('id')
+        .eq('key', 'article_cost')
+        .maybeSingle();
 
-      if (error) throw error;
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError;
+      }
+
+      let result;
+      if (existingConfig?.id) {
+        // Cập nhật nếu đã tồn tại
+        result = await supabase
+          .from('system_configurations')
+          .update({ value: cost.toString() })
+          .eq('id', existingConfig.id);
+      } else {
+        // Thêm mới nếu chưa tồn tại
+        result = await supabase
+          .from('system_configurations')
+          .insert([{ key: 'article_cost', value: cost.toString() }]);
+      }
+
+      if (result.error) throw result.error;
 
       toast({
         title: "Đã lưu cấu hình",
