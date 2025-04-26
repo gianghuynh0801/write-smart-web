@@ -1,7 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { createUserSubscriptionAsAdmin } from "./adminOperations";
-import { Subscription } from "@/types/subscriptions";
 
 // Handle subscription changes for a user
 export async function handleSubscriptionChange(userId: string, subscriptionName: string) {
@@ -27,6 +26,7 @@ export async function handleSubscriptionChange(userId: string, subscriptionName:
     }
     
     // Lấy thông tin gói đăng ký từ tên
+    console.log("Đang tìm thông tin gói đăng ký:", subscriptionName);
     const { data: subscriptionData, error: subscriptionError } = await supabase
       .from("subscriptions")
       .select("id")
@@ -52,10 +52,21 @@ export async function handleSubscriptionChange(userId: string, subscriptionName:
     endDate.setMonth(endDate.getMonth() + 1); // Gói 1 tháng
     const endDateStr = endDate.toISOString().split('T')[0];
 
-    console.log("Tạo gói đăng ký mới với thông tin:", { startDate, endDateStr, subscriptionId });
+    console.log("Tạo gói đăng ký mới với thông tin:", { 
+      userId,
+      subscriptionId,
+      startDate, 
+      endDateStr 
+    });
 
     // Tạo gói đăng ký mới với quyền admin để bypass RLS
-    await createUserSubscriptionAsAdmin(userId, subscriptionId, startDate, endDateStr, 'active');
+    await createUserSubscriptionAsAdmin(
+      userId, 
+      subscriptionId, 
+      startDate, 
+      endDateStr, 
+      'active'
+    );
 
     return {
       success: true,
@@ -64,7 +75,6 @@ export async function handleSubscriptionChange(userId: string, subscriptionName:
 
   } catch (error) {
     console.error("Lỗi xử lý thay đổi gói đăng ký:", error);
-    // Trả về thông báo lỗi nhưng không làm gián đoạn luồng ứng dụng
     return {
       success: false,
       message: `Không thể cập nhật gói đăng ký: ${error instanceof Error ? error.message : 'Lỗi không xác định'}`

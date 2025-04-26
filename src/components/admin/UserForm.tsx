@@ -1,10 +1,9 @@
-
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Loader } from "lucide-react";
-
+import { handleSubscriptionChange } from "@/api/user/userSubscription";
 import { UserFormValues, User } from "@/types/user";
 import { getSubscriptionOptions } from "@/api/user/userSubscription";
 import { Button } from "@/components/ui/button";
@@ -61,13 +60,13 @@ const UserForm = ({ user, onSubmit, onCancel, isSubmitting = false }: UserFormPr
       try {
         const options = await getSubscriptionOptions();
         setSubscriptions(options);
-        setIsLoading(false);
       } catch (error) {
         toast({
           title: "Lỗi",
           description: "Không thể tải danh sách gói đăng ký",
           variant: "destructive"
         });
+      } finally {
         setIsLoading(false);
       }
     };
@@ -80,6 +79,13 @@ const UserForm = ({ user, onSubmit, onCancel, isSubmitting = false }: UserFormPr
     
     setInternalSubmitting(true);
     try {
+      if (user && user.subscription !== data.subscription) {
+        const result = await handleSubscriptionChange(user.id.toString(), data.subscription);
+        if (!result.success) {
+          throw new Error(result.message);
+        }
+      }
+      
       await onSubmit(data);
     } catch (error) {
       toast({
@@ -92,7 +98,6 @@ const UserForm = ({ user, onSubmit, onCancel, isSubmitting = false }: UserFormPr
     }
   };
   
-  // Kết hợp trạng thái nội bộ và trạng thái từ props để xác định khi nào button bị disable
   const buttonDisabled = isLoading || isSubmitting || internalSubmitting;
   
   return (
