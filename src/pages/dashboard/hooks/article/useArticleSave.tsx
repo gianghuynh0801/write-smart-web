@@ -75,10 +75,7 @@ export const useArticleSave = () => {
 
     try {
       const userCredits = await checkUserCredits(userId);
-      if (typeof userCredits !== 'number') {
-        throw new Error("Không thể đọc số dư tín dụng.");
-      }
-
+      
       if (userCredits < articleCost) {
         toast({
           title: "Không đủ tín dụng",
