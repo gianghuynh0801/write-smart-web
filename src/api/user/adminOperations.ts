@@ -41,23 +41,32 @@ export const createUserSubscriptionAsAdmin = async (
   userId: string, 
   subscriptionId: number, 
   startDate: string,
-  endDate: string
+  endDate: string,
+  status: string = 'active'
 ): Promise<boolean> => {
   try {
-    console.log("Creating subscription with admin privileges:", { userId, subscriptionId, startDate, endDate });
+    console.log("Creating subscription with admin privileges:", { userId, subscriptionId, startDate, endDate, status });
     
     const client = getAdminClient();
     
-    // Ensure all existing subscriptions for this user are set to inactive
-    const { error: updateError } = await client
-      .from("user_subscriptions")
-      .update({ status: "inactive" })
-      .eq("user_id", userId)
-      .eq("status", "active");
-      
-    if (updateError) {
-      console.error("Lỗi khi cập nhật gói đăng ký cũ:", updateError.message);
-      throw new Error(`Could not deactivate old subscriptions: ${updateError.message}`);
+    // If we're setting a new active subscription, deactivate all existing ones first
+    if (status === 'active') {
+      const { error: updateError } = await client
+        .from("user_subscriptions")
+        .update({ status: "inactive" })
+        .eq("user_id", userId)
+        .eq("status", "active");
+        
+      if (updateError) {
+        console.error("Lỗi khi cập nhật gói đăng ký cũ:", updateError.message);
+        throw new Error(`Could not deactivate old subscriptions: ${updateError.message}`);
+      }
+    }
+    
+    // If subscription ID is -1 or we're just deactivating, don't create a new subscription
+    if (subscriptionId === -1 || (status === 'inactive' && !startDate)) {
+      console.log("No new subscription created - just deactivated existing ones");
+      return true;
     }
     
     // Create the new subscription with direct database access
@@ -68,7 +77,7 @@ export const createUserSubscriptionAsAdmin = async (
         subscription_id: subscriptionId,
         start_date: startDate,
         end_date: endDate,
-        status: 'active'
+        status: status
       });
       
     if (insertError) {

@@ -12,15 +12,19 @@ export async function handleSubscriptionChange(userId: string, subscriptionName:
       // Logic xử lý khi người dùng không còn gói đăng ký
       console.log("Removing all active subscriptions for user:", userId);
       
-      // Deactivate existing subscriptions
-      const { error: deactivateError } = await supabase
-        .from("user_subscriptions")
-        .update({ status: "inactive" })
-        .eq("user_id", userId)
-        .eq("status", "active");
-      
-      if (deactivateError) {
-        console.error(`Lỗi khi hủy gói đăng ký hiện tại: ${deactivateError.message}`);
+      // Deactivate existing subscriptions using admin client to bypass RLS
+      try {
+        const { error: deactivateError } = await supabase.rpc('deactivate_user_subscriptions', { user_id_param: userId });
+        
+        if (deactivateError) {
+          // Try with admin operations if RPC fails
+          console.log("Failed to use RPC function, trying direct admin operation:", deactivateError.message);
+          await createUserSubscriptionAsAdmin(userId, -1, '', '', 'inactive');
+        }
+      } catch (deactivateErr) {
+        console.error(`Error deactivating subscriptions: ${deactivateErr}`);
+        // Try direct database update as fallback
+        await createUserSubscriptionAsAdmin(userId, -1, '', '', 'inactive');
       }
       
       return {
@@ -57,19 +61,19 @@ export async function handleSubscriptionChange(userId: string, subscriptionName:
 
       console.log("Creating mock subscription with dates:", { startDate, endDateStr, mockSubscriptionId });
       
-      // Thực hiện tạo subscription thật với admin client nếu có thể
+      // Thực hiện tạo subscription thật với admin client
       try {
-        await createUserSubscriptionAsAdmin(userId, mockSubscriptionId, startDate, endDateStr);
+        await createUserSubscriptionAsAdmin(userId, mockSubscriptionId, startDate, endDateStr, 'active');
         return {
           success: true,
           message: `Đã cập nhật gói đăng ký thành ${subscriptionName}`
         };
       } catch (adminError) {
         console.error("Không thể tạo subscription thật:", adminError);
-        // Giả lập thành công không gọi API thực
+        // Return error message
         return {
-          success: true,
-          message: `Đã cập nhật gói đăng ký thành ${subscriptionName} (mock)`
+          success: false,
+          message: `Không thể cập nhật gói đăng ký: ${adminError instanceof Error ? adminError.message : 'Lỗi không xác định'}`
         };
       }
     }
@@ -91,7 +95,7 @@ export async function handleSubscriptionChange(userId: string, subscriptionName:
     console.log("Creating subscription with dates:", { startDate, endDateStr });
 
     // Use admin operations to bypass RLS
-    await createUserSubscriptionAsAdmin(userId, subscriptionId, startDate, endDateStr);
+    await createUserSubscriptionAsAdmin(userId, subscriptionId, startDate, endDateStr, 'active');
 
     return {
       success: true,
