@@ -1,8 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import { SMTPClient } from "https://deno.land/x/smtp@v0.7.0/mod.ts";
-import { isValidEmail } from "../../../src/utils/validation.ts";
+import * as nodemailer from "https://deno.land/x/nodemailer@v8.0.0/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,6 +15,12 @@ interface VerificationRequest {
   verification_token: string;
   site_url: string;
 }
+
+// Function to validate email format
+const isValidEmail = (email: string): boolean => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL") || "",
@@ -31,6 +36,8 @@ serve(async (req) => {
   try {
     // Validate và parse input
     const input = await req.json() as VerificationRequest;
+    
+    // Kiểm tra các trường bắt buộc
     if (!input.email || !input.verification_type || !input.verification_token || !input.site_url) {
       throw new Error("Thiếu thông tin bắt buộc");
     }
@@ -58,19 +65,6 @@ serve(async (req) => {
     const { host, port, username, password, from_email, from_name } = JSON.parse(smtpConfig.value);
 
     console.log(`Kết nối tới SMTP server: ${host}:${port}`);
-
-    // Khởi tạo SMTP client với cấu hình từ database
-    const client = new SMTPClient({
-      connection: {
-        hostname: host,
-        port: parseInt(port),
-        tls: true,
-        auth: {
-          username: username,
-          password: password,
-        },
-      },
-    });
 
     // Tạo verification URL
     const verificationUrl = verification_type === "email_verification" 
@@ -118,16 +112,35 @@ serve(async (req) => {
 
     console.log("Đang gửi email...");
 
-    // Gửi email
-    await client.send({
-      from: `${from_name || "Admin"} <${from_email}>`,
-      to: email,
-      subject: subject,
-      html: htmlContent,
-    });
+    try {
+      // Khởi tạo nodemailer transport
+      const transporter = nodemailer.createTransport({
+        host: host,
+        port: parseInt(port),
+        secure: parseInt(port) === 465, // true for 465, false for other ports
+        auth: {
+          user: username,
+          pass: password,
+        },
+        tls: {
+          // Chấp nhận các self-signed certificates
+          rejectUnauthorized: false
+        }
+      });
 
-    console.log("Email đã được gửi thành công tới:", email);
-    await client.close();
+      // Gửi email
+      const info = await transporter.sendMail({
+        from: `${from_name || "Admin"} <${from_email}>`,
+        to: email,
+        subject: subject,
+        html: htmlContent,
+      });
+
+      console.log("Email đã được gửi thành công tới:", email, "messageId:", info.messageId);
+    } catch (emailError) {
+      console.error("Lỗi khi gửi email:", emailError);
+      throw new Error(`Không thể gửi email: ${emailError instanceof Error ? emailError.message : "Lỗi không xác định"}`);
+    }
     
     return new Response(
       JSON.stringify({ 
