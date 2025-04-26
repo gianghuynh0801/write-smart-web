@@ -18,6 +18,7 @@ export const useWebhookCheck = (): WebhookCheckResult => {
     const checkWebhookAndAdminStatus = async () => {
       setIsLoading(true);
       try {
+        // Kiểm tra webhook URL từ cấu hình hệ thống
         const { data: webhookData, error: webhookError } = await supabase
           .from('system_configurations')
           .select('value')
@@ -30,6 +31,7 @@ export const useWebhookCheck = (): WebhookCheckResult => {
           setHasWebhook(!!webhookData?.value);
         }
 
+        // Kiểm tra quyền admin của người dùng hiện tại
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
           const { roleData } = await checkAdminRole(session.user.id);
