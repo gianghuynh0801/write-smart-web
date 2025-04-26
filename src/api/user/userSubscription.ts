@@ -14,13 +14,10 @@ export async function handleSubscriptionChange(userId: string, subscriptionName:
       
       // Deactivate existing subscriptions using admin client to bypass RLS
       try {
-        const { error: deactivateError } = await supabase.rpc('deactivate_user_subscriptions', { user_id_param: userId });
-        
-        if (deactivateError) {
-          // Try with admin operations if RPC fails
-          console.log("Failed to use RPC function, trying direct admin operation:", deactivateError.message);
-          await createUserSubscriptionAsAdmin(userId, -1, '', '', 'inactive');
-        }
+        // Instead of using RPC which is causing the type error,
+        // we'll directly use the admin operations to deactivate subscriptions
+        console.log("Deactivating all active subscriptions for user:", userId);
+        await createUserSubscriptionAsAdmin(userId, -1, '', '', 'inactive');
       } catch (deactivateErr) {
         console.error(`Error deactivating subscriptions: ${deactivateErr}`);
         // Try direct database update as fallback
