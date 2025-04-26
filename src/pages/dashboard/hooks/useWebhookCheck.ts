@@ -18,7 +18,10 @@ export const useWebhookCheck = (): WebhookCheckResult => {
     const checkWebhookAndAdminStatus = async () => {
       setIsLoading(true);
       try {
+        console.log("Bắt đầu kiểm tra webhook URL và quyền admin...");
+        
         // Kiểm tra webhook URL từ cấu hình hệ thống
+        // (Lưu ý: RLS policy đã được cập nhật để cho phép tất cả người dùng đọc cấu hình này)
         const { data: webhookData, error: webhookError } = await supabase
           .from('system_configurations')
           .select('value')
@@ -28,6 +31,7 @@ export const useWebhookCheck = (): WebhookCheckResult => {
         if (webhookError) {
           console.error('Lỗi khi kiểm tra webhook URL:', webhookError);
         } else {
+          console.log("Kết quả kiểm tra webhook URL:", webhookData);
           setHasWebhook(!!webhookData?.value);
         }
 

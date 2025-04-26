@@ -17,6 +17,7 @@ const ContentGenerateButton = ({ onClick, isLoading }: ContentGenerateButtonProp
   useEffect(() => {
     const checkWebhookUrl = async () => {
       try {
+        console.log("Kiểm tra URL webhook trong ContentGenerateButton...");
         const { data, error } = await supabase
           .from('system_configurations')
           .select('value')
@@ -27,6 +28,7 @@ const ContentGenerateButton = ({ onClick, isLoading }: ContentGenerateButtonProp
           console.error('Lỗi khi kiểm tra webhook URL:', error);
           setHasWebhook(false);
         } else {
+          console.log("Kết quả kiểm tra webhook URL:", data);
           setHasWebhook(!!data?.value);
         }
       } catch (error) {
@@ -51,7 +53,7 @@ const ContentGenerateButton = ({ onClick, isLoading }: ContentGenerateButtonProp
               <Button 
                 onClick={onClick} 
                 className="flex items-center gap-2" 
-                disabled={isLoading || isChecking}
+                disabled={isLoading || isChecking || hasWebhook === false}
               >
                 {isLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />

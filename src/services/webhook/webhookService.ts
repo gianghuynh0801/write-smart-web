@@ -3,18 +3,35 @@ import { supabase } from "@/integrations/supabase/client";
 import { ContentGenerationParams, WebhookResponse } from "./types";
 
 const getWebhookUrl = async (): Promise<string> => {
-  const { data, error } = await supabase
-    .from('system_configurations')
-    .select('value')
-    .eq('key', 'webhook_url')
-    .single();
+  try {
+    // Phương pháp 1: Sử dụng RPC function để lấy webhook URL (cách này bỏ qua RLS)
+    const { data: rpcData, error: rpcError } = await supabase
+      .rpc('get_webhook_url');
+      
+    if (!rpcError && rpcData) {
+      console.log("Lấy webhook URL từ RPC function thành công:", rpcData);
+      return rpcData;
+    }
+    
+    // Phương pháp 2 (dự phòng): Thử đọc trực tiếp từ bảng với RLS
+    console.log("Thử phương pháp dự phòng để lấy webhook URL...");
+    const { data, error } = await supabase
+      .from('system_configurations')
+      .select('value')
+      .eq('key', 'webhook_url')
+      .maybeSingle();
 
-  if (error) {
-    console.error('Lỗi khi lấy webhook URL từ database:', error);
+    if (error) {
+      console.error('Lỗi khi lấy webhook URL từ database:', error);
+      return '';
+    }
+
+    return data?.value || '';
+    
+  } catch (error) {
+    console.error('Exception khi lấy webhook URL:', error);
     return '';
   }
-
-  return data?.value || '';
 };
 
 export const generateContent = async (

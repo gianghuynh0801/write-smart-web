@@ -10,7 +10,7 @@ interface WebhookAlertProps {
 }
 
 const WebhookAlert = ({ isAdmin, isLoading, hasWebhook }: WebhookAlertProps) => {
-  // Chỉ hiển thị cảnh báo khi không có webhook và đã tải xong dữ liệu
+  // Hiển thị cảnh báo khi không có webhook và đã tải xong dữ liệu
   if (hasWebhook !== false || isLoading) return null;
 
   return (
