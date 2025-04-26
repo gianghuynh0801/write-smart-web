@@ -1,5 +1,4 @@
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ProfileFormState {
   name: string;
@@ -18,13 +18,29 @@ interface ProfileFormState {
 
 export function ProfileTab() {
   const [profileForm, setProfileForm] = useState<ProfileFormState>({
-    name: "Nguyễn Văn A",
-    email: "user@example.com",
-    bio: "Tôi là content creator",
+    name: "",
+    email: "",
+    bio: "",
     language: "vietnamese"
   });
-
   const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchUserDetails = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        setProfileForm(prev => ({
+          ...prev,
+          name: user.user_metadata?.name || user.email?.split('@')[0] || "",
+          email: user.email || "",
+          bio: user.user_metadata?.bio || ""
+        }));
+      }
+    };
+
+    fetchUserDetails();
+  }, []);
 
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -35,12 +51,31 @@ export function ProfileTab() {
     setProfileForm(prev => ({ ...prev, language: value }));
   };
 
-  const handleProfileSubmit = (e: React.FormEvent) => {
+  const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast({
-      title: "Thông tin cá nhân đã được cập nhật",
-      description: "Thông tin của bạn đã được lưu thành công."
-    });
+    
+    try {
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          name: profileForm.name,
+          bio: profileForm.bio
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Thông tin cá nhân đã được cập nhật",
+        description: "Thông tin của bạn đã được lưu thành công."
+      });
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể cập nhật thông tin. Vui lòng thử lại.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -56,8 +91,8 @@ export function ProfileTab() {
           <CardContent className="space-y-4">
             <div className="flex items-center space-x-4">
               <Avatar className="h-20 w-20">
-                <AvatarImage src="https://randomuser.me/api/portraits/men/32.jpg" alt="Avatar" />
-                <AvatarFallback>NA</AvatarFallback>
+                <AvatarImage src={profileForm.name ? `https://ui-avatars.com/api/?name=${encodeURIComponent(profileForm.name)}` : undefined} alt="Avatar" />
+                <AvatarFallback>{profileForm.name ? profileForm.name[0].toUpperCase() : 'U'}</AvatarFallback>
               </Avatar>
               <div>
                 <Button variant="outline" size="sm">
@@ -109,7 +144,7 @@ export function ProfileTab() {
             <div className="space-y-2">
               <Label htmlFor="language">Ngôn ngữ hiển thị</Label>
               <Select
-                defaultValue={profileForm.language}
+                value={profileForm.language}
                 onValueChange={handleProfileLanguageChange}
               >
                 <SelectTrigger id="language">
