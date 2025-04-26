@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +16,7 @@ import {
   DialogHeader,
   DialogTitle
 } from "@/components/ui/dialog";
+import { Eye, EyeOff } from "lucide-react";
 
 interface RegisterFormData {
   name: string;
@@ -35,7 +35,11 @@ export function RegisterForm() {
     confirmPassword: ""
   });
   const [showVerificationDialog, setShowVerificationDialog] = useState(false);
-  
+  const [showPasswords, setShowPasswords] = useState({
+    password: false,
+    confirmPassword: false
+  });
+
   const { toast } = useToast();
   const navigate = useNavigate();
   const { sendVerificationEmail } = useEmailVerification();
@@ -46,7 +50,6 @@ export function RegisterForm() {
     setError(null);
   };
 
-  // Kiểm tra xem email đã tồn tại chưa
   const checkEmailExists = async (email: string): Promise<boolean> => {
     try {
       const { data } = await supabase
@@ -105,14 +108,11 @@ export function RegisterForm() {
     setIsLoading(true);
     
     try {
-      // Kiểm tra nếu email đã tồn tại
       const emailExists = await checkEmailExists(formData.email);
       if (emailExists) {
         throw new Error("Email này đã được sử dụng. Vui lòng chọn email khác hoặc đăng nhập.");
       }
 
-      // Bước 1: Tạo tài khoản trong auth SỬ DỤNG signUp VỚI autoconfirm=true 
-      // để không gửi email xác nhận của Supabase
       console.log("Bắt đầu tạo tài khoản:", formData.email);
       const { data, error } = await supabase.auth.signUp({ 
         email: formData.email, 
@@ -135,12 +135,8 @@ export function RegisterForm() {
       const userId = data.user.id;
       console.log("Đã tạo tài khoản trong auth thành công, ID:", userId);
       
-      // Bước 2: Đợi một khoảng thời gian để đảm bảo bản ghi auth được tạo và nhận được
-      console.log("Đợi để đảm bảo tài khoản được tạo đầy đủ...");
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // Bước 3: Đồng bộ người dùng vào bảng users với email_verified=false
-      console.log("Đồng bộ người dùng vào bảng users...");
       const { data: syncData, error: syncError } = await supabase.functions.invoke("sync-user", {
         body: { 
           user_id: userId, 
@@ -157,7 +153,6 @@ export function RegisterForm() {
       
       console.log("Kết quả đồng bộ người dùng:", syncData);
       
-      // Bước 4: Kiểm tra lại xem người dùng đã được tạo thành công chưa
       const { data: checkUser, error: checkUserError } = await supabase
         .from('users')
         .select('*')
@@ -176,11 +171,9 @@ export function RegisterForm() {
       
       console.log("Người dùng đã được tạo thành công trong database:", checkUser);
       
-      // Đăng xuất người dùng ngay sau khi đăng ký để tránh lỗi token
       await supabase.auth.signOut();
       console.log("Đã đăng xuất người dùng sau khi đăng ký");
       
-      // Bước 5: Gửi email xác thực SMTP tùy chỉnh bằng edge function
       try {
         console.log("Gửi email xác thực cho:", formData.email);
         await sendVerificationEmail({
@@ -194,7 +187,6 @@ export function RegisterForm() {
         setShowVerificationDialog(true);
       } catch (emailError: any) {
         console.error("Lỗi gửi email xác thực:", emailError);
-        // Đã tạo người dùng thành công, nhưng không gửi được email
         toast({
           title: "Cảnh báo",
           description: "Đã tạo tài khoản nhưng không thể gửi email xác thực. Vui lòng liên hệ hỗ trợ.",
@@ -219,6 +211,13 @@ export function RegisterForm() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const togglePasswordVisibility = (field: keyof typeof showPasswords) => {
+    setShowPasswords(prev => ({
+      ...prev,
+      [field]: !prev[field]
+    }));
   };
 
   const closeVerificationDialog = () => {
@@ -264,30 +263,60 @@ export function RegisterForm() {
         
         <div className="space-y-2">
           <Label htmlFor="password">Mật khẩu</Label>
-          <Input
-            id="password"
-            name="password"
-            type="password"
-            placeholder="Tạo mật khẩu (ít nhất 8 ký tự)"
-            value={formData.password}
-            onChange={handleChange}
-            required
-            minLength={8}
-          />
+          <div className="relative">
+            <Input
+              id="password"
+              name="password"
+              type={showPasswords.password ? "text" : "password"}
+              placeholder="Tạo mật khẩu (ít nhất 8 ký tự)"
+              value={formData.password}
+              onChange={handleChange}
+              required
+              minLength={8}
+              className="pr-10"
+            />
+            <button
+              type="button"
+              onClick={() => togglePasswordVisibility('password')}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+              tabIndex={-1}
+            >
+              {showPasswords.password ? (
+                <EyeOff className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
+            </button>
+          </div>
         </div>
         
         <div className="space-y-2">
           <Label htmlFor="confirmPassword">Xác nhận mật khẩu</Label>
-          <Input
-            id="confirmPassword"
-            name="confirmPassword"
-            type="password"
-            placeholder="Nhập lại mật khẩu"
-            value={formData.confirmPassword}
-            onChange={handleChange}
-            required
-            minLength={8}
-          />
+          <div className="relative">
+            <Input
+              id="confirmPassword"
+              name="confirmPassword"
+              type={showPasswords.confirmPassword ? "text" : "password"}
+              placeholder="Nhập lại mật khẩu"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              required
+              minLength={8}
+              className="pr-10"
+            />
+            <button
+              type="button"
+              onClick={() => togglePasswordVisibility('confirmPassword')}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+              tabIndex={-1}
+            >
+              {showPasswords.confirmPassword ? (
+                <EyeOff className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
+            </button>
+          </div>
         </div>
         
         <Button type="submit" className="w-full" disabled={isLoading}>

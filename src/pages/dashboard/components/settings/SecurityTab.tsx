@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Key } from "lucide-react";
+import { Key, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface SecurityFormState {
@@ -19,12 +19,25 @@ export function SecurityTab() {
     newPassword: "",
     confirmPassword: ""
   });
+  
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false
+  });
 
   const { toast } = useToast();
 
   const handleSecurityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setSecurityForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  const togglePasswordVisibility = (field: keyof typeof showPasswords) => {
+    setShowPasswords(prev => ({
+      ...prev,
+      [field]: !prev[field]
+    }));
   };
 
   const handleSecuritySubmit = (e: React.FormEvent) => {
@@ -77,11 +90,23 @@ export function SecurityTab() {
                 <Input
                   id="currentPassword"
                   name="currentPassword"
-                  type="password"
+                  type={showPasswords.current ? "text" : "password"}
                   value={securityForm.currentPassword}
                   onChange={handleSecurityChange}
+                  className="pr-10"
                 />
-                <Key className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <button
+                  type="button"
+                  onClick={() => togglePasswordVisibility('current')}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  tabIndex={-1}
+                >
+                  {showPasswords.current ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
               </div>
             </div>
             
@@ -91,11 +116,23 @@ export function SecurityTab() {
                 <Input
                   id="newPassword"
                   name="newPassword"
-                  type="password"
+                  type={showPasswords.new ? "text" : "password"}
                   value={securityForm.newPassword}
                   onChange={handleSecurityChange}
+                  className="pr-10"
                 />
-                <Key className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <button
+                  type="button"
+                  onClick={() => togglePasswordVisibility('new')}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  tabIndex={-1}
+                >
+                  {showPasswords.new ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
               </div>
               <p className="text-xs text-gray-500">
                 Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ, số và ký tự đặc biệt
@@ -108,11 +145,23 @@ export function SecurityTab() {
                 <Input
                   id="confirmPassword"
                   name="confirmPassword"
-                  type="password"
+                  type={showPasswords.confirm ? "text" : "password"}
                   value={securityForm.confirmPassword}
                   onChange={handleSecurityChange}
+                  className="pr-10"
                 />
-                <Key className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <button
+                  type="button"
+                  onClick={() => togglePasswordVisibility('confirm')}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  tabIndex={-1}
+                >
+                  {showPasswords.confirm ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
               </div>
             </div>
           </CardContent>
