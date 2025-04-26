@@ -1,20 +1,21 @@
-
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import {
-  BarChart3,
-  FileText,
-  CreditCard,
-  Package,
-  Settings,
-  Link2,
-  LogOut,
-  Menu,
-  X,
-  Home
+import { 
+  BarChart3, 
+  FileText, 
+  CreditCard, 
+  Package, 
+  Settings, 
+  Link2, 
+  LogOut, 
+  Menu, 
+  X, 
+  Home 
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const navigation = [
   { name: "Tổng quan", href: "/dashboard", icon: BarChart3 },
@@ -33,6 +34,43 @@ interface SidebarProps {
 const Sidebar = ({ className }: SidebarProps) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const { toast } = useToast();
+  
+  const [user, setUser] = useState<{
+    name?: string;
+    email?: string;
+  }>({});
+
+  useEffect(() => {
+    const fetchUserDetails = async () => {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      
+      if (currentUser) {
+        setUser({
+          name: currentUser.user_metadata?.name || currentUser.email?.split('@')[0],
+          email: currentUser.email
+        });
+      }
+    };
+
+    fetchUserDetails();
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      toast({
+        title: "Đăng xuất thành công",
+        description: "Bạn đã đăng xuất khỏi hệ thống"
+      });
+    } catch (error) {
+      toast({
+        title: "Lỗi đăng xuất",
+        description: "Không thể đăng xuất. Vui lòng thử lại.",
+        variant: "destructive"
+      });
+    }
+  };
   
   const isActiveRoute = (href: string) => {
     return location.pathname === href || 
@@ -41,7 +79,6 @@ const Sidebar = ({ className }: SidebarProps) => {
 
   return (
     <>
-      {/* Mobile menu button */}
       <div className="lg:hidden fixed top-4 left-4 z-50">
         <Button
           variant="outline"
@@ -52,7 +89,6 @@ const Sidebar = ({ className }: SidebarProps) => {
         </Button>
       </div>
       
-      {/* Sidebar for large screens and mobile (when open) */}
       <div
         className={cn(
           "fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-200 transition-transform duration-300 ease-in-out transform lg:translate-x-0",
@@ -93,22 +129,25 @@ const Sidebar = ({ className }: SidebarProps) => {
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <div className="h-8 w-8 rounded-full bg-primary text-white flex items-center justify-center">
-                  <span className="text-sm font-medium">U</span>
+                  <span className="text-sm font-medium">
+                    {user.name ? user.name[0].toUpperCase() : 'U'}
+                  </span>
                 </div>
               </div>
               <div className="ml-3">
-                <div className="text-sm font-medium text-gray-900">User Name</div>
-                <div className="text-xs text-gray-500">user@example.com</div>
+                <div className="text-sm font-medium text-gray-900">
+                  {user.name || 'Người dùng'}
+                </div>
+                <div className="text-xs text-gray-500">
+                  {user.email || 'user@example.com'}
+                </div>
               </div>
             </div>
             <div className="mt-4">
               <Button 
                 variant="outline" 
                 className="w-full justify-start text-gray-700"
-                onClick={() => {
-                  // Handle logout
-                  // await supabase.auth.signOut()
-                }}
+                onClick={handleLogout}
               >
                 <LogOut className="mr-2 h-4 w-4" />
                 Đăng xuất
@@ -118,7 +157,6 @@ const Sidebar = ({ className }: SidebarProps) => {
         </div>
       </div>
       
-      {/* Overlay for mobile */}
       {isMobileMenuOpen && (
         <div 
           className="fixed inset-0 bg-gray-600 bg-opacity-50 z-30 lg:hidden"
