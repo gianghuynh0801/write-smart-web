@@ -1,6 +1,5 @@
-
 import { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { 
   BarChart3, 
@@ -35,6 +34,7 @@ interface SidebarProps {
 const Sidebar = ({ className }: SidebarProps) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const { toast } = useToast();
   
   const [user, setUser] = useState<{
@@ -64,6 +64,7 @@ const Sidebar = ({ className }: SidebarProps) => {
         title: "Đăng xuất thành công",
         description: "Bạn đã đăng xuất khỏi hệ thống"
       });
+      navigate('/login');
     } catch (error) {
       toast({
         title: "Lỗi đăng xuất",

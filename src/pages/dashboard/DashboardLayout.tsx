@@ -4,8 +4,11 @@ import Sidebar from "@/components/dashboard/Sidebar";
 import { Link } from "react-router-dom";
 import { Home } from "lucide-react";
 import LanguageSwitcher from "@/components/common/LanguageSwitcher";
+import { useAuthRedirect } from "@/hooks/useAuthRedirect";
 
 const DashboardLayout = () => {
+  useAuthRedirect();
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Sidebar />
