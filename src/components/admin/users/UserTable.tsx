@@ -1,10 +1,9 @@
-
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Edit, CreditCard, Trash, MoreHorizontal, Loader } from "lucide-react";
+import { Edit, CreditCard, Trash, MoreHorizontal, Loader, RefreshCw } from "lucide-react";
 import { User } from "@/types/user";
 
 type UserTableProps = {
@@ -14,6 +13,7 @@ type UserTableProps = {
   onEditUser: (userId: string | number) => void;
   onAddCredits: (user: User) => void;
   onDeleteUser: (user: User) => void;
+  onResendVerification?: (user: User) => void;
 };
 
 const UserTable = ({
@@ -23,6 +23,7 @@ const UserTable = ({
   onEditUser,
   onAddCredits,
   onDeleteUser,
+  onResendVerification,
 }: UserTableProps) => (
   <div className="rounded-md border">
     <Table>
@@ -93,6 +94,12 @@ const UserTable = ({
                       <CreditCard className="mr-2 h-4 w-4" />
                       Thêm tín dụng
                     </DropdownMenuItem>
+                    {onResendVerification && (
+                      <DropdownMenuItem onClick={() => onResendVerification(user)}>
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Gửi lại xác thực
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       onClick={() => onDeleteUser(user)}

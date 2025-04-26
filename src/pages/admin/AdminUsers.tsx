@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +11,7 @@ import UserDialog from "@/components/admin/UserDialog";
 import UserTable from "@/components/admin/users/UserTable";
 import UserFilters from "@/components/admin/users/UserFilters";
 import UserPagination from "@/components/admin/users/UserPagination";
+import { useEmailVerification } from "@/hooks/useEmailVerification";
 
 const AdminUsers = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -27,6 +27,7 @@ const AdminUsers = () => {
   const [editUserId, setEditUserId] = useState<string | number | undefined>(undefined);
   const pageSize = 5;
   const { toast } = useToast();
+  const { sendVerificationEmail } = useEmailVerification();
 
   const loadUsers = useCallback(async () => {
     setIsLoading(true);
@@ -134,6 +135,29 @@ const AdminUsers = () => {
 
   const totalPages = Math.ceil(totalUsers / pageSize);
 
+  const handleResendVerification = async (user: User) => {
+    try {
+      await sendVerificationEmail({
+        email: user.email,
+        userId: user.id,
+        name: user.name,
+        type: "email_verification"
+      });
+      
+      toast({
+        title: "Đã gửi email xác thực",
+        description: `Email xác thực đã được gửi đến ${user.email}`
+      });
+    } catch (error) {
+      console.error("Error sending verification email:", error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể gửi email xác thực",
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -178,6 +202,7 @@ const AdminUsers = () => {
             onEditUser={handleEditUser}
             onAddCredits={handleAddCredits}
             onDeleteUser={handleDeleteUser}
+            onResendVerification={handleResendVerification}
           />
           <div className="flex items-center justify-between mt-4">
             <div className="text-sm text-gray-500">
