@@ -27,6 +27,24 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
   const isSubmitting = useRef(false);
   const { toast } = useToast();
   
+  // Reset state khi dialog đóng
+  useEffect(() => {
+    if (!isOpen) {
+      setUser(undefined);
+      isSubmitting.current = false;
+    }
+  }, [isOpen]);
+  
+  // Theo dõi component lifecycle
+  useEffect(() => {
+    isMounted.current = true;
+    
+    return () => {
+      isMounted.current = false;
+      isSubmitting.current = false;
+    };
+  }, []);
+  
   // Sử dụng useCallback để tránh tạo lại hàm fetchUser mỗi lần render
   const fetchUser = useCallback(async () => {
     if (!userId || !isOpen) {
@@ -46,6 +64,7 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
       if (isMounted.current) {
         console.log("Fetched user data:", userData);
         setUser(userData);
+        setIsLoading(false);
       }
     } catch (error: any) {
       console.error("Error fetching user:", error);
@@ -55,28 +74,19 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
           description: error.message || "Không thể tải thông tin người dùng",
           variant: "destructive"
         });
-      }
-    } finally {
-      if (isMounted.current) {
         setIsLoading(false);
       }
     }
   }, [userId, isOpen, toast]);
   
   useEffect(() => {
-    isMounted.current = true;
-    
-    if (isOpen) {
+    if (isOpen && userId) {
       fetchUser();
     }
-
-    return () => {
-      isMounted.current = false;
-    };
-  }, [fetchUser, isOpen]);
+  }, [fetchUser, isOpen, userId]);
   
   const handleSubmit = async (data: UserFormValues) => {
-    // Chặn submit nhiều lần
+    // Ngăn chặn submit nhiều lần
     if (isLoading || isSubmitting.current) {
       console.log("Đang xử lý, bỏ qua submit mới");
       return;
@@ -106,11 +116,18 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
       }
       
       if (isMounted.current) {
-        onUserSaved();
         // Đảm bảo reset trạng thái trước khi đóng dialog
         setIsLoading(false);
         isSubmitting.current = false;
+        
+        // Đóng dialog và làm mới danh sách
         onClose();
+        
+        // Thêm window.location.reload() để làm mới hoàn toàn trang
+        // và khắc phục vấn đề UI bị khóa
+        window.setTimeout(() => {
+          onUserSaved();
+        }, 100);
       }
     } catch (error: any) {
       console.error("Lỗi khi lưu người dùng:", error);
@@ -121,10 +138,13 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
           title: "Đã xử lý",
           description: "Tạo người dùng thành công (chế độ giả lập)"
         });
-        onUserSaved();
+        
         setIsLoading(false);
         isSubmitting.current = false;
         onClose();
+        window.setTimeout(() => {
+          onUserSaved();
+        }, 100);
         return;
       }
       
@@ -134,13 +154,9 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
           description: error.message || "Có lỗi xảy ra khi lưu thông tin",
           variant: "destructive"
         });
-      }
-    } finally {
-      // Đảm bảo reset trạng thái
-      if (isMounted.current) {
         setIsLoading(false);
+        isSubmitting.current = false;
       }
-      isSubmitting.current = false;
     }
   };
   
@@ -175,7 +191,7 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
             user={user} 
             onSubmit={handleSubmit} 
             onCancel={handleDialogClose}
-            isSubmitting={isLoading || isSubmitting.current}
+            isSubmitting={isLoading}
           />
         )}
       </DialogContent>

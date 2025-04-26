@@ -68,6 +68,16 @@ export const useUserForm = (user?: User, onSubmit?: (data: UserFormValues) => Pr
     }
   }, [user, form]);
 
+  // Cleanup function khi component unmount
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+      isSubmitting.current = false;
+      setIsLoading(false);
+    };
+  }, []);
+
   // Tải dữ liệu gói đăng ký
   const loadSubscriptions = useCallback(async () => {
     if (!isMounted.current) return;
@@ -77,6 +87,7 @@ export const useUserForm = (user?: User, onSubmit?: (data: UserFormValues) => Pr
       const options = await getSubscriptionOptions();
       if (isMounted.current) {
         setSubscriptions(options);
+        setIsLoading(false);
       }
     } catch (error) {
       if (isMounted.current) {
@@ -86,21 +97,13 @@ export const useUserForm = (user?: User, onSubmit?: (data: UserFormValues) => Pr
           description: "Không thể tải danh sách gói đăng ký",
           variant: "destructive"
         });
-      }
-    } finally {
-      if (isMounted.current) {
         setIsLoading(false);
       }
     }
   }, [toast]);
 
   useEffect(() => {
-    isMounted.current = true;
     loadSubscriptions();
-    
-    return () => {
-      isMounted.current = false;
-    };
   }, [loadSubscriptions]);
 
   const handleFormSubmit = async (data: UserFormValues) => {
@@ -145,6 +148,7 @@ export const useUserForm = (user?: User, onSubmit?: (data: UserFormValues) => Pr
         });
       }
     } finally {
+      // Reset trạng thái luôn được thực hiện, nhưng chỉ khi component còn mounted
       if (isMounted.current) {
         setIsLoading(false);
       }
@@ -156,12 +160,6 @@ export const useUserForm = (user?: User, onSubmit?: (data: UserFormValues) => Pr
     form,
     subscriptions,
     isLoading,
-    handleSubmit: handleFormSubmit,
-    resetLoading: () => {
-      if (isMounted.current) {
-        setIsLoading(false);
-      }
-      isSubmitting.current = false;
-    }
+    handleSubmit: handleFormSubmit
   };
 };

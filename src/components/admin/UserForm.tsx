@@ -1,5 +1,5 @@
 
-import React, { useRef } from "react";
+import React, { useRef, useEffect } from "react";
 import { Loader } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
@@ -18,24 +18,32 @@ interface UserFormProps {
 }
 
 const UserForm = ({ user, onSubmit, onCancel, isSubmitting = false }: UserFormProps) => {
-  const formSubmitCount = useRef(0);
-  const { form, subscriptions, isLoading, handleSubmit, resetLoading } = useUserForm(user, onSubmit);
+  const submitting = useRef(false);
+  const { form, subscriptions, isLoading, handleSubmit } = useUserForm(user, onSubmit);
   
-  const buttonDisabled = isLoading || isSubmitting;
-  const showSpinner = isLoading || isSubmitting;
+  const buttonDisabled = isLoading || isSubmitting || submitting.current;
+  const showSpinner = isLoading || isSubmitting || submitting.current;
+  
+  // Reset khi component unmount
+  useEffect(() => {
+    return () => {
+      submitting.current = false;
+    };
+  }, []);
   
   const handleFormSubmit = async (data: UserFormValues) => {
     // Tránh submit nhiều lần
-    const currentCount = ++formSubmitCount.current;
+    if (submitting.current || isLoading || isSubmitting) return;
+    
+    submitting.current = true;
     
     try {
       await handleSubmit(data);
     } catch (error) {
       console.error("Lỗi khi xử lý form:", error);
-      // Đảm bảo reset trạng thái khi có lỗi
-      if (currentCount === formSubmitCount.current) {
-        resetLoading();
-      }
+    } finally {
+      // Vì có thể component đã unmount khi đến đây, nên cần kiểm tra
+      submitting.current = false;
     }
   };
   
