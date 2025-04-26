@@ -1,7 +1,8 @@
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileText, CreditCard, Package, ArrowUpRight } from "lucide-react";
+import { FileText, CreditCard, Package, ArrowUpRight, Link } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { Link as RouterLink } from "react-router-dom";
 import { useDashboardStats } from "./hooks/useDashboardStats";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -130,24 +131,24 @@ const Dashboard = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Link to="/dashboard/create">
+            <RouterLink to="/dashboard/create">
               <Button className="w-full">
                 <FileText className="mr-2 h-4 w-4" />
                 Tạo bài viết mới
               </Button>
-            </Link>
-            <Link to="/dashboard/connections">
+            </RouterLink>
+            <RouterLink to="/dashboard/connections">
               <Button variant="outline" className="w-full">
-                <Link2 className="mr-2 h-4 w-4" />
+                <Link className="mr-2 h-4 w-4" />
                 Kết nối tài khoản mạng xã hội
               </Button>
-            </Link>
-            <Link to="/dashboard/credits">
+            </RouterLink>
+            <RouterLink to="/dashboard/credits">
               <Button variant="outline" className="w-full">
                 <CreditCard className="mr-2 h-4 w-4" />
                 Mua thêm tín dụng
               </Button>
-            </Link>
+            </RouterLink>
           </CardContent>
         </Card>
       </div>
