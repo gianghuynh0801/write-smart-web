@@ -17,6 +17,7 @@ const AdminUsers = () => {
     users,
     totalUsers,
     isLoading,
+    isCreditUpdating,
     searchTerm,
     status,
     currentPage,
@@ -78,6 +79,7 @@ const AdminUsers = () => {
           <UserTable
             users={users}
             isLoading={isLoading}
+            isCreditUpdating={isCreditUpdating}
             getRoleColor={getRoleColor}
             onEditUser={handleEditUser}
             onAddCredits={handleAddCredits}

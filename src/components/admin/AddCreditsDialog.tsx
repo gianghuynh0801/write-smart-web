@@ -50,8 +50,16 @@ const AddCreditsDialog = ({ isOpen, onClose, onConfirm, userName }: AddCreditsDi
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!isSubmitting && !open) {
+        onClose();
+      }
+    }}>
+      <DialogContent onInteractOutside={(e) => {
+        if (isSubmitting) {
+          e.preventDefault();
+        }
+      }}>
         <DialogHeader>
           <DialogTitle>Thêm tín dụng</DialogTitle>
           <DialogDescription>

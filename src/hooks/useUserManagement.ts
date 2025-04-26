@@ -1,7 +1,8 @@
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { fetchUsers, deleteUser, addUserCredits } from "@/api/userService";
+import { fetchUsers, deleteUser } from "@/api/userService";
+import { addUserCredits } from "@/api/user/userCredits";
 import { User } from "@/types/user";
 import { useEmailVerification } from "@/hooks/useEmailVerification";
 
@@ -12,6 +13,7 @@ export const useUserManagement = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalUsers, setTotalUsers] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [isCreditUpdating, setIsCreditUpdating] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [addCreditsDialogOpen, setAddCreditsDialogOpen] = useState(false);
   const [userDialogOpen, setUserDialogOpen] = useState(false);
@@ -23,6 +25,7 @@ export const useUserManagement = () => {
 
   const loadUsers = useCallback(async () => {
     setIsLoading(true);
+    console.log("[useUserManagement] Đang tải danh sách người dùng...");
     try {
       const result = await fetchUsers(currentPage, pageSize, status, searchTerm);
       
@@ -34,7 +37,9 @@ export const useUserManagement = () => {
       
       setUsers(enhancedUsers);
       setTotalUsers(result.total);
+      console.log(`[useUserManagement] Đã tải ${enhancedUsers.length} người dùng, tổng số: ${result.total}`);
     } catch (error) {
+      console.error("[useUserManagement] Lỗi khi tải danh sách người dùng:", error);
       toast({
         title: "Lỗi",
         description: "Không thể tải danh sách người dùng",
@@ -90,20 +95,29 @@ export const useUserManagement = () => {
 
   const confirmAddCredits = async (amount: number) => {
     if (!selectedUser) return;
-
+    setIsCreditUpdating(true);
+    
     try {
+      console.log(`[useUserManagement] Thêm ${amount} tín dụng cho ${selectedUser.name} (${selectedUser.id})`);
       await addUserCredits(selectedUser.id, amount);
+      
+      // Thông báo thành công
       toast({
         title: "Thêm tín dụng",
         description: `Đã thêm ${amount} tín dụng cho người dùng ${selectedUser.name}`
       });
-      loadUsers();
+      
+      // Tải lại danh sách người dùng để cập nhật số dư mới
+      await loadUsers();
     } catch (error) {
+      console.error("[useUserManagement] Lỗi khi thêm tín dụng:", error);
       toast({
         title: "Lỗi",
         description: "Không thể thêm tín dụng",
         variant: "destructive"
       });
+    } finally {
+      setIsCreditUpdating(false);
     }
   };
 
@@ -145,10 +159,16 @@ export const useUserManagement = () => {
     }
   };
 
+  // Tải danh sách người dùng ban đầu
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
+
   return {
     users,
     totalUsers,
     isLoading,
+    isCreditUpdating,
     searchTerm,
     status,
     currentPage,
