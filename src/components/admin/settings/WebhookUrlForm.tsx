@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Link, AlertCircle, Loader2 } from "lucide-react";
+import { Link, AlertCircle, Loader2, Save } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,6 +24,7 @@ export const WebhookUrlForm = ({ initialUrl, onSave }: WebhookUrlFormProps) => {
   useEffect(() => {
     if (initialUrl) {
       setWebhookUrl(initialUrl);
+      validateUrl(initialUrl);
     }
   }, [initialUrl]);
 
@@ -31,8 +32,10 @@ export const WebhookUrlForm = ({ initialUrl, onSave }: WebhookUrlFormProps) => {
     if (!url) return true; // Empty URL is considered valid (optional field)
     try {
       new URL(url);
+      setIsValidUrl(true);
       return true;
     } catch (error) {
+      setIsValidUrl(false);
       return false;
     }
   };
@@ -40,8 +43,7 @@ export const WebhookUrlForm = ({ initialUrl, onSave }: WebhookUrlFormProps) => {
   const handleSaveWebhook = async () => {
     setError(null);
     
-    if (webhookUrl && !validateUrl(webhookUrl)) {
-      setIsValidUrl(false);
+    if (webhookUrl && !isValidUrl) {
       toast({
         title: "URL không hợp lệ",
         description: "Vui lòng nhập một URL webhook hợp lệ.",
@@ -50,7 +52,6 @@ export const WebhookUrlForm = ({ initialUrl, onSave }: WebhookUrlFormProps) => {
       return;
     }
     
-    setIsValidUrl(true);
     setIsLoading(true);
     
     try {
@@ -136,11 +137,7 @@ export const WebhookUrlForm = ({ initialUrl, onSave }: WebhookUrlFormProps) => {
   const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newUrl = e.target.value;
     setWebhookUrl(newUrl);
-    if (newUrl && !validateUrl(newUrl)) {
-      setIsValidUrl(false);
-    } else {
-      setIsValidUrl(true);
-    }
+    validateUrl(newUrl);
   };
 
   return (
@@ -151,7 +148,7 @@ export const WebhookUrlForm = ({ initialUrl, onSave }: WebhookUrlFormProps) => {
         </Label>
         <Input
           id="webhook-url"
-          placeholder="Nhập URL webhook hợp lệ"
+          placeholder="Nhập URL webhook hợp lệ (ví dụ: https://n8n.example.com/webhook/123...)"
           value={webhookUrl || ''}
           onChange={handleUrlChange}
           className={!isValidUrl && webhookUrl ? "border-destructive" : ""}
@@ -173,21 +170,21 @@ export const WebhookUrlForm = ({ initialUrl, onSave }: WebhookUrlFormProps) => {
         )}
         
         <p className="text-sm text-muted-foreground">
-          URL webhook được sử dụng để kết nối với n8n workflow. Đảm bảo nhập một URL webhook hợp lệ.
+          URL webhook được sử dụng để kết nối với n8n workflow. Đảm bảo nhập một URL webhook hợp lệ
+          bắt đầu bằng https:// hoặc http://.
         </p>
       </div>
       <Button 
         onClick={handleSaveWebhook} 
-        disabled={isLoading}
+        disabled={isLoading || (webhookUrl && !isValidUrl)}
         className="flex items-center gap-2"
       >
         {isLoading ? (
-          <>
-            <Loader2 className="h-4 w-4 animate-spin" /> Đang lưu...
-          </>
+          <Loader2 className="h-4 w-4 animate-spin" />
         ) : (
-          "Lưu cấu hình"
+          <Save className="h-4 w-4" />
         )}
+        {isLoading ? "Đang lưu..." : "Lưu cấu hình"}
       </Button>
     </div>
   );

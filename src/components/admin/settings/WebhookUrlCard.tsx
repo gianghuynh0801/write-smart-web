@@ -5,13 +5,16 @@ import { AdminAuthCheck } from "@/components/admin/auth/AdminAuthCheck";
 import { WebhookUrlForm } from "@/components/admin/settings/WebhookUrlForm";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, ExternalLink } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 
 export const WebhookUrlCard = () => {
   const { toast } = useToast();
   const [webhookUrl, setWebhookUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isTestingWebhook, setIsTestingWebhook] = useState(false);
 
   const loadWebhookUrl = async () => {
     // Nếu đã tải, không tải lại để tránh vòng lặp
@@ -51,6 +54,82 @@ export const WebhookUrlCard = () => {
     }
   };
 
+  const testWebhook = async () => {
+    if (!webhookUrl) {
+      toast({
+        title: "Chưa có URL webhook",
+        description: "Vui lòng nhập URL webhook trước khi test.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsTestingWebhook(true);
+    try {
+      // Tạo dữ liệu test đơn giản
+      const testData = {
+        keywords: {
+          main: "Test Webhook",
+          sub: ["Test1", "Test2"],
+          related: ["Related1"]
+        },
+        outline: [{ heading: "H2", title: "Test Heading" }],
+        knowledge: {
+          webConnection: true,
+          reference: ""
+        },
+        format: {
+          bold: true,
+          italic: true,
+          useList: true
+        },
+        link_keywords: [],
+        link_urls: [],
+        images: {
+          size: "medium"
+        },
+        content: {
+          language: "vi",
+          country: "vn",
+          tone: "Neutral",
+          narrator: "tự động",
+          formality: "tự động"
+        },
+        timestamp: new Date().toISOString(),
+        test: true
+      };
+
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(testData),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.text();
+      console.log("Kết quả test webhook:", result);
+
+      toast({
+        title: "Test thành công",
+        description: "Webhook URL đã hoạt động đúng, nhận được phản hồi từ server.",
+      });
+    } catch (error) {
+      console.error('Lỗi khi test webhook:', error);
+      toast({
+        title: "Lỗi khi test webhook",
+        description: error instanceof Error ? error.message : "Không thể kết nối đến webhook URL.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsTestingWebhook(false);
+    }
+  };
+
   const handleWebhookSaved = (url: string) => {
     setWebhookUrl(url);
   };
@@ -69,7 +148,50 @@ export const WebhookUrlCard = () => {
             <span className="ml-2 text-muted-foreground">Đang tải...</span>
           </div>
         ) : (
-          <WebhookUrlForm initialUrl={webhookUrl} onSave={handleWebhookSaved} />
+          <>
+            <div className="mb-6">
+              <Alert>
+                <AlertTitle className="flex items-center">
+                  Hướng dẫn cấu hình Webhook
+                </AlertTitle>
+                <AlertDescription>
+                  <p className="mt-2">
+                    URL webhook này sẽ được sử dụng để kết nối với n8n để tạo bài viết.
+                    Người dùng sẽ không thể tạo bài viết nếu URL này chưa được cấu hình.
+                  </p>
+                  <div className="mt-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex items-center gap-1"
+                      onClick={() => window.open("https://n8n.io/", "_blank")}
+                    >
+                      <ExternalLink size={14} />
+                      Tìm hiểu thêm về n8n
+                    </Button>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            </div>
+            
+            <WebhookUrlForm initialUrl={webhookUrl} onSave={handleWebhookSaved} />
+            
+            {webhookUrl && (
+              <div className="mt-4">
+                <Button 
+                  variant="secondary" 
+                  onClick={testWebhook} 
+                  disabled={isTestingWebhook}
+                  className="flex items-center gap-2"
+                >
+                  {isTestingWebhook ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : null}
+                  Kiểm tra kết nối webhook
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </CardContent>
     </Card>

@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { ContentGenerationParams, WebhookResponse } from "./types";
 
@@ -24,7 +25,10 @@ export const generateContent = async (
     
     if (!webhookUrl) {
       console.error('Không có URL webhook nào được cung cấp');
-      throw new Error('Không có URL webhook nào được cung cấp');
+      return {
+        status: 'error',
+        error: 'Không tìm thấy URL webhook. Vui lòng liên hệ quản trị viên để cấu hình webhook.'
+      };
     }
     
     try {
@@ -33,7 +37,7 @@ export const generateContent = async (
       console.error('URL không hợp lệ:', webhookUrl);
       return {
         status: 'error',
-        error: 'URL webhook không hợp lệ. Vui lòng kiểm tra định dạng URL.'
+        error: 'URL webhook không hợp lệ. Vui lòng liên hệ quản trị viên để kiểm tra định dạng URL.'
       };
     }
     
