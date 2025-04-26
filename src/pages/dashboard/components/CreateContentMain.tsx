@@ -7,8 +7,8 @@ import PreviewDialog from "./PreviewDialog";
 import ContentHeader from "./ContentHeader";
 import ContentGenerateButton from "./ContentGenerateButton";
 import WebhookAlert from "./WebhookAlert";
-import { useContentForm } from "../hooks/useContentForm";
 import { useArticleActions } from "../hooks/useArticleActions";
+import { OutlineItem } from "./ContentOutline";
 
 interface CreateContentMainProps {
   hasWebhook: boolean | null;
@@ -20,6 +20,39 @@ interface CreateContentMainProps {
   onEditableContentChange: (content: string) => void;
   openDialog: boolean;
   onOpenDialogChange: (open: boolean) => void;
+  // Form state props
+  mainKeyword: string;
+  setMainKeyword: (value: string) => void;
+  subKeywords: string[];
+  setSubKeywords: (keywords: string[]) => void;
+  relatedKeywords: string[];
+  setRelatedKeywords: (keywords: string[]) => void;
+  outlineItems: OutlineItem[];
+  setOutlineItems: (items: OutlineItem[]) => void;
+  webConnection: boolean;
+  setWebConnection: (value: boolean) => void;
+  reference: string;
+  setReference: (value: string) => void;
+  bold: boolean;
+  setBold: (value: boolean) => void;
+  italic: boolean;
+  setItalic: (value: boolean) => void;
+  useList: boolean;
+  setUseList: (value: boolean) => void;
+  links: Array<{ keyword: string; url: string }>;
+  setLinks: (links: Array<{ keyword: string; url: string }>) => void;
+  imageSize: string;
+  setImageSize: (size: string) => void;
+  language: string;
+  setLanguage: (value: string) => void;
+  country: string;
+  setCountry: (value: string) => void;
+  tone: string;
+  setTone: (value: string) => void;
+  narrator: string;
+  setNarrator: (value: string) => void;
+  formality: string;
+  setFormality: (value: string) => void;
 }
 
 const CreateContentMain = ({
@@ -31,10 +64,42 @@ const CreateContentMain = ({
   editableContent,
   onEditableContentChange,
   openDialog,
-  onOpenDialogChange
+  onOpenDialogChange,
+  // Form state props
+  mainKeyword,
+  setMainKeyword,
+  subKeywords,
+  setSubKeywords,
+  relatedKeywords,
+  setRelatedKeywords,
+  outlineItems,
+  setOutlineItems,
+  webConnection,
+  setWebConnection,
+  reference,
+  setReference,
+  bold,
+  setBold,
+  italic,
+  setItalic,
+  useList,
+  setUseList,
+  links,
+  setLinks,
+  imageSize,
+  setImageSize,
+  language,
+  setLanguage,
+  country,
+  setCountry,
+  tone,
+  setTone,
+  narrator,
+  setNarrator,
+  formality,
+  setFormality
 }: CreateContentMainProps) => {
   const [activeTab, setActiveTab] = useState("keywords");
-  const formState = useContentForm();
   const { isPublishing, handleSave, handlePublish } = useArticleActions();
 
   return (
@@ -63,7 +128,38 @@ const CreateContentMain = ({
           <div className="flex-1">
             <ContentTabPanels
               activeTab={activeTab}
-              {...formState}
+              mainKeyword={mainKeyword}
+              setMainKeyword={setMainKeyword}
+              subKeywords={subKeywords}
+              setSubKeywords={setSubKeywords}
+              relatedKeywords={relatedKeywords}
+              setRelatedKeywords={setRelatedKeywords}
+              outlineItems={outlineItems}
+              setOutlineItems={setOutlineItems}
+              webConnection={webConnection}
+              setWebConnection={setWebConnection}
+              reference={reference}
+              setReference={setReference}
+              bold={bold}
+              setBold={setBold}
+              italic={italic}
+              setItalic={setItalic}
+              useList={useList}
+              setUseList={setUseList}
+              links={links}
+              setLinks={setLinks}
+              imageSize={imageSize}
+              setImageSize={setImageSize}
+              language={language}
+              setLanguage={setLanguage}
+              country={country}
+              setCountry={setCountry}
+              tone={tone}
+              setTone={setTone}
+              narrator={narrator}
+              setNarrator={setNarrator}
+              formality={formality}
+              setFormality={setFormality}
             />
           </div>
         </Tabs>
@@ -79,9 +175,9 @@ const CreateContentMain = ({
         onOpenChange={onOpenDialogChange}
         editableContent={editableContent}
         onEditableContentChange={onEditableContentChange}
-        mainKeyword={formState.mainKeyword}
-        onSave={() => handleSave(editableContent, formState.mainKeyword, formState.subKeywords)}
-        onPublish={() => handlePublish(editableContent, formState.mainKeyword)}
+        mainKeyword={mainKeyword}
+        onSave={() => handleSave(editableContent, mainKeyword, subKeywords)}
+        onPublish={() => handlePublish(editableContent, mainKeyword)}
       />
     </div>
   );
