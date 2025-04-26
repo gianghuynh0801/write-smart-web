@@ -5,46 +5,77 @@ import { Wallet } from "lucide-react";
 
 export const UserCreditBalance = () => {
   const [credits, setCredits] = useState<number | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchCredits = async () => {
-      const authResponse = await supabase.auth.getUser();
-      const user = authResponse.data.user;
-      if (!user) return;
+    const fetchUserAndCredits = async () => {
+      try {
+        // Lấy thông tin người dùng hiện tại
+        const authResponse = await supabase.auth.getUser();
+        const user = authResponse.data.user;
+        
+        if (!user) {
+          console.log("Người dùng chưa đăng nhập");
+          return;
+        }
+        
+        setUserId(user.id);
+        
+        // Lấy số credit của người dùng
+        const { data, error } = await supabase
+          .from('users')
+          .select('credits')
+          .eq('id', user.id)
+          .single();
 
-      const { data, error } = await supabase
-        .from('users')
-        .select('credits')
-        .eq('id', user.id)
-        .single();
-
-      if (!error && data) {
-        setCredits(data.credits);
+        if (error) {
+          console.error("Lỗi khi lấy thông tin credit:", error);
+          return;
+        }
+        
+        if (data) {
+          setCredits(data.credits);
+          console.log("Đã lấy số dư credit:", data.credits);
+        }
+      } catch (err) {
+        console.error("Lỗi khi kiểm tra người dùng:", err);
       }
     };
 
-    fetchCredits();
+    fetchUserAndCredits();
 
-    // Subscribe to realtime changes
-    const channel = supabase
-      .channel('custom-all-channel')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'users',
-          filter: `id=eq.${supabase.auth.getUser().then(res => res.data.user?.id)}`
-        },
-        (payload) => {
-          setCredits(payload.new.credits);
-        }
-      )
-      .subscribe();
+    // Đăng ký theo dõi thay đổi khi có ID người dùng
+    const setupRealtimeSubscription = async () => {
+      // Lấy userId từ session hiện tại
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      console.log("Thiết lập theo dõi realtime cho user:", user.id);
+      
+      const channel = supabase
+        .channel('user-credits-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'users',
+            filter: `id=eq.${user.id}`
+          },
+          (payload) => {
+            console.log("Nhận thông tin credit mới:", payload.new.credits);
+            setCredits(payload.new.credits);
+          }
+        )
+        .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
+      return () => {
+        supabase.removeChannel(channel);
+      };
     };
+
+    setupRealtimeSubscription();
+    
   }, []);
 
   if (credits === null) return null;

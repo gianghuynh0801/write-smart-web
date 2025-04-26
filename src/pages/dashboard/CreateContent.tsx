@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Tabs } from "@/components/ui/tabs";
 import ContentTabs from "./components/ContentTabs";
@@ -67,6 +66,8 @@ const CreateContent = () => {
         getArticleCost()
       ]);
 
+      console.log(`Kiểm tra credit: Số dư hiện tại ${userCredits}, cần ${articleCost}`);
+
       if (userCredits < articleCost) {
         toast({
           title: "Không đủ credit",
@@ -77,6 +78,7 @@ const CreateContent = () => {
       }
 
       // Lưu bài viết
+      console.log("Bắt đầu lưu bài viết...");
       const { data: article, error: articleError } = await supabase
         .from('articles')
         .insert([{
@@ -89,8 +91,12 @@ const CreateContent = () => {
         .select()
         .single();
 
-      if (articleError) throw articleError;
+      if (articleError) {
+        console.error("Lỗi khi lưu bài viết:", articleError);
+        throw articleError;
+      }
 
+      console.log("Đã lưu bài viết, bắt đầu trừ credit");
       // Trừ credit
       const deducted = await deductCredits(
         user.id, 
@@ -98,7 +104,16 @@ const CreateContent = () => {
         `Tạo bài viết: ${formState.mainKeyword}`
       );
 
-      if (!deducted) throw new Error("Không thể trừ credit");
+      if (!deducted) {
+        console.error("Không thể trừ credit cho bài viết");
+        // Tiếp tục vì bài viết đã được lưu
+        toast({
+          title: "Đã lưu bài viết",
+          description: "Bài viết đã được lưu nhưng có lỗi khi trừ credit.",
+          variant: "warning"
+        });
+        return;
+      }
 
       setSavedContent(editableContent);
       toast({
