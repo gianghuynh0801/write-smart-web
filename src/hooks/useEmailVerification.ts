@@ -41,7 +41,18 @@ export const useEmailVerification = () => {
       
       console.log("Creating verification token for user:", params.userId);
       
-      // Always create a new token - no checking for existing ones to prevent spam protection
+      // Delete any existing tokens for this user and type
+      const { error: deleteError } = await supabase
+        .from('verification_tokens')
+        .delete()
+        .eq('user_id', params.userId)
+        .eq('type', params.type);
+
+      if (deleteError) {
+        console.error("Error deleting existing tokens:", deleteError);
+      }
+      
+      // Create new token
       const { error: tokenError } = await supabase
         .from('verification_tokens')
         .insert({
@@ -56,8 +67,14 @@ export const useEmailVerification = () => {
         throw tokenError;
       }
 
-      // Get the site URL from window location
-      const siteUrl = window.location.origin;
+      // Get the site URL from system configurations
+      const { data: configData } = await supabase
+        .from('system_configurations')
+        .select('value')
+        .eq('key', 'site_url')
+        .single();
+      
+      const siteUrl = configData?.value || window.location.origin;
       console.log("Site URL for verification:", siteUrl);
 
       // Call our custom edge function to send email using SMTP settings

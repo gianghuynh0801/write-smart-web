@@ -42,18 +42,26 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Fetch SMTP configuration from the database
+    // Fetch SMTP and site configurations
     const { data: configData, error: configError } = await supabase
       .from('system_configurations')
-      .select('value')
-      .eq('key', 'smtp_config')
-      .maybeSingle();
+      .select('key, value')
+      .in('key', ['smtp_config', 'site_url', 'site_name'])
+      .order('key');
 
-    if (configError || !configData?.value) {
-      throw new Error("SMTP configuration not found or error fetching it");
+    if (configError || !configData?.length) {
+      throw new Error("System configuration not found or error fetching it");
     }
 
-    const smtpConfig = JSON.parse(configData.value);
+    // Convert config array to object for easier access
+    const config = configData.reduce((acc: any, item) => {
+      acc[item.key] = item.value;
+      return acc;
+    }, {});
+
+    const smtpConfig = JSON.parse(config.smtp_config || '{}');
+    const siteUrl = config.site_url || site_url; // Fallback to provided URL if not configured
+    const siteName = config.site_name || "WriteSmart"; // Fallback name
     
     console.log("SMTP connection details:", {
       host: smtpConfig.host,
@@ -85,7 +93,7 @@ serve(async (req) => {
     
     if (verification_type === "email_verification") {
       // Important: Use the email-verified route for our site instead of Supabase's redirect
-      finalVerificationUrl = `${site_url}/email-verified#access_token=${verification_token}`;
+      finalVerificationUrl = `${siteUrl}/email-verified#access_token=${verification_token}`;
       subject = "Xác nhận địa chỉ email của bạn";
       emailTemplate = `
         <h2>Xin chào ${name || "bạn"}!</h2>
@@ -111,7 +119,7 @@ serve(async (req) => {
     
     try {
       await client.send({
-        from: `${smtpConfig.from_name || "WriteSmart"} <${smtpConfig.from_email}>`,
+        from: `${smtpConfig.from_name || siteName} <${smtpConfig.from_email}>`,
         to: email,
         subject: subject,
         html: emailTemplate,
