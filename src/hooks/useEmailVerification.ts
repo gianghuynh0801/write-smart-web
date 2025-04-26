@@ -35,13 +35,13 @@ export const useEmailVerification = () => {
       
       console.log("User sync response:", syncData);
       
-      // Generate verification token
+      // Generate verification token - with longer expiration time
       const token = generateRandomToken(32);
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
-
+      const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000); // Extended to 72 hours for testing
+      
       console.log("Creating verification token for user:", params.userId);
       
-      // Store verification token in database - without checking for existing tokens
+      // Always create a new token - no checking for existing ones to prevent spam protection
       const { error: tokenError } = await supabase
         .from('verification_tokens')
         .insert({
