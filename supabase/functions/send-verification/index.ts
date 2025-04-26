@@ -22,7 +22,7 @@ const supabase = createClient(
 );
 
 serve(async (req) => {
-  // Handle CORS preflight requests
+  // Xử lý các yêu cầu CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -32,7 +32,7 @@ serve(async (req) => {
     
     console.log(`Processing ${verification_type} verification for ${email}`);
     
-    // Check if required environment variables are set
+    // Kiểm tra xem các biến môi trường cần thiết đã được thiết lập chưa
     if (!Deno.env.get("SUPABASE_URL") || !Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")) {
       console.log("Required environment variables are not set");
       throw new Error("Required environment variables are not set");
@@ -68,7 +68,7 @@ serve(async (req) => {
       username,
       from_email,
       from_name,
-      // Don't log password
+      // Không ghi log mật khẩu
     });
 
     console.log("Creating SMTP client");
@@ -84,7 +84,7 @@ serve(async (req) => {
       },
     });
 
-    // Determine correct verification URL based on verification type
+    // Xác định URL xác minh dựa trên loại xác minh
     let verificationUrl: string;
     if (verification_type === "email_verification") {
       verificationUrl = `${site_url}/email-verified#access_token=${verification_token}`;

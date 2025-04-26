@@ -19,7 +19,7 @@ const UserActions = ({
   onDeleteUser,
   onResendVerification,
 }: UserActionsProps) => {
-  // Show resend verification option only if user is not verified
+  // Hiển thị tùy chọn gửi lại email xác thực nếu người dùng chưa được xác thực
   const showResendVerification = onResendVerification && user.email_verified === false;
 
   return (

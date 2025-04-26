@@ -18,7 +18,7 @@ export const useEmailVerification = () => {
     try {
       console.log("Sending verification email for:", params.email, "userId:", params.userId);
       
-      // First ensure the user exists in our users table by using the sync-user function
+      // Đầu tiên đảm bảo người dùng tồn tại trong bảng users bằng cách sử dụng hàm sync-user
       console.log("Syncing user to ensure existence in database");
       const { data: syncData, error: syncError } = await supabase.functions.invoke("sync-user", {
         body: { 
@@ -36,13 +36,13 @@ export const useEmailVerification = () => {
       
       console.log("User sync response:", syncData);
       
-      // Generate verification token with longer expiration time
+      // Tạo token xác minh với thời gian hết hạn dài hơn
       const token = generateRandomToken(32);
-      const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000); // Extended to 72 hours for testing
+      const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000); // Kéo dài tới 72 giờ để test
       
       console.log("Creating verification token for user:", params.userId);
       
-      // Delete any existing tokens for this user and type
+      // Xóa các token hiện có cho người dùng này và loại này
       console.log("Cleaning up existing tokens for user:", params.userId);
       const { error: deleteError } = await supabase
         .from('verification_tokens')
@@ -54,7 +54,7 @@ export const useEmailVerification = () => {
         console.error("Error deleting existing tokens:", deleteError);
       }
       
-      // Create new token
+      // Tạo token mới
       console.log("Creating new verification token");
       const { error: tokenError } = await supabase
         .from('verification_tokens')
@@ -72,7 +72,7 @@ export const useEmailVerification = () => {
 
       console.log("Verification token created successfully");
 
-      // Get the site URL from system configurations
+      // Lấy URL trang web từ cấu hình hệ thống
       console.log("Fetching site URL from system configurations");
       const { data: configData, error: configError } = await supabase
         .from('system_configurations')
@@ -84,11 +84,11 @@ export const useEmailVerification = () => {
         console.error("Error fetching site URL:", configError);
       }
       
-      // Use origin as default site URL if not configured in database
+      // Sử dụng origin làm URL trang web mặc định nếu không được cấu hình trong cơ sở dữ liệu
       const siteUrl = configData?.value || window.location.origin;
       console.log("Site URL for verification:", siteUrl);
 
-      // Call our custom edge function to send email using SMTP settings
+      // Gọi edge function tùy chỉnh để gửi email sử dụng cài đặt SMTP
       console.log("Invoking send-verification function with params:", {
         email: params.email,
         name: params.name,

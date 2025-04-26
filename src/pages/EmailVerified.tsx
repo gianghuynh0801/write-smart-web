@@ -19,7 +19,7 @@ const EmailVerified = () => {
         console.log("Starting email verification process");
         console.log("URL hash:", location.hash);
         
-        // Extract token from URL hash fragment
+        // Trích xuất token từ URL hash fragment
         const hashParams = new URLSearchParams(location.hash.substring(1));
         const token = hashParams.get("access_token");
         
@@ -30,7 +30,7 @@ const EmailVerified = () => {
 
         console.log("Found verification token:", token);
 
-        // Verify token in our verification_tokens table
+        // Xác minh token trong bảng verification_tokens
         const { data: tokenData, error: tokenError } = await supabase
           .from('verification_tokens')
           .select('*')
@@ -50,14 +50,14 @@ const EmailVerified = () => {
 
         console.log("Token verified in database:", tokenData);
 
-        // Check token expiration
+        // Kiểm tra hết hạn token
         const expiresAt = new Date(tokenData.expires_at);
         if (expiresAt < new Date()) {
           console.error("Token expired at:", expiresAt);
           throw new Error("Mã xác thực đã hết hạn");
         }
 
-        // Update user's email_verified status in our users table
+        // Cập nhật trạng thái email_verified cho người dùng trong bảng users
         console.log("Updating user verification status for user:", tokenData.user_id);
         const { error: updateError } = await supabase
           .from('users')
@@ -69,7 +69,7 @@ const EmailVerified = () => {
           throw updateError;
         }
 
-        // Delete the used token
+        // Xóa token đã sử dụng
         console.log("Deleting used verification token");
         await supabase
           .from('verification_tokens')
@@ -80,7 +80,7 @@ const EmailVerified = () => {
         setStatus("success");
         setMessage("Email của bạn đã được xác thực thành công!");
         
-        // Redirect to login after 3 seconds
+        // Chuyển hướng đến trang đăng nhập sau 3 giây
         setTimeout(() => {
           navigate("/login");
         }, 3000);
