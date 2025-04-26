@@ -1,6 +1,6 @@
-
 import { useState } from "react";
 import { Outlet } from "react-router-dom";
+import { useAdminRequired } from "@/hooks/useAdminRequired";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
@@ -27,6 +27,8 @@ const navigation = [
 ];
 
 const AdminLayout = () => {
+  useAdminRequired(); // Thêm hook kiểm tra quyền admin
+  
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
   const { toast } = useToast();
