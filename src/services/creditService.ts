@@ -54,13 +54,25 @@ export const checkUserCredits = async (userId: string): Promise<number> => {
     if (!userExists) {
       console.log("Không tìm thấy người dùng với ID:", userId);
       
-      // Nếu không tìm thấy người dùng, thử tạo bản ghi mới
-      // Điều này có thể xảy ra nếu người dùng vừa đăng ký và chưa có bản ghi trong bảng users
+      // Lấy thông tin người dùng từ auth.users để tạo bản ghi mới
+      const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(userId);
+      
+      if (authError || !authUser || !authUser.user) {
+        console.error("Không thể lấy thông tin người dùng từ auth:", authError);
+        throw new Error("Không thể tìm thấy thông tin người dùng");
+      }
+      
+      // Tạo bản ghi mới với thông tin từ auth.users
       try {
         console.log("Đang thử tạo bản ghi người dùng mới...");
         const { data: newUser, error: insertError } = await supabase
           .from("users")
-          .insert([{ id: userId, credits: 0 }])
+          .insert({
+            id: userId,
+            credits: 0,
+            name: authUser.user.user_metadata?.full_name || "Người dùng mới",
+            email: authUser.user.email || `user_${userId}@example.com`
+          })
           .select()
           .maybeSingle();
         
