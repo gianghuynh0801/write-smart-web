@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Tabs } from "@/components/ui/tabs";
 import ContentTabs from "./components/ContentTabs";
@@ -26,7 +25,6 @@ const CreateContent = () => {
   
   const { toast } = useToast();
 
-  // State management - this state is now preserved when switching tabs
   const [mainKeyword, setMainKeyword] = useState("");
   const [subKeywords, setSubKeywords] = useState<string[]>([]);
   const [relatedKeywords, setRelatedKeywords] = useState<string[]>([]);
@@ -46,7 +44,6 @@ const CreateContent = () => {
   const [keepAspectRatio, setKeepAspectRatio] = useState(true);
   const [optimizeImages, setOptimizeImages] = useState(true);
   
-  // New content settings state
   const [language, setLanguage] = useState("vi");
   const [country, setCountry] = useState("vn");
   const [tone, setTone] = useState("Neutral");
@@ -59,7 +56,6 @@ const CreateContent = () => {
     const checkWebhookAndAdminStatus = async () => {
       setIsLoading(true);
       try {
-        // Kiểm tra webhook URL
         const { data: webhookData, error: webhookError } = await supabase
           .from('system_configurations')
           .select('value')
@@ -72,7 +68,6 @@ const CreateContent = () => {
           setHasWebhook(!!webhookData?.value);
         }
 
-        // Kiểm tra quyền admin
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
           const { roleData } = await checkAdminRole(session.user.id);
@@ -150,7 +145,7 @@ const CreateContent = () => {
       />
       
       {hasWebhook === false && !isLoading && (
-        <Alert variant="warning" className="mb-6">
+        <Alert variant="destructive" className="mb-6">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Cần cấu hình webhook URL</AlertTitle>
           <AlertDescription className="space-y-4">
