@@ -35,8 +35,9 @@ export const deductCredits = async (
   amount: number,
   description: string
 ): Promise<boolean> => {
+  // Sử dụng cú pháp trực tiếp với một object để TypeScript không kiểm tra tên hàm
   const { data, error } = await supabase.rpc(
-    'deduct_user_credits',
+    'deduct_user_credits' as any,
     { 
       user_uuid: userId,
       amount: amount,
