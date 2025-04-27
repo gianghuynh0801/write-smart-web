@@ -42,6 +42,8 @@ export const useRegisterUser = () => {
   const syncUser = async (userId: string, email: string, name: string) => {
     await new Promise(resolve => setTimeout(resolve, 2000));
     
+    // Trigger đã được tạo để tự động đồng bộ dữ liệu sang bảng public.users
+    // Vẫn giữ lại function sync-user để đảm bảo tương thích ngược
     const { data: syncData, error: syncError } = await supabase.functions.invoke("sync-user", {
       body: { 
         user_id: userId, 
