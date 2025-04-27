@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 export const getArticleCost = async (): Promise<number> => {
@@ -35,25 +36,46 @@ export const checkUserCredits = async (userId: string): Promise<number> => {
     
     if (!userId) {
       console.error("Lỗi: userId không được cung cấp");
-      throw new Error("Không thể kiểm tra số dư tín dụng: Thiếu thông tin người dùng");
+      throw new Error("Không thể kiểm tra số dư: Thiếu thông tin người dùng");
     }
     
     // Kiểm tra thông tin người dùng trong bảng users
+    console.log("Đang kiểm tra thông tin người dùng từ bảng users...");
     const { data: userData, error: userError } = await supabase
       .from("users")
-      .select("credits")
+      .select("id, credits, name, email")
       .eq("id", userId)
       .maybeSingle();
     
     if (userError) {
-      console.error("Lỗi khi kiểm tra số dư:", userError);
-      throw new Error("Không thể kiểm tra số dư tín dụng");
+      console.error("Lỗi khi truy vấn thông tin người dùng:", userError);
+      throw new Error(`Không thể kiểm tra số dư tín dụng: ${userError.message}`);
     }
 
     // Nếu không tìm thấy người dùng
     if (!userData) {
-      console.error("Không tìm thấy thông tin người dùng:", userId);
-      throw new Error("Không tìm thấy thông tin người dùng");
+      console.error(`Không tìm thấy người dùng với ID: ${userId} trong bảng users`);
+      
+      // Kiểm tra xem ID có tồn tại trong auth.users không
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError) {
+        console.error("Lỗi khi kiểm tra auth.users:", authError);
+        throw new Error("Không thể xác thực người dùng hiện tại");
+      }
+      
+      if (!authUser) {
+        console.error("Người dùng chưa đăng nhập");
+        throw new Error("Bạn cần đăng nhập để sử dụng tính năng này");
+      }
+      
+      if (userId !== authUser.id) {
+        console.error("ID người dùng không khớp với session:", userId, authUser.id);
+        throw new Error("Phiên làm việc không hợp lệ, vui lòng đăng nhập lại");
+      }
+      
+      console.error("Người dùng đã xác thực nhưng không tìm thấy trong bảng users");
+      throw new Error("Tài khoản chưa được khởi tạo đầy đủ trong hệ thống");
     }
     
     const credits = userData.credits ?? 0;
