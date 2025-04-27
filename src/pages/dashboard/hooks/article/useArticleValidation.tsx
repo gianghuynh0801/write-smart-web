@@ -11,7 +11,10 @@ export const useArticleValidation = () => {
         description: "Vui lòng nhập nội dung bài viết trước khi lưu.",
         variant: "destructive"
       });
-      return { isValid: false };
+      return { 
+        isValid: false,
+        message: "Vui lòng nhập nội dung bài viết trước khi lưu."
+      };
     }
 
     if (!mainKeyword.trim()) {
@@ -20,10 +23,16 @@ export const useArticleValidation = () => {
         description: "Vui lòng nhập từ khoá chính trước khi lưu.",
         variant: "destructive"
       });
-      return { isValid: false };
+      return { 
+        isValid: false,
+        message: "Vui lòng nhập từ khoá chính trước khi lưu." 
+      };
     }
 
-    return { isValid: true };
+    return { 
+      isValid: true,
+      message: "" 
+    };
   };
 
   return {
