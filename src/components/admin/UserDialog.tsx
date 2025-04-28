@@ -1,6 +1,5 @@
-
 import { useEffect, useState, useRef, useCallback } from "react";
-import { Loader } from "lucide-react";
+import { Loader, AlertTriangle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -12,6 +11,7 @@ import { getUserById, createUser, updateUser } from "@/api/user/userCrud";
 import { User, UserFormValues } from "@/types/user";
 import UserForm from "./UserForm";
 import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
 
 interface UserDialogProps {
   isOpen: boolean;
@@ -23,54 +23,74 @@ interface UserDialogProps {
 const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) => {
   const [user, setUser] = useState<User | undefined>();
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const isMounted = useRef(true);
   const { toast } = useToast();
+  const retryCount = useRef(0);
+  const maxRetries = 3;
   
-  // Reset state khi dialog đóng
   useEffect(() => {
     if (!isOpen) {
       setUser(undefined);
+      setError(null);
+      retryCount.current = 0;
     }
   }, [isOpen]);
   
-  // Theo dõi component lifecycle
   useEffect(() => {
     isMounted.current = true;
-    
     return () => {
       isMounted.current = false;
     };
   }, []);
   
-  // Sử dụng useCallback để tránh tạo lại hàm fetchUser mỗi lần render
-  const fetchUser = useCallback(async () => {
+  const fetchUser = useCallback(async (shouldRetry = true) => {
     if (!userId || !isOpen) {
       if (isMounted.current) {
         setUser(undefined);
+        setError(null);
       }
       return;
     }
     
     if (isMounted.current) {
       setIsLoading(true);
+      setError(null);
     }
 
     try {
-      console.log("Fetching user with ID:", userId);
+      console.log("Đang lấy thông tin user:", userId);
       const userData = await getUserById(userId);
+      
       if (isMounted.current) {
-        console.log("Fetched user data:", userData);
+        console.log("Đã lấy được thông tin user:", userData);
         setUser(userData);
-        setIsLoading(false);
+        setError(null);
       }
     } catch (error: any) {
-      console.error("Error fetching user:", error);
+      console.error("Lỗi khi lấy thông tin user:", error);
+      
       if (isMounted.current) {
-        toast({
-          title: "Lỗi",
-          description: error.message || "Không thể tải thông tin người dùng",
-          variant: "destructive"
-        });
+        const errorMessage = error.message || "Không thể tải thông tin người dùng";
+        setError(errorMessage);
+        
+        if (shouldRetry && retryCount.current < maxRetries) {
+          retryCount.current += 1;
+          console.log(`Đang thử lại lần ${retryCount.current}/${maxRetries}...`);
+          
+          setTimeout(() => {
+            fetchUser(true);
+          }, 1000 * retryCount.current);
+        } else if (retryCount.current >= maxRetries) {
+          toast({
+            title: "Lỗi",
+            description: `${errorMessage}. Đã thử lại ${maxRetries} lần không thành công.`,
+            variant: "destructive"
+          });
+        }
+      }
+    } finally {
+      if (isMounted.current) {
         setIsLoading(false);
       }
     }
@@ -83,15 +103,13 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
   }, [fetchUser, isOpen, userId]);
   
   const handleSubmit = async (data: UserFormValues) => {
-    // Ngăn chặn xử lý khi đang loading
-    if (isLoading) {
-      return;
-    }
+    if (isLoading) return;
     
     setIsLoading(true);
+    setError(null);
     
     try {
-      console.log("Saving user data:", data);
+      console.log("Đang lưu thông tin user:", data);
       if (userId) {
         await updateUser(userId, data);
         if (isMounted.current) {
@@ -111,47 +129,35 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
       }
       
       if (isMounted.current) {
-        // Đóng dialog
         onClose();
-        
-        // Thêm thời gian chờ nhỏ trước khi làm mới trang
         setTimeout(() => {
-          // Tải lại toàn bộ trang để đảm bảo mọi trạng thái đều mới
-          window.location.reload();
+          onUserSaved();
         }, 300);
       }
     } catch (error: any) {
-      console.error("Lỗi khi lưu người dùng:", error);
-      
-      if (!userId && isMounted.current) {
-        console.log("Tạo người dùng giả lập vì API lỗi");
-        toast({
-          title: "Đã xử lý",
-          description: "Tạo người dùng thành công (chế độ giả lập)"
-        });
-        
-        setIsLoading(false);
-        onClose();
-        
-        // Tải lại trang sau khi tạo người dùng giả lập
-        setTimeout(() => {
-          window.location.reload();
-        }, 300);
-        return;
-      }
+      console.error("Lỗi khi lưu thông tin user:", error);
       
       if (isMounted.current) {
+        const errorMessage = error.message || "Có lỗi xảy ra khi lưu thông tin";
+        setError(errorMessage);
         toast({
           title: "Lỗi",
-          description: error.message || "Có lỗi xảy ra khi lưu thông tin",
+          description: errorMessage,
           variant: "destructive"
         });
+      }
+    } finally {
+      if (isMounted.current) {
         setIsLoading(false);
       }
     }
   };
   
-  // Chỉ đóng dialog khi không đang xử lý
+  const handleRetry = () => {
+    retryCount.current = 0;
+    fetchUser();
+  };
+  
   const handleDialogClose = () => {
     if (!isLoading) {
       onClose();
@@ -160,12 +166,14 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
   
   return (
     <Dialog open={isOpen} onOpenChange={handleDialogClose}>
-      <DialogContent className="sm:max-w-[600px]" onInteractOutside={(e) => {
-        // Ngăn chặn tương tác bên ngoài khi đang xử lý
-        if (isLoading) {
-          e.preventDefault();
-        }
-      }}>
+      <DialogContent 
+        className="sm:max-w-[600px]" 
+        onInteractOutside={(e) => {
+          if (isLoading) {
+            e.preventDefault();
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle>{userId ? "Chỉnh sửa người dùng" : "Thêm người dùng mới"}</DialogTitle>
           <DialogDescription>
@@ -173,14 +181,24 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
           </DialogDescription>
         </DialogHeader>
         
-        {(isLoading && !user) ? (
+        {error ? (
+          <div className="flex flex-col items-center justify-center py-8 space-y-4">
+            <AlertTriangle className="h-12 w-12 text-destructive" />
+            <div className="text-center space-y-2">
+              <p className="font-medium text-destructive">{error}</p>
+              <Button onClick={handleRetry} variant="outline" size="sm">
+                Thử lại
+              </Button>
+            </div>
+          </div>
+        ) : isLoading && !user ? (
           <div className="flex justify-center items-center py-8">
             <Loader className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : (
           <UserForm 
-            user={user} 
-            onSubmit={handleSubmit} 
+            user={user}
+            onSubmit={handleSubmit}
             onCancel={handleDialogClose}
             isSubmitting={isLoading}
           />

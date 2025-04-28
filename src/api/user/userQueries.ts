@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { parseUser } from "./userParser";
 import { User } from "@/types/user";
@@ -59,26 +58,37 @@ export const fetchUsers = async (
 };
 
 export const getUserById = async (id: string | number): Promise<User | undefined> => {
-  const userId = String(id);
-  const { data, error } = await supabase
-    .from("users")
-    .select("*")
-    .eq("id", userId)
-    .maybeSingle();
-  
-  if (error) throw new Error("Không tìm thấy người dùng");
-  if (!data) return undefined;
-  
-  const userWithSubscription = parseUser(data);
-  
   try {
-    const subscriptionData = await getUserActiveSubscription(userId);
-    if (subscriptionData && subscriptionData.subscriptions) {
-      userWithSubscription.subscription = subscriptionData.subscriptions.name;
+    console.log("Đang lấy thông tin chi tiết của user:", id);
+    
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session || !session.access_token) {
+      throw new Error("Không có phiên đăng nhập hợp lệ");
     }
-  } catch (subError) {
-    console.error("Lỗi khi lấy thông tin gói đăng ký:", subError);
+
+    const response = await supabase.functions.invoke('get-user-details', {
+      body: { userId: id },
+      headers: {
+        Authorization: `Bearer ${session.access_token}`
+      }
+    });
+
+    if (response.error) {
+      console.error("Lỗi từ Edge Function:", response.error);
+      throw new Error(`Lỗi khi lấy thông tin user: ${response.error.message}`);
+    }
+
+    if (!response.data) {
+      console.log("Không tìm thấy thông tin user");
+      return undefined;
+    }
+
+    const userWithSubscription = parseUser(response.data);
+    console.log("Đã lấy được thông tin user:", userWithSubscription);
+    
+    return userWithSubscription;
+  } catch (error) {
+    console.error("Lỗi không mong muốn khi lấy thông tin user:", error);
+    throw error;
   }
-  
-  return userWithSubscription;
 };
