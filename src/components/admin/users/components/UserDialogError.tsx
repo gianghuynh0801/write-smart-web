@@ -7,6 +7,10 @@ interface UserDialogErrorProps {
   onRetry: () => void;
 }
 
+/**
+ * Component hiển thị lỗi trong UserDialog
+ * Cung cấp nút thử lại để tải lại dữ liệu
+ */
 export const UserDialogError = ({ error, onRetry }: UserDialogErrorProps) => {
   return (
     <div className="flex flex-col items-center justify-center py-8 space-y-4">

@@ -31,7 +31,7 @@ export const useUserDialog = (
       
       if (shouldRetry && retryCount.current < maxRetries) {
         retryCount.current += 1;
-        console.log(`Đang thử lại lần ${retryCount.current}/${maxRetries}...`);
+        console.log(`[useUserDialog] Đang thử lại lần ${retryCount.current}/${maxRetries}...`);
         
         setTimeout(() => {
           fetchUser(true);
@@ -60,16 +60,16 @@ export const useUserDialog = (
     }
 
     try {
-      console.log("Đang lấy thông tin user:", userId);
+      console.log("[useUserDialog] Đang lấy thông tin user:", userId);
       const userData = await getUserById(userId);
       
       if (isMounted.current) {
-        console.log("Đã lấy được thông tin user:", userData);
+        console.log("[useUserDialog] Đã lấy được thông tin user:", userData);
         setUser(userData);
         setError(null);
       }
     } catch (error: any) {
-      console.error("Lỗi khi lấy thông tin user:", error);
+      console.error("[useUserDialog] Lỗi khi lấy thông tin user:", error);
       handleError(error.message || "Không thể tải thông tin người dùng", shouldRetry);
     } finally {
       if (isMounted.current) {
