@@ -1,5 +1,4 @@
-
-import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableHead, TableHeader, TableRow, TableCell } from "@/components/ui/table";
 import { User } from "@/types/user";
 import { useRealtimeUsers } from "./hooks/useRealtimeUsers";
 import { useRealtimeSubscriptions } from "./hooks/useRealtimeSubscriptions";
