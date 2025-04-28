@@ -283,6 +283,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_table_exists: {
+        Args: { table_name: string }
+        Returns: boolean
+      }
       is_admin: {
         Args: { uid: string }
         Returns: boolean
