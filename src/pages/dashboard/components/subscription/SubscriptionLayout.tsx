@@ -1,5 +1,6 @@
 
 import React from "react";
+import { Loader2 } from "lucide-react";
 import LoadingSpinner from "./LoadingSpinner";
 import SubscriptionHeader from "./SubscriptionHeader";
 import CurrentSubscriptionCard from "../CurrentSubscriptionCard";
