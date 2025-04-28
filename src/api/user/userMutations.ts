@@ -82,47 +82,71 @@ export const updateUser = async (id: string | number, userData: UserFormValues):
     throw new Error("Không tìm thấy người dùng cần cập nhật");
   }
   
-  const { data, error } = await supabase
-    .from("users")
-    .update({
-      name: userData.name,
-      email: userData.email,
-      credits: userData.credits,
-      status: userData.status,
-      role: userData.role
-    })
-    .eq("id", userId)
-    .select()
-    .maybeSingle();
+  try {
+    // Thử update thông tin cơ bản của user
+    const { data, error } = await supabase
+      .from("users")
+      .update({
+        name: userData.name,
+        email: userData.email,
+        credits: userData.credits,
+        status: userData.status,
+        role: userData.role
+      })
+      .eq("id", userId)
+      .select("*")
+      .maybeSingle();
 
-  if (error) {
-    console.error("[updateUser] Lỗi khi cập nhật user:", error);
-    throw new Error(error.message);
-  }
-  
-  if (!data) {
-    console.error("[updateUser] Không tìm thấy user sau khi cập nhật:", userId);
-    throw new Error("Không tìm thấy người dùng sau khi cập nhật");
-  }
-  
-  const updatedUser = parseUser(data);
-  
-  // Cập nhật gói đăng ký nếu có thay đổi
-  if (currentUser.subscription !== userData.subscription) {
-    try {
-      console.log("[updateUser] Cập nhật gói đăng ký từ", currentUser.subscription, "thành", userData.subscription);
-      const result = await handleSubscriptionChange(userId, userData.subscription);
-      
-      if (!result.success) {
-        console.error("[updateUser] Lỗi khi thay đổi gói đăng ký:", result.message);
-      }
-    } catch (error) {
-      console.error("[updateUser] Lỗi khi cập nhật gói đăng ký:", error);
+    if (error) {
+      console.error("[updateUser] Lỗi khi cập nhật user:", error);
+      throw new Error(error.message);
     }
-  }
+    
+    // Nếu không nhận được data, truy vấn lại để lấy thông tin người dùng
+    let userRecord = data;
+    if (!userRecord) {
+      console.log("[updateUser] Không nhận được data từ update, đang truy vấn trực tiếp...");
+      const { data: refreshedData, error: refreshError } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", userId)
+        .maybeSingle();
+        
+      if (refreshError) {
+        console.error("[updateUser] Lỗi khi truy vấn lại user:", refreshError);
+        throw new Error(refreshError.message);
+      }
+      
+      if (!refreshedData) {
+        console.error("[updateUser] Không tìm thấy user sau khi truy vấn lại:", userId);
+        throw new Error("Không tìm thấy người dùng sau khi cập nhật");
+      }
+      
+      userRecord = refreshedData;
+    }
+    
+    const updatedUser = parseUser(userRecord);
+    
+    // Cập nhật gói đăng ký nếu có thay đổi
+    if (currentUser.subscription !== userData.subscription) {
+      try {
+        console.log("[updateUser] Cập nhật gói đăng ký từ", currentUser.subscription, "thành", userData.subscription);
+        const result = await handleSubscriptionChange(userId, userData.subscription);
+        
+        if (!result.success) {
+          console.error("[updateUser] Lỗi khi thay đổi gói đăng ký:", result.message);
+        }
+      } catch (error) {
+        console.error("[updateUser] Lỗi khi cập nhật gói đăng ký:", error);
+      }
+    }
 
-  updatedUser.subscription = userData.subscription;
-  return updatedUser;
+    updatedUser.subscription = userData.subscription;
+    return updatedUser;
+  } catch (error) {
+    console.error("[updateUser] Lỗi không mong đợi:", error);
+    throw error;
+  }
 };
 
 export const deleteUser = async (id: string | number): Promise<void> => {
