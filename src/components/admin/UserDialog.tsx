@@ -14,6 +14,7 @@ import { UserDialogError } from "./users/components/UserDialogError";
 import { UserDialogLoading } from "./users/components/UserDialogLoading";
 import { useToast } from "@/hooks/use-toast";
 import { updateUser, createUser } from "@/api/user/userMutations";
+import { getItem, LOCAL_STORAGE_KEYS } from "@/utils/localStorageService";
 
 interface UserDialogProps {
   isOpen: boolean;
@@ -55,12 +56,39 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
     }
   }, [fetchUser, isOpen, userId]);
 
+  const verifyAdminSession = async () => {
+    try {
+      // Kiểm tra session token trong localStorage
+      const sessionToken = getItem<string>(LOCAL_STORAGE_KEYS.SESSION_TOKEN, false);
+      if (!sessionToken) {
+        console.log("[UserDialog] Không tìm thấy session token");
+        toast({
+          title: "Lỗi xác thực",
+          description: "Phiên đăng nhập hết hạn hoặc không tồn tại. Vui lòng đăng nhập lại.",
+          variant: "destructive"
+        });
+        throw new Error("Không tìm thấy session token");
+      }
+      console.log("[UserDialog] Đã tìm thấy session token");
+      return true;
+    } catch (error) {
+      console.error("[UserDialog] Lỗi khi xác thực session:", error);
+      return false;
+    }
+  };
+
   const handleSubmit = async (data: UserFormValues) => {
     if (isSubmitting) return;
     setIsSubmitting(true);
 
     try {
       console.log("[UserDialog] Đang lưu thông tin user:", data);
+      
+      // Kiểm tra session trước khi thực hiện thao tác
+      const sessionValid = await verifyAdminSession();
+      if (!sessionValid) {
+        throw new Error("Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.");
+      }
       
       if (userId) {
         // Cập nhật người dùng hiện có
@@ -89,10 +117,19 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
     } catch (error: any) {
       console.error("[UserDialog] Lỗi khi lưu thông tin user:", error);
       
-      if (isMounted.current) {
+      // Kiểm tra nếu là lỗi liên quan đến xác thực
+      const errorMsg = error.message || "";
+      if (errorMsg.includes("auth") || errorMsg.includes("phiên") || 
+          errorMsg.includes("token") || errorMsg.includes("xác thực")) {
+        toast({
+          title: "Lỗi xác thực",
+          description: "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại để tiếp tục.",
+          variant: "destructive"
+        });
+      } else {
         toast({
           title: "Lỗi",
-          description: error.message || "Có lỗi xảy ra khi lưu thông tin",
+          description: errorMsg || "Có lỗi xảy ra khi lưu thông tin",
           variant: "destructive"
         });
       }
