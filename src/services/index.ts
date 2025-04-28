@@ -1,11 +1,12 @@
 
 // Barrel exports file cho tất cả services - giúp đơn giản hóa imports
 
-// Auth services
+// Auth services - chỉ import từ module auth, không import lại từ authService
 export * from './auth';
 
-// Backward compatibility
-export * from './authService';
+// Backward compatibility - đã được xử lý thông qua việc re-export trong ./authService.ts
+// Không cần phải xuất lại từ đây vì sẽ gây xung đột với export từ './auth'
+// export * from './authService';
 
 // Credit service
 export * from './creditService';
