@@ -1,6 +1,7 @@
+
 // Re-export APIs đã chia nhỏ để codebase backward compatibility
-export * from "./user/userCredits";
-export * from "./user/userSubscription";
+export * from "./userCredits";
+export * from "./userSubscription";
 
 import { supabase } from "@/integrations/supabase/client";
 import { User, UserFormValues } from "@/types/user";
