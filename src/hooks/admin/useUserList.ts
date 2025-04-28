@@ -1,11 +1,12 @@
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@/types/user";
 import { useToast } from "@/hooks/use-toast";
-import { refreshSessionToken } from "@/api/user/userMutations";
+import { authService, AuthErrorType, AuthError } from "@/services/authService";
 
+// Hàm fetchUsers cải tiến với xử lý lỗi tốt hơn
 const fetchUsers = async (params: {
   page: number;
   pageSize: number;
@@ -15,20 +16,48 @@ const fetchUsers = async (params: {
   console.log("Đang lấy danh sách người dùng với các thông số:", params);
 
   try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session || !session.access_token) {
-      throw new Error("Không có phiên đăng nhập hợp lệ");
+    // Lấy admin token từ AuthService
+    const token = await authService.getAdminToken();
+    if (!token) {
+      throw new AuthError(
+        "Không có phiên đăng nhập hợp lệ", 
+        AuthErrorType.TOKEN_EXPIRED
+      );
     }
 
+    // Gọi edge function với token đã xác thực
     const { data, error } = await supabase.functions.invoke('admin-users', {
       body: params,
       headers: {
-        Authorization: `Bearer ${session.access_token}`
+        Authorization: `Bearer ${token}`
       }
     });
 
     if (error) {
       console.error("Lỗi khi gọi admin-users function:", error);
+      
+      // Kiểm tra lỗi xác thực và thử làm mới token
+      if (authService.isAuthError(error)) {
+        console.log("Phát hiện lỗi xác thực trong phản hồi, thử làm mới token...");
+        const newToken = await authService.getAdminToken(true); // Force refresh
+        
+        if (newToken) {
+          console.log("Đã làm mới token, thử gọi lại API...");
+          const retryResponse = await supabase.functions.invoke('admin-users', {
+            body: params,
+            headers: {
+              Authorization: `Bearer ${newToken}`
+            }
+          });
+          
+          if (retryResponse.error) {
+            throw new Error(retryResponse.error.message);
+          }
+          
+          return retryResponse.data.data;
+        }
+      }
+      
       throw error;
     }
 
@@ -42,16 +71,9 @@ const fetchUsers = async (params: {
   } catch (error) {
     console.error("Lỗi trong fetchUsers:", error);
     
-    // Thử làm mới token nếu có dấu hiệu là lỗi xác thực
-    if (error instanceof Error && 
-        (error.message.includes("xác thực") || 
-         error.message.includes("authentication") ||
-         error.message.includes("jwt") ||
-         error.message.includes("token") ||
-         error.message.includes("auth"))) {
-      
-      console.log("Có thể là lỗi xác thực, thử làm mới token...");
-      await refreshSessionToken();
+    // Nếu là lỗi xác thực, thử làm mới token
+    if (authService.isAuthError(error)) {
+      await authService.handleAuthError(error);
     }
     
     throw error;
@@ -65,8 +87,17 @@ export const useUserList = () => {
   const pageSize = 5;
   const { toast } = useToast();
   
-  // Thêm state để theo dõi trạng thái refreshing token
+  // Theo dõi trạng thái refreshing token
   const [isRefreshingToken, setIsRefreshingToken] = useState(false);
+  // Theo dõi component còn mounted hay không
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { 
+      isMounted.current = false; 
+    };
+  }, []);
 
   const {
     data,
@@ -77,54 +108,59 @@ export const useUserList = () => {
   } = useQuery({
     queryKey: ['users', currentPage, pageSize, status, searchTerm],
     queryFn: () => fetchUsers({ page: currentPage, pageSize, status, searchTerm }),
-    retry: 2,
+    retry: (failureCount, error) => {
+      // Custom retry logic based on error type
+      if (authService.isAuthError(error) && failureCount < 2) {
+        console.log(`Thử lại lần ${failureCount + 1} sau lỗi xác thực`);
+        return true;
+      }
+      return false;
+    },
     meta: {
       onError: (err: Error) => {
         console.error("Lỗi khi tải danh sách người dùng:", err);
-        toast({
-          title: "Lỗi",
-          description: err instanceof Error ? err.message : "Không thể tải danh sách người dùng",
-          variant: "destructive"
-        });
+        
+        if (isMounted.current) {
+          toast({
+            title: "Lỗi",
+            description: err instanceof Error ? err.message : "Không thể tải danh sách người dùng",
+            variant: "destructive"
+          });
+        }
       }
     }
   });
 
-  // Thêm một effect để tự động thử làm mới token khi có lỗi
+  // Effect để tự động thử làm mới token khi có lỗi
   useEffect(() => {
     if (isError && !isRefreshingToken) {
-      const errorMessage = error instanceof Error ? error.message : "Lỗi không xác định";
-      const isAuthError = 
-        errorMessage.includes("xác thực") || 
-        errorMessage.includes("authentication") ||
-        errorMessage.includes("jwt") || 
-        errorMessage.includes("token") ||
-        errorMessage.includes("auth");
+      console.log("Phát hiện lỗi, kiểm tra nếu là lỗi xác thực...");
       
-      if (isAuthError) {
-        console.log("Phát hiện lỗi xác thực, đang thử làm mới token...");
-        setIsRefreshingToken(true);
-        
-        // Thử làm mới token và thử lại
-        refreshSessionToken()
-          .then(newToken => {
-            if (newToken) {
-              console.log("Đã làm mới token thành công, đang tải lại dữ liệu...");
-              setTimeout(() => refreshUsers(), 500);
-            } else {
-              console.log("Không thể làm mới token");
-            }
-          })
-          .finally(() => {
-            if (isMounted) setIsRefreshingToken(false);
-          });
+      if (authService.isAuthError(error)) {
+        if (isMounted.current) {
+          setIsRefreshingToken(true);
+          
+          authService.getAdminToken(true)
+            .then(token => {
+              if (token && isMounted.current) {
+                console.log("Đã làm mới token thành công, đang tải lại dữ liệu...");
+                setTimeout(() => refreshUsers(), 500);
+              } else if (isMounted.current) {
+                console.log("Không thể làm mới token");
+                toast({
+                  title: "Lỗi xác thực",
+                  description: "Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.",
+                  variant: "destructive"
+                });
+              }
+            })
+            .finally(() => {
+              if (isMounted.current) setIsRefreshingToken(false);
+            });
+        }
       }
     }
-    
-    // Sử dụng biến để theo dõi component có còn mounted hay không
-    let isMounted = true;
-    return () => { isMounted = false; };
-  }, [isError, error, refreshUsers]);
+  }, [isError, error, refreshUsers, toast]);
 
   const handleSearch = useCallback((value: string) => {
     setSearchTerm(value);

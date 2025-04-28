@@ -1,8 +1,8 @@
-
 import { useState, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { User } from "@/types/user";
-import { deleteUser, refreshSessionToken } from "@/api/user/userMutations";
+import { deleteUser } from "@/api/user/userMutations";
+import { authService } from "@/services/authService";
 
 export const useUserActions = (refreshUsers: () => Promise<any>) => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -13,6 +13,9 @@ export const useUserActions = (refreshUsers: () => Promise<any>) => {
   const [isCreditUpdating, setIsCreditUpdating] = useState(false);
   const { toast } = useToast();
   const isMounted = useRef(true);
+  
+  // Theo dõi trạng thái các operation đang thực hiện
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Quản lý hành động xóa người dùng
   const handleDeleteUser = (user: User) => {
@@ -21,10 +24,15 @@ export const useUserActions = (refreshUsers: () => Promise<any>) => {
   };
 
   const confirmDeleteUser = async () => {
-    if (!selectedUser) return;
+    if (!selectedUser || isDeleting) return;
 
     try {
+      setIsDeleting(true);
       console.log("Đang xóa người dùng:", selectedUser.id);
+      
+      // Lấy admin token trước khi thực hiện
+      await authService.getAdminToken();
+      
       await deleteUser(selectedUser.id);
       
       if (isMounted.current) {
@@ -41,14 +49,16 @@ export const useUserActions = (refreshUsers: () => Promise<any>) => {
       console.error("Lỗi khi xóa người dùng:", error);
       
       // Kiểm tra nếu là lỗi xác thực, thử làm mới token
-      if (isAuthError(error)) {
+      if (authService.isAuthError(error)) {
         console.log("Phát hiện lỗi xác thực, đang thử làm mới token...");
         
         try {
-          const newToken = await refreshSessionToken();
+          // Làm mới token
+          const hasNewToken = await authService.handleAuthError(error);
           
-          if (newToken) {
+          if (hasNewToken && selectedUser && isMounted.current) {
             console.log("Đã làm mới token, đang thử xóa lại...");
+            
             try {
               await deleteUser(selectedUser.id);
               
@@ -60,11 +70,10 @@ export const useUserActions = (refreshUsers: () => Promise<any>) => {
                 
                 setDeleteDialogOpen(false);
                 refreshUsers();
+                return;
               }
-              return;
             } catch (retryError) {
               console.error("Thử lại thất bại:", retryError);
-              // Tiếp tục xuống xử lý lỗi chung bên dưới
             }
           }
         } catch (refreshError) {
@@ -72,13 +81,17 @@ export const useUserActions = (refreshUsers: () => Promise<any>) => {
         }
       }
       
-      // Xử lý lỗi chung sau khi đã thử làm mới token hoặc không phải lỗi xác thực
+      // Xử lý lỗi chung hoặc thử lại thất bại
       if (isMounted.current) {
         toast({
           title: "Lỗi",
           description: error.message || "Không thể xóa người dùng",
           variant: "destructive",
         });
+      }
+    } finally {
+      if (isMounted.current) {
+        setIsDeleting(false);
       }
     }
   };
@@ -173,6 +186,7 @@ export const useUserActions = (refreshUsers: () => Promise<any>) => {
     userDialogOpen,
     editUserId,
     isCreditUpdating,
+    isDeleting,
     handleDeleteUser,
     confirmDeleteUser,
     handleAddCredits,
@@ -184,20 +198,4 @@ export const useUserActions = (refreshUsers: () => Promise<any>) => {
     setAddCreditsDialogOpen,
     setUserDialogOpen,
   };
-};
-
-// Hàm kiểm tra lỗi xác thực
-const isAuthError = (error: any): boolean => {
-  if (!error) return false;
-  
-  const errorMsg = error instanceof Error ? 
-    error.message.toLowerCase() : 
-    String(error).toLowerCase();
-  
-  return errorMsg.includes('xác thực') || 
-         errorMsg.includes('phiên đăng nhập') ||
-         errorMsg.includes('token') || 
-         errorMsg.includes('auth') ||
-         errorMsg.includes('401') || 
-         errorMsg.includes('403');
 };

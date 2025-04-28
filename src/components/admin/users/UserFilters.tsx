@@ -22,8 +22,8 @@ const UserFilters = ({
   };
 
   return (
-    <div className="flex items-center mb-4">
-      <div className="relative flex-1 mr-4">
+    <div className="flex flex-col md:flex-row items-center mb-4 gap-4">
+      <div className="relative flex-1 w-full">
         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
         <Input
           type="search"
@@ -33,8 +33,8 @@ const UserFilters = ({
           onChange={handleInputChange}
         />
       </div>
-      <Tabs defaultValue={status} onValueChange={onStatusChange} className="w-auto">
-        <TabsList>
+      <Tabs defaultValue={status} onValueChange={onStatusChange} value={status} className="w-full md:w-auto">
+        <TabsList className="grid grid-cols-3 w-full">
           <TabsTrigger value="all">Tất cả</TabsTrigger>
           <TabsTrigger value="active">Đang hoạt động</TabsTrigger>
           <TabsTrigger value="inactive">Không hoạt động</TabsTrigger>

@@ -13,7 +13,8 @@ import { useUserDialog } from "./users/hooks/useUserDialog";
 import { UserDialogError } from "./users/components/UserDialogError";
 import { UserDialogLoading } from "./users/components/UserDialogLoading";
 import { useToast } from "@/hooks/use-toast";
-import { updateUser, createUser, getAdminToken, refreshSessionToken } from "@/api/user/userMutations";
+import { updateUser, createUser } from "@/api/user/userMutations";
+import { authService } from "@/services/authService";
 
 interface UserDialogProps {
   isOpen: boolean;
@@ -62,17 +63,8 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
     try {
       console.log("[UserDialog] Đang lưu thông tin user:", data);
       
-      // Kiểm tra session trước khi thực hiện thao tác
-      const adminToken = await getAdminToken();
-      if (!adminToken) {
-        console.error("[UserDialog] Token không hợp lệ, thử làm mới");
-        
-        // Thử làm mới token
-        const refreshedToken = await refreshSessionToken();
-        if (!refreshedToken) {
-          throw new Error("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại để tiếp tục.");
-        }
-      }
+      // Lấy token admin trước khi thực hiện
+      await authService.getAdminToken();
       
       if (userId) {
         // Cập nhật người dùng hiện có
@@ -101,19 +93,61 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
     } catch (error: any) {
       console.error("[UserDialog] Lỗi khi lưu thông tin user:", error);
       
-      // Kiểm tra nếu là lỗi liên quan đến xác thực
-      const errorMsg = error.message || "";
-      if (errorMsg.includes("auth") || errorMsg.includes("phiên") || 
-          errorMsg.includes("token") || errorMsg.includes("xác thực")) {
-        toast({
-          title: "Lỗi xác thực",
-          description: "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại để tiếp tục.",
-          variant: "destructive"
-        });
+      // Kiểm tra nếu là lỗi xác thực
+      if (authService.isAuthError(error)) {
+        try {
+          console.log("[UserDialog] Phát hiện lỗi xác thực, đang thử làm mới token...");
+          const hasNewToken = await authService.handleAuthError(error);
+          
+          if (hasNewToken) {
+            console.log("[UserDialog] Đã làm mới token thành công, đang thử lại...");
+            
+            try {
+              if (userId) {
+                await updateUser(userId, data);
+                console.log("[UserDialog] Đã cập nhật thông tin người dùng thành công sau khi làm mới token");
+              } else {
+                await createUser(data);
+                console.log("[UserDialog] Đã tạo người dùng mới thành công sau khi làm mới token");
+              }
+              
+              if (isMounted.current) {
+                toast({
+                  title: "Thành công",
+                  description: userId ? "Cập nhật thông tin người dùng thành công" : "Tạo người dùng mới thành công"
+                });
+                
+                onClose();
+                // Đảm bảo onUserSaved được gọi sau khi đã đóng dialog
+                setTimeout(() => {
+                  onUserSaved();
+                }, 300);
+              }
+              
+              return;
+            } catch (retryError: any) {
+              console.error("[UserDialog] Lỗi khi thử lại:", retryError);
+              throw retryError;
+            }
+          }
+          
+          toast({
+            title: "Lỗi xác thực",
+            description: "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại để tiếp tục.",
+            variant: "destructive"
+          });
+        } catch (refreshError) {
+          console.error("[UserDialog] Lỗi khi làm mới token:", refreshError);
+          toast({
+            title: "Lỗi xác thực",
+            description: "Không thể làm mới phiên đăng nhập. Vui lòng đăng nhập lại.",
+            variant: "destructive"
+          });
+        }
       } else {
         toast({
           title: "Lỗi",
-          description: errorMsg || "Có lỗi xảy ra khi lưu thông tin",
+          description: error.message || "Có lỗi xảy ra khi lưu thông tin",
           variant: "destructive"
         });
       }
