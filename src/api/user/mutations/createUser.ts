@@ -1,8 +1,7 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { User, UserFormValues } from "@/types/user";
 import { parseUser } from "../userParser";
-import { authService, isAuthError } from "@/services/authService";
+import { authService, isAuthError } from "@/services/auth";
 
 // Function để đợi một khoảng thời gian
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));

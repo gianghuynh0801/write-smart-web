@@ -2,7 +2,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { User, UserFormValues } from "@/types/user";
 import { parseUser } from "../userParser";
-import { authService, isAuthError } from "@/services/authService";
+import { authService, isAuthError } from "@/services/auth";
 
 /**
  * Cập nhật thông tin người dùng

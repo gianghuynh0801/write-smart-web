@@ -13,7 +13,7 @@ import { UserDialogError } from "./users/components/UserDialogError";
 import { UserDialogLoading } from "./users/components/UserDialogLoading";
 import { useToast } from "@/hooks/use-toast";
 import { updateUser, createUser } from "@/api/user/userMutations";
-import { authService, isAuthError } from "@/services/authService";
+import { authService, isAuthError } from "@/services/auth";
 
 interface UserDialogProps {
   isOpen: boolean;

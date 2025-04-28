@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { User } from "@/types/user";
 import { deleteUser } from "@/api/user/userMutations";
-import { authService, isAuthError } from "@/services/authService";
+import { authService, isAuthError } from "@/services/auth";
 
 export const useUserActions = (refreshUsers: () => Promise<any>) => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);

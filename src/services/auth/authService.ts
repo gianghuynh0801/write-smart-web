@@ -2,8 +2,9 @@
 import { tokenManager } from "@/utils/tokenManager";
 import { AuthError, AuthErrorType, isAuthError } from "./authErrors";
 import { adminRoleService } from "./adminRoleService";
+import { AuthServiceInterface } from './index';
 
-class AuthService {
+class AuthService implements AuthServiceInterface {
   private static instance: AuthService;
   
   private constructor() {}
@@ -90,9 +91,6 @@ class AuthService {
     return false;
   }
 }
-
-// Re-export các hàm và types cần thiết
-export { AuthError, AuthErrorType, isAuthError };
 
 // Xuất instance singleton
 export const authService = AuthService.getInstance();

@@ -1,6 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { authService, isAuthError } from "@/services/authService";
+import { authService, isAuthError } from "@/services/auth";
 
 /**
  * Xóa người dùng
