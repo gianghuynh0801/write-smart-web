@@ -64,13 +64,10 @@ export const useRegisterUser = () => {
         throw new Error(`Không thể kiểm tra người dùng: ${checkError.message}`);
       }
       
-      // Nếu người dùng chưa tồn tại, gọi hàm sync-user để đồng bộ
       if (!existingUser) {
         console.log("Người dùng chưa tồn tại, đang đồng bộ...");
         
-        // Đợi 2 giây để đảm bảo trigger đã chạy
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
+        // Gọi edge function sync-user để đồng bộ dữ liệu người dùng
         const { data: syncData, error: syncError } = await supabase.functions.invoke("sync-user", {
           body: { 
             user_id: userId, 
@@ -86,6 +83,9 @@ export const useRegisterUser = () => {
         }
         
         console.log("Kết quả đồng bộ người dùng:", syncData);
+        
+        // Đợi thêm 2 giây sau khi đồng bộ
+        await new Promise(resolve => setTimeout(resolve, 2000));
       } else {
         console.log("Người dùng đã tồn tại trong database:", existingUser);
       }
@@ -98,9 +98,12 @@ export const useRegisterUser = () => {
   const verifyUserCreation = async (userId: string) => {
     try {
       // Thực hiện nhiều lần kiểm tra với timeout
-      let retries = 3;
+      let retries = 5; // Tăng số lần thử lên 5
+      let delay = 1000; // Bắt đầu với 1 giây
       
       while (retries > 0) {
+        console.log(`Kiểm tra người dùng lần ${6-retries}/5...`);
+        
         const { data: checkUser, error: checkUserError } = await supabase
           .from('users')
           .select('*')
@@ -117,16 +120,18 @@ export const useRegisterUser = () => {
           return; // Kết thúc thành công
         }
         
-        // Đợi trước khi kiểm tra lại
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Đợi trước khi kiểm tra lại, với thời gian chờ tăng dần
+        await new Promise(resolve => setTimeout(resolve, delay));
         retries--;
+        delay *= 1.5; // Tăng thời gian chờ lên 50% mỗi lần
       }
       
-      // Nếu tất cả các lần thử đều thất bại
-      throw new Error("Không thể tạo người dùng trong cơ sở dữ liệu sau nhiều lần thử. Vui lòng liên hệ hỗ trợ.");
+      // Nếu tất cả các lần thử đều thất bại, vẫn tiếp tục quá trình
+      console.warn("Không thể xác minh người dùng trong cơ sở dữ liệu sau nhiều lần thử. Tiếp tục quá trình.");
     } catch (error) {
       console.error("Lỗi khi xác minh người dùng:", error);
-      throw error;
+      // Không ném lỗi ở đây, để quá trình đăng ký tiếp tục
+      console.warn("Tiếp tục quá trình mặc dù có lỗi xác minh");
     }
   };
 

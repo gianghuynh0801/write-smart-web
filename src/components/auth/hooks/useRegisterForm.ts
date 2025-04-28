@@ -53,9 +53,28 @@ export const useRegisterForm = () => {
         throw new Error("Không thể tạo tài khoản. Vui lòng thử lại sau.");
       }
       
-      // Đồng bộ dữ liệu người dùng
+      // Thử đồng bộ dữ liệu người dùng với số lần thử tối đa
       console.log("Đồng bộ dữ liệu người dùng:", userId);
-      await syncUser(userId, formData.email, formData.name);
+      let syncSuccess = false;
+      let syncAttempts = 0;
+      const maxSyncAttempts = 3;
+      
+      while (!syncSuccess && syncAttempts < maxSyncAttempts) {
+        try {
+          syncAttempts++;
+          console.log(`Nỗ lực đồng bộ lần ${syncAttempts}/${maxSyncAttempts}`);
+          await syncUser(userId, formData.email, formData.name);
+          syncSuccess = true;
+        } catch (syncError) {
+          console.error(`Lỗi đồng bộ lần ${syncAttempts}:`, syncError);
+          if (syncAttempts < maxSyncAttempts) {
+            // Đợi tăng dần trước khi thử lại
+            await new Promise(resolve => setTimeout(resolve, syncAttempts * 1000));
+          } else {
+            throw syncError;
+          }
+        }
+      }
       
       // Xác minh người dùng đã được tạo
       console.log("Xác minh người dùng đã được tạo thành công");

@@ -70,41 +70,66 @@ Deno.serve(async (req) => {
       
       userData = newUser;
       
-      // Khởi tạo gói đăng ký cơ bản cho người dùng mới
+      // Kiểm tra xem bảng subscriptions có tồn tại không
       try {
-        const { data: subscriptionData, error: subQueryError } = await supabaseAdmin
-          .from('subscriptions')
-          .select('id')
-          .eq('name', 'Cơ bản')
-          .maybeSingle();
+        // Kiểm tra bảng subscriptions có tồn tại không
+        const { data: tableExists } = await supabaseAdmin.rpc('check_table_exists', {
+          table_name: 'subscriptions'
+        });
         
-        if (subQueryError) {
-          console.error('[sync-user] Lỗi khi truy vấn gói đăng ký:', subQueryError);
-        }
-        else if (subscriptionData) {
-          const startDate = new Date().toISOString().split('T')[0];
-          const endDate = new Date();
-          endDate.setMonth(endDate.getMonth() + 1);
-          const endDateStr = endDate.toISOString().split('T')[0];
+        console.log('[sync-user] Kiểm tra bảng subscriptions:', tableExists);
+        
+        if (tableExists) {
+          // Khởi tạo gói đăng ký cơ bản cho người dùng mới
+          const { data: subscriptionData, error: subQueryError } = await supabaseAdmin
+            .from('subscriptions')
+            .select('id')
+            .eq('name', 'Cơ bản')
+            .maybeSingle();
           
-          const { data: userSub, error: subInsertError } = await supabaseAdmin
-            .from('user_subscriptions')
-            .insert({
-              user_id: user_id,
-              subscription_id: subscriptionData.id,
-              start_date: startDate,
-              end_date: endDateStr,
-              status: 'active'
-            });
-          
-          if (subInsertError) {
-            console.error('[sync-user] Lỗi khi tạo gói đăng ký cơ bản:', subInsertError);
-          } else {
-            console.log('[sync-user] Đã tạo gói đăng ký cơ bản thành công');
+          if (subQueryError) {
+            console.error('[sync-user] Lỗi khi truy vấn gói đăng ký:', subQueryError);
           }
+          else if (subscriptionData) {
+            const startDate = new Date().toISOString().split('T')[0];
+            const endDate = new Date();
+            endDate.setMonth(endDate.getMonth() + 1);
+            const endDateStr = endDate.toISOString().split('T')[0];
+            
+            const { data: userSub, error: subInsertError } = await supabaseAdmin
+              .from('user_subscriptions')
+              .insert({
+                user_id: user_id,
+                subscription_id: subscriptionData.id,
+                start_date: startDate,
+                end_date: endDateStr,
+                status: 'active'
+              });
+            
+            if (subInsertError) {
+              console.error('[sync-user] Lỗi khi tạo gói đăng ký cơ bản:', subInsertError);
+            } else {
+              console.log('[sync-user] Đã tạo gói đăng ký cơ bản thành công');
+              
+              // Cập nhật trường subscription trong bảng users
+              const { error: updateSubError } = await supabaseAdmin
+                .from('users')
+                .update({ subscription: 'Cơ bản' })
+                .eq('id', user_id);
+                
+              if (updateSubError) {
+                console.error('[sync-user] Lỗi khi cập nhật trường subscription:', updateSubError);
+              } else {
+                console.log('[sync-user] Đã cập nhật trường subscription thành công');
+              }
+            }
+          }
+        } else {
+          console.log('[sync-user] Bảng subscriptions không tồn tại, bỏ qua quá trình tạo gói đăng ký');
         }
       } catch (subError) {
         console.error('[sync-user] Lỗi trong quá trình tạo gói đăng ký:', subError);
+        // Tiếp tục mà không ném lỗi
       }
     } else {
       console.log('[sync-user] Người dùng đã tồn tại, tiến hành cập nhật');
@@ -143,3 +168,16 @@ Deno.serve(async (req) => {
     )
   }
 })
+
+// Tạo hàm RPC kiểm tra bảng có tồn tại không
+const createCheckTableFunction = async () => {
+  try {
+    const { error } = await supabaseAdmin.rpc('create_check_table_function');
+    if (error) console.error('Lỗi khi tạo hàm check_table_exists:', error);
+  } catch (e) {
+    console.error('Không thể tạo hàm check_table_exists:', e);
+  }
+};
+
+// Thực hiện tạo hàm khi edge function khởi động
+createCheckTableFunction();

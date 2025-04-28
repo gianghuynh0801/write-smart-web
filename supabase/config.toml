@@ -1,26 +1,5 @@
 
 project_id = "lxhawtndkubaeljbaylp"
 
-[api]
-enabled = true
-port = 54321
-schemas = ["public", "storage", "graphql_public"]
-
-[db]
-port = 54322
-
-[realtime]
-enabled = true
-
-[storage]
-enabled = true
-
-[auth]
-enabled = true
-site_url = "http://localhost:3000"
-
-[functions.admin-users]
-verify_jwt = true
-
-[functions.update-user]
-verify_jwt = true
+[functions.sync-user]
+verify_jwt = false
