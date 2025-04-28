@@ -58,12 +58,14 @@ Deno.serve(async (req) => {
     
     try {
       // Kiểm tra từ nhiều nguồn để đảm bảo
+      let hasAdminRole = false;
       
       // 1. Kiểm tra từ RPC function is_admin
-      const { data: isAdmin, error: rpcError } = await supabaseAdmin.rpc('is_admin', { uid: caller.id })
+      const { data: isAdminRpc, error: rpcError } = await supabaseAdmin.rpc('is_admin', { uid: caller.id })
       
-      if (!rpcError && isAdmin === true) {
+      if (!rpcError && isAdminRpc === true) {
         console.log('[update-user] Xác nhận quyền admin từ RPC');
+        hasAdminRole = true;
       } else {
         console.log('[update-user] Kiểm tra RPC không thành công, thử phương thức khác');
         
@@ -77,7 +79,7 @@ Deno.serve(async (req) => {
         
         if (!roleError && roleData) {
           console.log('[update-user] Xác nhận quyền admin từ user_roles');
-          isAdmin = true;
+          hasAdminRole = true;
         } else {
           console.log('[update-user] Kiểm tra user_roles không thành công, thử phương thức cuối');
           
@@ -90,7 +92,7 @@ Deno.serve(async (req) => {
           
           if (!userError && userData?.role === 'admin') {
             console.log('[update-user] Xác nhận quyền admin từ users table');
-            isAdmin = true;
+            hasAdminRole = true;
           } else {
             console.log('[update-user] Người dùng không có quyền admin');
             return standardResponse(
@@ -103,7 +105,7 @@ Deno.serve(async (req) => {
       }
       
       // Nếu không có quyền admin sau khi kiểm tra tất cả các nguồn
-      if (!isAdmin) {
+      if (!hasAdminRole) {
         console.error('[update-user] Người dùng không có quyền admin:', caller.id)
         return standardResponse(
           null,
