@@ -1,5 +1,3 @@
-
-// Đã sửa: dùng đúng supabase client typed và types
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { Subscription, UserSubscription } from "@/types/subscriptions";
@@ -7,7 +5,6 @@ import { Subscription, UserSubscription } from "@/types/subscriptions";
 // Helper types
 type SubscriptionRow = Database["public"]["Tables"]["subscriptions"]["Row"];
 type UserSubscriptionRow = Database["public"]["Tables"]["user_subscriptions"]["Row"];
-type PaymentHistoryRow = Database["public"]["Tables"]["payment_history"]["Row"];
 
 // Fetch all subscription plans
 export const fetchSubscriptionPlans = async (): Promise<Subscription[]> => {
@@ -16,73 +13,135 @@ export const fetchSubscriptionPlans = async (): Promise<Subscription[]> => {
     .select("*")
     .order("price", { ascending: true });
 
-  if (error) throw new Error(`Error fetching subscription plans: ${error.message}`);
+  if (error) {
+    console.error("Lỗi khi lấy danh sách gói:", error);
+    throw new Error(`Error fetching subscription plans: ${error.message}`);
+  }
 
-  // Cast features JSON to string[] | null
+  // Parse features array correctly
   return (data || []).map((row) => ({
     ...row,
     features: Array.isArray(row.features)
-      ? (row.features as string[])
+      ? row.features
       : typeof row.features === "string"
         ? JSON.parse(row.features)
-        : row.features === null || row.features === undefined ? null : row.features,
+        : row.features === null || row.features === undefined 
+          ? [] 
+          : Array.isArray(JSON.parse(JSON.stringify(row.features)))
+            ? JSON.parse(JSON.stringify(row.features))
+            : [],
   })) as Subscription[];
 };
 
-// Fetch current user subscription
+// Fetch current user subscription with full details
 export const fetchUserSubscription = async (userId: string) => {
-  // First try to get the active subscription from user_subscriptions table
-  const { data, error } = await supabase
-    .from("user_subscriptions")
-    .select(`
-      id,
-      user_id,
-      start_date,
-      end_date,
-      status,
-      subscriptions:subscription_id (
+  console.log("Đang lấy thông tin gói đăng ký cho user:", userId);
+  
+  try {
+    // Get active subscription with full subscription details
+    const { data, error } = await supabase
+      .from("user_subscriptions")
+      .select(`
         id,
-        name,
-        price,
-        period,
-        features
-      )
-    `)
-    .eq("user_id", userId)
-    .eq("status", "active")
-    .maybeSingle();
+        user_id,
+        subscription_id,
+        start_date,
+        end_date,
+        status,
+        subscriptions:subscription_id (
+          id,
+          name,
+          price,
+          period,
+          features,
+          description
+        )
+      `)
+      .eq("user_id", userId)
+      .eq("status", "active")
+      .maybeSingle();
 
-  if (error && error.code !== "PGRST116") {
-    console.error("Error fetching user subscription:", error);
-    throw new Error(`Error fetching subscription: ${error.message}`);
-  }
+    if (error) {
+      console.error("Lỗi khi lấy thông tin gói đăng ký:", error);
+      return {
+        plan: "Không có",
+        planId: null,
+        status: "inactive",
+        startDate: "",
+        endDate: "",
+        price: 0,
+        usageArticles: 0,
+        totalArticles: 0
+      };
+    }
 
-  if (data) {
-    const typedData = data as unknown as UserSubscription & {
-      subscriptions?: Subscription;
+    if (!data) {
+      console.log("Không tìm thấy gói đăng ký đang hoạt động");
+      return {
+        plan: "Không có",
+        planId: null,
+        status: "inactive",
+        startDate: "",
+        endDate: "",
+        price: 0,
+        usageArticles: 0,
+        totalArticles: 0
+      };
+    }
+
+    // Parse subscription data
+    const subscription = data.subscriptions;
+    if (!subscription) {
+      console.error("Không tìm thấy thông tin chi tiết gói đăng ký");
+      return {
+        plan: "Lỗi",
+        planId: data.subscription_id,
+        status: data.status,
+        startDate: data.start_date,
+        endDate: data.end_date,
+        price: 0,
+        usageArticles: 0,
+        totalArticles: 0
+      };
+    }
+
+    // Get usage statistics (implement your actual usage logic here)
+    // This is a placeholder - replace with your actual usage tracking
+    const usageStats = {
+      used: 8,
+      total: 30
     };
+
+    console.log("Đã lấy thông tin gói đăng ký thành công:", {
+      plan: subscription.name,
+      status: data.status,
+      startDate: data.start_date,
+      endDate: data.end_date
+    });
+
     return {
-      plan: typedData.subscriptions?.name || "Không có",
-      planId: typedData.subscriptions?.id,
-      status: typedData.status,
-      startDate: typedData.start_date,
-      endDate: typedData.end_date,
-      price: typedData.subscriptions?.price || 0,
-      usageArticles: 8, // Giả lập
-      totalArticles: 30, // Giả lập
+      plan: subscription.name,
+      planId: subscription.id,
+      status: data.status,
+      startDate: data.start_date,
+      endDate: data.end_date,
+      price: subscription.price,
+      usageArticles: usageStats.used,
+      totalArticles: usageStats.total
+    };
+  } catch (error) {
+    console.error("Lỗi không mong muốn:", error);
+    return {
+      plan: "Lỗi",
+      planId: null,
+      status: "error",
+      startDate: "",
+      endDate: "",
+      price: 0,
+      usageArticles: 0,
+      totalArticles: 0
     };
   }
-
-  return {
-    plan: "Không có",
-    planId: null,
-    status: "inactive",
-    startDate: "",
-    endDate: "",
-    price: 0,
-    usageArticles: 0,
-    totalArticles: 0,
-  };
 };
 
 // Update user subscription
@@ -207,4 +266,3 @@ export const cancelUserSubscription = async (userId: string) => {
     message: "Đã hủy gói đăng ký. Gói đăng ký của bạn sẽ còn hiệu lực đến ngày kết thúc hiện tại.",
   };
 };
-

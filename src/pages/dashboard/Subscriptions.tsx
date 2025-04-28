@@ -46,10 +46,12 @@ const Subscriptions = () => {
         
         // Load subscription plans
         const plans = await fetchSubscriptionPlans();
+        console.log("Loaded subscription plans:", plans);
         setSubscriptions(plans);
         
         // Load user subscription
         const userSubscription = await fetchUserSubscription(user.id);
+        console.log("Loaded user subscription:", userSubscription);
         setCurrentSubscription(userSubscription);
       } catch (error: any) {
         console.error("Error loading subscription data:", error);
