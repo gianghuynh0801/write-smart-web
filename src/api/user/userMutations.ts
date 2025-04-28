@@ -6,6 +6,7 @@ import { User, UserFormValues } from "@/types/user";
 import { createUserSubscriptionAsAdmin } from "./admin/subscriptionOperations";
 import { handleSubscriptionChange } from "./userSubscription";
 import { getUserById } from "./userQueries";
+import { getItem, setItem, LOCAL_STORAGE_KEYS } from "@/utils/localStorageService";
 
 // Function để đợi một khoảng thời gian
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -75,31 +76,62 @@ export const createUser = async (userData: UserFormValues): Promise<User> => {
   return createdUser;
 };
 
+// Hàm trợ giúp để lấy và làm mới token admin khi cần
+const getAdminToken = async (): Promise<string | null> => {
+  try {
+    // Kiểm tra session hiện tại
+    const { data: { session }, error: sessionError } = await supabaseAdmin.auth.getSession();
+    
+    if (sessionError) {
+      console.error("[getAdminToken] Lỗi khi lấy session:", sessionError);
+      return null;
+    }
+    
+    if (session?.access_token) {
+      console.log("[getAdminToken] Đã tìm thấy session token hợp lệ");
+      return session.access_token;
+    }
+
+    console.log("[getAdminToken] Không tìm thấy token, thử lấy từ local storage");
+    
+    // Nếu không có session, kiểm tra trong local storage
+    const adminToken = getItem<string>(LOCAL_STORAGE_KEYS.SESSION_TOKEN, false);
+    if (adminToken) {
+      console.log("[getAdminToken] Đã tìm thấy token trong local storage");
+      return adminToken;
+    }
+    
+    console.log("[getAdminToken] Không tìm thấy token hợp lệ");
+    return null;
+  } catch (error) {
+    console.error("[getAdminToken] Lỗi khi lấy token admin:", error);
+    return null;
+  }
+};
+
 export const updateUser = async (id: string | number, userData: UserFormValues): Promise<User> => {
   const userId = String(id);
   
-  console.log("[updateUser] Cập nhật user qua Edge Function:", { userId, userData });
+  console.log("[updateUser] Chuẩn bị cập nhật user:", { userId, userData });
   
   try {
-    // Cần đảm bảo có session token hợp lệ trước khi gọi Edge Function
-    const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.getSession();
-    if (sessionError) {
-      console.error("[updateUser] Lỗi khi lấy session:", sessionError);
-      throw new Error(`Lỗi xác thực: ${sessionError.message}`);
-    }
+    // Lấy token admin
+    const adminToken = await getAdminToken();
     
-    if (!sessionData.session) {
-      console.error("[updateUser] Không có session hợp lệ");
+    if (!adminToken) {
+      console.error("[updateUser] Không tìm thấy token admin");
       throw new Error("Không có phiên đăng nhập hợp lệ, vui lòng đăng nhập lại");
     }
     
-    // Gọi Edge Function với token xác thực từ session
+    console.log("[updateUser] Gọi Edge Function với token");
+    
+    // Gọi Edge Function với token xác thực
     const { data: responseData, error: invocationError } = await supabaseAdmin.functions.invoke(
       'update-user',
       {
         body: { id: userId, userData },
         headers: {
-          Authorization: `Bearer ${sessionData.session.access_token}`
+          Authorization: `Bearer ${adminToken}`
         }
       }
     );
@@ -115,8 +147,25 @@ export const updateUser = async (id: string | number, userData: UserFormValues):
       throw new Error("Không nhận được dữ liệu từ máy chủ");
     }
     
+    console.log("[updateUser] Phản hồi từ Edge Function:", responseData);
+    
     if (responseData.error) {
       console.error("[updateUser] Edge Function trả về lỗi:", responseData.error);
+      
+      // Xử lý lỗi xác thực đặc biệt
+      if (responseData.error.includes('xác thực') || responseData.error.includes('phiên đăng nhập') || 
+          responseData.error.includes('401') || responseData.error.includes('403')) {
+        
+        // Thử làm mới phiên đăng nhập
+        console.log("[updateUser] Phát hiện lỗi xác thực, thử làm mới phiên đăng nhập");
+        
+        // Lưu token trong localStorage để sử dụng lại sau khi đăng nhập
+        const { data: { session } } = await supabaseAdmin.auth.getSession();
+        if (session) {
+          setItem(LOCAL_STORAGE_KEYS.SESSION_TOKEN, session.access_token);
+        }
+      }
+      
       throw new Error(`Lỗi cập nhật: ${responseData.error}`);
     }
     
@@ -125,6 +174,7 @@ export const updateUser = async (id: string | number, userData: UserFormValues):
       throw new Error("Dữ liệu người dùng không hợp lệ");
     }
 
+    // Phân tích và trả về dữ liệu người dùng đã cập nhật
     return parseUser(responseData.data);
   } catch (error) {
     console.error("[updateUser] Lỗi không mong đợi:", error);

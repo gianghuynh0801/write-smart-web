@@ -13,6 +13,8 @@ import { User, UserFormValues } from "@/types/user";
 import UserForm from "./UserForm";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { supabaseAdmin } from "@/integrations/supabase/adminClient";
+import { setItem, LOCAL_STORAGE_KEYS } from "@/utils/localStorageService";
 
 interface UserDialogProps {
   isOpen: boolean;
@@ -105,11 +107,58 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
     }
   }, [fetchUser, isOpen, userId]);
   
+  // Đảm bảo admin đã đăng nhập trước khi gửi yêu cầu
+  const ensureAuth = async () => {
+    try {
+      console.log("Kiểm tra phiên đăng nhập admin...");
+      const { data: { session } } = await supabaseAdmin.auth.getSession();
+      
+      if (!session) {
+        console.log("Không tìm thấy phiên đăng nhập, thử làm mới...");
+        
+        // Thử làm mới phiên đăng nhập
+        const { data: refreshData, error: refreshError } = await supabaseAdmin.auth.refreshSession();
+        
+        if (refreshError || !refreshData.session) {
+          console.error("Không thể làm mới phiên đăng nhập:", refreshError);
+          return false;
+        }
+        
+        console.log("Đã làm mới phiên đăng nhập thành công");
+        
+        // Lưu token mới vào localStorage
+        setItem(LOCAL_STORAGE_KEYS.SESSION_TOKEN, refreshData.session.access_token);
+        return true;
+      }
+      
+      console.log("Đã tìm thấy phiên đăng nhập hợp lệ");
+      setItem(LOCAL_STORAGE_KEYS.SESSION_TOKEN, session.access_token);
+      return true;
+    } catch (authError) {
+      console.error("Lỗi khi kiểm tra xác thực:", authError);
+      return false;
+    }
+  };
+  
   const handleSubmit = async (data: UserFormValues) => {
     if (isSubmitting) return;
     
     setIsSubmitting(true);
     setError(null);
+    
+    // Đảm bảo admin đã đăng nhập trước khi thực hiện thao tác
+    const isAuthenticated = await ensureAuth();
+    
+    if (!isAuthenticated) {
+      setError("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+      setIsSubmitting(false);
+      toast({
+        title: "Lỗi xác thực",
+        description: "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
+        variant: "destructive"
+      });
+      return;
+    }
     
     try {
       console.log("Đang lưu thông tin user:", data);
@@ -132,12 +181,16 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
             lastError = updateError;
             console.error(`Lỗi khi cập nhật (lần ${attempts + 1}/${maxAttempts}):`, updateError);
             
-            // Nếu là lỗi xác thực, thử lại sau 1 giây
+            // Nếu là lỗi xác thực, thử làm mới xác thực và thử lại
             if (updateError.message && 
               (updateError.message.includes('xác thực') || 
                updateError.message.includes('Xác thực') || 
                updateError.message.includes('401') || 
-               updateError.message.includes('403'))) {
+               updateError.message.includes('403') ||
+               updateError.message.includes('phiên đăng nhập'))) {
+              
+              // Thử làm mới phiên đăng nhập
+              await ensureAuth();
               await new Promise(resolve => setTimeout(resolve, 1000));
               attempts++;
             } else {
