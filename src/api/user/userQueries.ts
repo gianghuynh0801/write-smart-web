@@ -19,6 +19,7 @@ export const fetchUsers = async (
     }
 
     const response = await supabase.functions.invoke('admin-users', {
+      method: 'POST',
       body: {
         page,
         pageSize,
@@ -31,10 +32,12 @@ export const fetchUsers = async (
     });
 
     if (response.error) {
+      console.error("Lỗi từ Edge Function:", response.error);
       throw new Error(`Lỗi API: ${response.error.message}`);
     }
 
     if (!response.data) {
+      console.log("Không có dữ liệu trả về từ API");
       return {
         data: [],
         total: 0
