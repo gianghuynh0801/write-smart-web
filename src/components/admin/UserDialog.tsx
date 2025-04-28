@@ -13,8 +13,7 @@ import { useUserDialog } from "./users/hooks/useUserDialog";
 import { UserDialogError } from "./users/components/UserDialogError";
 import { UserDialogLoading } from "./users/components/UserDialogLoading";
 import { useToast } from "@/hooks/use-toast";
-import { updateUser, createUser } from "@/api/user/userMutations";
-import { getItem, LOCAL_STORAGE_KEYS } from "@/utils/localStorageService";
+import { updateUser, createUser, getAdminToken, refreshSessionToken } from "@/api/user/userMutations";
 
 interface UserDialogProps {
   isOpen: boolean;
@@ -56,27 +55,6 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
     }
   }, [fetchUser, isOpen, userId]);
 
-  const verifyAdminSession = async () => {
-    try {
-      // Kiểm tra session token trong localStorage
-      const sessionToken = getItem<string>(LOCAL_STORAGE_KEYS.SESSION_TOKEN, false);
-      if (!sessionToken) {
-        console.log("[UserDialog] Không tìm thấy session token");
-        toast({
-          title: "Lỗi xác thực",
-          description: "Phiên đăng nhập hết hạn hoặc không tồn tại. Vui lòng đăng nhập lại.",
-          variant: "destructive"
-        });
-        throw new Error("Không tìm thấy session token");
-      }
-      console.log("[UserDialog] Đã tìm thấy session token");
-      return true;
-    } catch (error) {
-      console.error("[UserDialog] Lỗi khi xác thực session:", error);
-      return false;
-    }
-  };
-
   const handleSubmit = async (data: UserFormValues) => {
     if (isSubmitting) return;
     setIsSubmitting(true);
@@ -85,9 +63,15 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
       console.log("[UserDialog] Đang lưu thông tin user:", data);
       
       // Kiểm tra session trước khi thực hiện thao tác
-      const sessionValid = await verifyAdminSession();
-      if (!sessionValid) {
-        throw new Error("Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.");
+      const adminToken = await getAdminToken();
+      if (!adminToken) {
+        console.error("[UserDialog] Token không hợp lệ, thử làm mới");
+        
+        // Thử làm mới token
+        const refreshedToken = await refreshSessionToken();
+        if (!refreshedToken) {
+          throw new Error("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại để tiếp tục.");
+        }
       }
       
       if (userId) {
