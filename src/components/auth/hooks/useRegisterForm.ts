@@ -38,20 +38,34 @@ export const useRegisterForm = () => {
     setIsLoading(true);
     
     try {
+      // Kiểm tra email trước khi đăng ký
+      console.log("Kiểm tra email:", formData.email);
       const emailExists = await checkEmailExists(formData.email);
+      
       if (emailExists) {
         throw new Error("Email này đã được sử dụng. Vui lòng chọn email khác hoặc đăng nhập.");
       }
 
+      // Đăng ký tài khoản mới
+      console.log("Tiến hành đăng ký người dùng mới");
       const userId = await registerUser(formData);
-      if (!userId) return;
+      if (!userId) {
+        throw new Error("Không thể tạo tài khoản. Vui lòng thử lại sau.");
+      }
       
+      // Đồng bộ dữ liệu người dùng
+      console.log("Đồng bộ dữ liệu người dùng:", userId);
       await syncUser(userId, formData.email, formData.name);
+      
+      // Xác minh người dùng đã được tạo
+      console.log("Xác minh người dùng đã được tạo thành công");
       await verifyUserCreation(userId);
       
+      // Đăng xuất người dùng sau khi đăng ký
       await supabase.auth.signOut();
       console.log("Đã đăng xuất người dùng sau khi đăng ký");
       
+      // Gửi email xác thực
       try {
         console.log("Gửi email xác thực cho:", formData.email);
         await sendVerificationEmail({
@@ -73,7 +87,7 @@ export const useRegisterForm = () => {
         navigate("/verify-email-prompt");
       }
     } catch (error: any) {
-      console.error("Registration error:", error);
+      console.error("Lỗi đăng ký:", error);
       
       if (error.code === "23505" || error.message?.includes("users_email_key")) {
         setError("Email này đã được sử dụng. Vui lòng chọn email khác hoặc đăng nhập.");

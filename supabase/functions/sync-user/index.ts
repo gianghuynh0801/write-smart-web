@@ -1,137 +1,145 @@
 
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4'
+import { corsHeaders } from '../_shared/cors.ts'
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+const supabaseUrl = "https://lxhawtndkubaeljbaylp.supabase.co"
+const supabaseServiceRole = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRole, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+  },
+})
 
-interface SyncUserRequest {
-  user_id: string;
-  email: string;
-  name?: string;
-}
+Deno.serve(async (req) => {
+  // Xử lý CORS
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
 
-serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+  // Phân tích body request
+  const requestData = await req.json()
+  const { user_id, email, name, email_verified } = requestData
+
+  // Kiểm tra thông tin cần thiết
+  if (!user_id || !email || !name) {
+    return new Response(
+      JSON.stringify({ error: 'Thiếu thông tin người dùng cần thiết' }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+    )
   }
 
   try {
-    const { user_id, email, name } = await req.json() as SyncUserRequest;
+    console.log(`[sync-user] Đồng bộ dữ liệu cho người dùng: ${user_id}`);
     
-    if (!user_id || !email) {
-      throw new Error("Missing required parameters: user_id and email");
-    }
-
-    console.log(`Syncing user data for user ID: ${user_id}, email: ${email}`);
-    
-    // Create Supabase admin client with service role key
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-    
-    if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error("Missing Supabase configuration");
-    }
-    
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Try to find the user in auth.users first
-    let authUserExists = false;
-    try {
-      const { data: authUser, error: authUserError } = await supabaseAdmin.auth.admin.getUserById(user_id);
-
-      if (!authUserError && authUser?.user) {
-        authUserExists = true;
-        console.log(`Confirmed user exists in auth system: ${user_id}`);
-      } else {
-        console.log(`User not found in auth system, error: ${authUserError?.message}`);
-        // Instead of throwing an error, we'll try to proceed with creation in case the auth record exists 
-        // but something went wrong with the admin API call
-      }
-    } catch (authError) {
-      console.error("Error checking auth user:", authError);
-      // Continue anyway to try to create the user record
-    }
-
-    // Check if user exists in public.users
-    const { data: existingUser, error: existingUserError } = await supabaseAdmin
+    // Kiểm tra xem người dùng đã tồn tại chưa
+    const { data: existingUser, error: getUserError } = await supabaseAdmin
       .from('users')
-      .select('id')
+      .select('*')
       .eq('id', user_id)
       .maybeSingle();
-
-    if (existingUserError) {
-      console.error("Error checking for existing user:", existingUserError);
-      // Continue anyway as we'll try to create/update the user
+      
+    if (getUserError) {
+      console.error('[sync-user] Lỗi khi kiểm tra người dùng:', getUserError);
+      throw getUserError;
     }
-
-    // Create or update user record
-    let operation;
+    
+    let userData;
+    
     if (!existingUser) {
-      // Create new user record
-      console.log(`Creating user record in database for: ${user_id}`);
-      operation = supabaseAdmin
-        .from('users')
-        .insert({
+      console.log('[sync-user] Người dùng chưa tồn tại, tiến hành tạo mới');
+      
+      // Tạo người dùng mới
+      const { data: newUser, error: insertError } = await supabaseAdmin.from('users').insert([
+        {
           id: user_id,
           email: email,
-          name: name || email.split('@')[0],
-          status: 'inactive',
-          email_verified: false,
+          name: name,
+          email_verified: email_verified !== undefined ? email_verified : false,
+          avatar: `https://i.pravatar.cc/150?img=${Math.floor(Math.random() * 70)}`,
+          credits: 10,
           role: 'user',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        });
+          status: 'active'
+        }
+      ]).select().single();
+      
+      if (insertError) {
+        console.error('[sync-user] Lỗi khi tạo người dùng mới:', insertError);
+        throw insertError;
+      }
+      
+      userData = newUser;
+      
+      // Khởi tạo gói đăng ký cơ bản cho người dùng mới
+      try {
+        const { data: subscriptionData, error: subQueryError } = await supabaseAdmin
+          .from('subscriptions')
+          .select('id')
+          .eq('name', 'Cơ bản')
+          .maybeSingle();
+        
+        if (subQueryError) {
+          console.error('[sync-user] Lỗi khi truy vấn gói đăng ký:', subQueryError);
+        }
+        else if (subscriptionData) {
+          const startDate = new Date().toISOString().split('T')[0];
+          const endDate = new Date();
+          endDate.setMonth(endDate.getMonth() + 1);
+          const endDateStr = endDate.toISOString().split('T')[0];
+          
+          const { data: userSub, error: subInsertError } = await supabaseAdmin
+            .from('user_subscriptions')
+            .insert({
+              user_id: user_id,
+              subscription_id: subscriptionData.id,
+              start_date: startDate,
+              end_date: endDateStr,
+              status: 'active'
+            });
+          
+          if (subInsertError) {
+            console.error('[sync-user] Lỗi khi tạo gói đăng ký cơ bản:', subInsertError);
+          } else {
+            console.log('[sync-user] Đã tạo gói đăng ký cơ bản thành công');
+          }
+        }
+      } catch (subError) {
+        console.error('[sync-user] Lỗi trong quá trình tạo gói đăng ký:', subError);
+      }
     } else {
-      // Update existing user
-      console.log(`User ${user_id} already exists, updating information`);
-      operation = supabaseAdmin
+      console.log('[sync-user] Người dùng đã tồn tại, tiến hành cập nhật');
+      
+      // Cập nhật thông tin người dùng
+      const { data: updatedUser, error: updateError } = await supabaseAdmin
         .from('users')
         .update({
           email: email,
-          name: name || existingUser.name,
-          updated_at: new Date().toISOString()
+          name: name,
+          email_verified: email_verified !== undefined ? email_verified : existingUser.email_verified
         })
-        .eq('id', user_id);
-    }
-
-    const { error: operationError } = await operation;
-    if (operationError) {
-      console.error("Error creating/updating user record:", operationError);
-      throw operationError;
-    }
-
-    console.log(`User record operation successful for ${user_id}`);
-
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: "User synchronized successfully",
-        user_id: user_id,
-        is_new: !existingUser,
-        auth_user_exists: authUserExists
-      }),
-      { 
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
+        .eq('id', user_id)
+        .select()
+        .single();
+      
+      if (updateError) {
+        console.error('[sync-user] Lỗi khi cập nhật thông tin người dùng:', updateError);
+        throw updateError;
       }
-    );
-  } catch (error) {
-    console.error("Error syncing user:", error);
+      
+      userData = updatedUser;
+    }
     
     return new Response(
+      JSON.stringify({ message: 'Đồng bộ thành công', data: userData }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+    )
+  } catch (error) {
+    console.error('[sync-user] Lỗi xử lý:', error);
+    return new Response(
       JSON.stringify({ 
-        success: false,
-        message: error.message,
-        details: error.toString()
+        error: error instanceof Error ? error.message : 'Lỗi không xác định khi đồng bộ dữ liệu người dùng' 
       }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 500,
-      }
-    );
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+    )
   }
-});
+})

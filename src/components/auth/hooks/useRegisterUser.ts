@@ -18,67 +18,116 @@ export const useRegisterUser = () => {
 
   const registerUser = async (formData: RegisterFormData): Promise<string | null> => {
     console.log("Bắt đầu tạo tài khoản:", formData.email);
-    const { data, error } = await supabase.auth.signUp({ 
-      email: formData.email, 
-      password: formData.password,
-      options: {
-        data: { 
-          full_name: formData.name,
-          email_verified: false
-        },
-        emailRedirectTo: `${window.location.origin}/email-verified`
+    
+    try {
+      const { data, error } = await supabase.auth.signUp({ 
+        email: formData.email, 
+        password: formData.password,
+        options: {
+          data: { 
+            full_name: formData.name,
+            email_verified: false
+          },
+          emailRedirectTo: `${window.location.origin}/email-verified`
+        }
+      });
+      
+      if (error) throw error;
+      
+      if (!data?.user) {
+        throw new Error("Không thể tạo tài khoản. Vui lòng thử lại sau.");
       }
-    });
-    
-    if (error) throw error;
-    
-    if (!data?.user) {
-      throw new Error("Không thể tạo tài khoản. Vui lòng thử lại sau.");
-    }
 
-    return data.user.id;
+      // Đợi 1 giây để đảm bảo trigger đã chạy xong trong database
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      return data.user.id;
+    } catch (error) {
+      console.error("Lỗi khi đăng ký người dùng:", error);
+      throw error;
+    }
   };
 
   const syncUser = async (userId: string, email: string, name: string) => {
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Trigger đã được tạo để tự động đồng bộ dữ liệu sang bảng public.users
-    // Vẫn giữ lại function sync-user để đảm bảo tương thích ngược
-    const { data: syncData, error: syncError } = await supabase.functions.invoke("sync-user", {
-      body: { 
-        user_id: userId, 
-        email: email, 
-        name: name,
-        email_verified: false
+    try {
+      console.log("Đang đồng bộ dữ liệu người dùng:", userId);
+      
+      // Kiểm tra nếu người dùng đã tồn tại trong bảng public.users
+      const { data: existingUser, error: checkError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+        
+      if (checkError) {
+        console.error("Lỗi khi kiểm tra người dùng:", checkError);
+        throw new Error(`Không thể kiểm tra người dùng: ${checkError.message}`);
       }
-    });
-    
-    if (syncError) {
-      console.error("Lỗi đồng bộ người dùng:", syncError);
-      throw new Error(`Không thể đồng bộ người dùng: ${syncError.message}`);
+      
+      // Nếu người dùng chưa tồn tại, gọi hàm sync-user để đồng bộ
+      if (!existingUser) {
+        console.log("Người dùng chưa tồn tại, đang đồng bộ...");
+        
+        // Đợi 2 giây để đảm bảo trigger đã chạy
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        const { data: syncData, error: syncError } = await supabase.functions.invoke("sync-user", {
+          body: { 
+            user_id: userId, 
+            email: email, 
+            name: name,
+            email_verified: false
+          }
+        });
+        
+        if (syncError) {
+          console.error("Lỗi đồng bộ người dùng:", syncError);
+          throw new Error(`Không thể đồng bộ người dùng: ${syncError.message}`);
+        }
+        
+        console.log("Kết quả đồng bộ người dùng:", syncData);
+      } else {
+        console.log("Người dùng đã tồn tại trong database:", existingUser);
+      }
+    } catch (error) {
+      console.error("Lỗi trong quá trình đồng bộ:", error);
+      throw error;
     }
-    
-    console.log("Kết quả đồng bộ người dùng:", syncData);
   };
 
   const verifyUserCreation = async (userId: string) => {
-    const { data: checkUser, error: checkUserError } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', userId)
-      .maybeSingle();
-    
-    if (checkUserError) {
-      console.error("Lỗi kiểm tra người dùng:", checkUserError);
-      throw new Error(`Không thể kiểm tra người dùng: ${checkUserError.message}`);
+    try {
+      // Thực hiện nhiều lần kiểm tra với timeout
+      let retries = 3;
+      
+      while (retries > 0) {
+        const { data: checkUser, error: checkUserError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', userId)
+          .maybeSingle();
+        
+        if (checkUserError) {
+          console.error("Lỗi kiểm tra người dùng:", checkUserError);
+          throw new Error(`Không thể kiểm tra người dùng: ${checkUserError.message}`);
+        }
+        
+        if (checkUser) {
+          console.log("Người dùng đã được tạo thành công trong database:", checkUser);
+          return; // Kết thúc thành công
+        }
+        
+        // Đợi trước khi kiểm tra lại
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        retries--;
+      }
+      
+      // Nếu tất cả các lần thử đều thất bại
+      throw new Error("Không thể tạo người dùng trong cơ sở dữ liệu sau nhiều lần thử. Vui lòng liên hệ hỗ trợ.");
+    } catch (error) {
+      console.error("Lỗi khi xác minh người dùng:", error);
+      throw error;
     }
-    
-    if (!checkUser) {
-      console.error("Người dùng không tồn tại sau khi đồng bộ");
-      throw new Error("Không thể tạo người dùng trong cơ sở dữ liệu. Vui lòng liên hệ hỗ trợ.");
-    }
-    
-    console.log("Người dùng đã được tạo thành công trong database:", checkUser);
   };
 
   return {
