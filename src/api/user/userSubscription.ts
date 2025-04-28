@@ -1,6 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { createUserSubscriptionAsAdmin } from "./adminOperations";
+import { createUserSubscriptionAsAdmin } from "./admin/subscriptionOperations";
 
 // Handle subscription changes for a user
 export async function handleSubscriptionChange(userId: string, subscriptionName: string) {

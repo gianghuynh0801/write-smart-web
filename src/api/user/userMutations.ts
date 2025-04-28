@@ -2,7 +2,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { parseUser } from "./userParser";
 import { User, UserFormValues } from "@/types/user";
-import { createUserSubscriptionAsAdmin } from "./adminOperations";
+import { createUserSubscriptionAsAdmin } from "./admin/subscriptionOperations";
 import { handleSubscriptionChange } from "./userSubscription";
 import { getUserById } from "./userQueries";
 

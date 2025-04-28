@@ -2,7 +2,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { parseUser } from "./userParser";
 import { User } from "@/types/user";
-import { getUserActiveSubscription } from "./adminOperations";
+import { getUserActiveSubscription } from "./admin/subscriptionOperations";
 
 export const fetchUsers = async (
   page = 1,
