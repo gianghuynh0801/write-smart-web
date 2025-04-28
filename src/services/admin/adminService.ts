@@ -16,7 +16,22 @@ export const checkAdminRole = async (userId: string) => {
   console.log("Checking admin role for user:", userId);
   
   try {
-    // Check if user exists in user_roles table with admin role
+    // Kiểm tra vai trò từ bảng users trước
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', userId)
+      .maybeSingle();
+    
+    if (!userError && userData?.role === 'admin') {
+      console.log("Admin role found in users table:", userData);
+      return { 
+        roleData: { user_id: userId, role: 'admin' }, 
+        roleError: null 
+      };
+    }
+    
+    // Nếu không tìm thấy trong users table, kiểm tra trong user_roles table
     const { data: roleData, error: roleError } = await supabase
       .from('user_roles')
       .select('*')

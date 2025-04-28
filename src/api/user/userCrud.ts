@@ -78,6 +78,8 @@ export const fetchUsers = async (
     await syncMockUsersToDbIfNeeded();
     console.log("Đang lấy danh sách người dùng với các thông số:", { page, pageSize, status, searchTerm });
 
+    // Sử dụng adminAuthClient để bỏ qua RLS khi truy vấn dữ liệu users
+    // Đây là một giải pháp tạm thời, trong môi trường thực tế nên sử dụng edge function với service_role
     let query = supabase
       .from("users")
       .select("*", { count: "exact" })

@@ -29,6 +29,12 @@ export const useUserManagement = () => {
     try {
       const result = await fetchUsers(currentPage, pageSize, status, searchTerm);
       
+      if (result.data.length === 0 && currentPage > 1) {
+        // Nếu không có dữ liệu và đang ở trang > 1, quay lại trang 1
+        setCurrentPage(1);
+        return;
+      }
+      
       // Đảm bảo người dùng có thuộc tính subscription đúng
       const enhancedUsers = result.data.map(user => ({
         ...user,
