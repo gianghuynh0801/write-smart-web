@@ -53,7 +53,6 @@ Deno.serve(async (req) => {
   }
   
   try {
-    // Lấy URL của Supabase và Service Role Key từ các biến môi trường
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
@@ -102,10 +101,11 @@ Deno.serve(async (req) => {
         
         console.log("Admin fetch users:", { page, pageSize, status, searchTerm });
         
-        // Truy vấn dữ liệu users với quyền admin
+        // Truy vấn dữ liệu users với quyền admin, loại trừ các admin
         let query = adminAuthClient
           .from("users")
           .select("*", { count: "exact" })
+          .neq("role", "admin") // Thêm điều kiện lọc ra các user không phải admin
           .order("created_at", { ascending: false });
     
         if (status !== "all") {
@@ -126,11 +126,28 @@ Deno.serve(async (req) => {
         const { data: users, count, error } = await query;
     
         if (error) {
-          throw new Error(`Error fetching users: ${error.message}`);
+          console.error("Lỗi khi lấy danh sách users:", error);
+          throw new Error(`Lỗi khi lấy danh sách người dùng: ${error.message}`);
+        }
+
+        if (!users || users.length === 0) {
+          return new Response(
+            JSON.stringify({
+              data: [],
+              total: 0
+            }),
+            { 
+              headers: { 
+                ...corsHeaders, 
+                'Content-Type': 'application/json' 
+              },
+              status: 200 
+            }
+          );
         }
         
         // Lấy thông tin gói đăng ký cho từng người dùng
-        const usersWithSubscription = await Promise.all((users || []).map(async (user) => {
+        const usersWithSubscription = await Promise.all(users.map(async (user) => {
           try {
             const { data: subData } = await adminAuthClient
               .from("user_subscriptions")
@@ -152,7 +169,7 @@ Deno.serve(async (req) => {
               subscription: subscriptionName
             };
           } catch (err) {
-            console.error(`Error processing user ${user.id}:`, err);
+            console.error(`Lỗi khi xử lý thông tin người dùng ${user.id}:`, err);
             return user;
           }
         }));
@@ -173,7 +190,6 @@ Deno.serve(async (req) => {
       }
     }
     
-    // Nếu không khớp với bất kỳ endpoint nào
     return new Response(
       JSON.stringify({ error: 'Endpoint not found' }),
       { 
@@ -186,7 +202,7 @@ Deno.serve(async (req) => {
     );
     
   } catch (error) {
-    console.error('Error in admin-users function:', error);
+    console.error('Lỗi trong admin-users function:', error);
     
     return new Response(
       JSON.stringify({ 

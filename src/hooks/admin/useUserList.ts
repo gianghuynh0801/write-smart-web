@@ -30,18 +30,15 @@ export const useUserList = () => {
         return;
       }
       
-      const enhancedUsers = result.data.map(user => ({
-        ...user,
-        subscription: user.subscription || "Không có"
-      }));
-      
-      setUsers(enhancedUsers);
+      setUsers(result.data);
       setTotalUsers(result.total);
-      console.log(`[useUserList] Đã tải ${enhancedUsers.length} người dùng, tổng số: ${result.total}`);
+      console.log(`[useUserList] Đã tải ${result.data.length} người dùng, tổng số: ${result.total}`);
     } catch (error) {
       console.error("[useUserList] Lỗi khi tải danh sách người dùng:", error);
       setIsError(true);
       setErrorMessage(error instanceof Error ? error.message : "Không thể tải danh sách người dùng");
+      setUsers([]);
+      setTotalUsers(0);
       
       toast({
         title: "Lỗi",
