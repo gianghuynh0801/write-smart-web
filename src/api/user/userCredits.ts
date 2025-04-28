@@ -1,6 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { parseUser } from "./userCrud";
+import { parseUser } from "./userParser";
 import { User } from "@/types/user";
 
 export const addUserCredits = async (id: string | number, amount: number): Promise<User> => {
@@ -55,7 +55,6 @@ export const addUserCredits = async (id: string | number, amount: number): Promi
     
     if (logError) {
       console.warn(`[API] Không thể ghi log giao dịch:`, logError);
-      // Vẫn tiếp tục vì đã cập nhật tín dụng thành công
     } else {
       console.log(`[API] Đã ghi log giao dịch thành công`);
     }
