@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 interface RegisterFormData {
@@ -12,6 +11,10 @@ export const useRegisterUser = () => {
     console.log("Bắt đầu tạo tài khoản:", formData.email);
     
     try {
+      // Sử dụng URL cố định cho redirect
+      const redirectUrl = 'https://preview--write-smart-web.lovable.app/email-verified';
+      console.log("Redirect URL được cấu hình:", redirectUrl);
+      
       const { data, error } = await supabase.auth.signUp({ 
         email: formData.email, 
         password: formData.password,
@@ -20,22 +23,31 @@ export const useRegisterUser = () => {
             full_name: formData.name,
             email_verified: false
           },
-          emailRedirectTo: `${window.location.origin}/email-verified`
+          emailRedirectTo: redirectUrl
         }
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error("Lỗi đăng ký:", error);
+        if (error.message.includes('URL')) {
+          throw new Error("Lỗi cấu hình URL xác thực. Vui lòng thử lại sau.");
+        }
+        throw error;
+      }
       
       if (!data?.user) {
+        console.error("Không có dữ liệu user được trả về");
         throw new Error("Không thể tạo tài khoản. Vui lòng thử lại sau.");
       }
 
+      console.log("Đăng ký thành công, ID người dùng:", data.user.id);
+      
       // Đợi 1 giây để đảm bảo trigger đã chạy xong trong database
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       return data.user.id;
     } catch (error) {
-      console.error("Lỗi khi đăng ký người dùng:", error);
+      console.error("Lỗi chi tiết khi đăng ký người dùng:", error);
       throw error;
     }
   };
