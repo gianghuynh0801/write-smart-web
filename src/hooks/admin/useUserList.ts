@@ -1,9 +1,10 @@
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@/types/user";
 import { useToast } from "@/hooks/use-toast";
+import { refreshSessionToken } from "@/api/user/userMutations";
 
 const fetchUsers = async (params: {
   page: number;
@@ -13,22 +14,48 @@ const fetchUsers = async (params: {
 }) => {
   console.log("Đang lấy danh sách người dùng với các thông số:", params);
 
-  const { data, error } = await supabase.functions.invoke('admin-users', {
-    body: params
-  });
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session || !session.access_token) {
+      throw new Error("Không có phiên đăng nhập hợp lệ");
+    }
 
-  if (error) {
-    console.error("Lỗi khi gọi admin-users function:", error);
+    const { data, error } = await supabase.functions.invoke('admin-users', {
+      body: params,
+      headers: {
+        Authorization: `Bearer ${session.access_token}`
+      }
+    });
+
+    if (error) {
+      console.error("Lỗi khi gọi admin-users function:", error);
+      throw error;
+    }
+
+    if (data.error) {
+      console.error("admin-users function trả về lỗi:", data.error);
+      throw new Error(data.error);
+    }
+
+    console.log(`Đã lấy được ${data.data.users.length} người dùng, tổng số: ${data.data.total}`);
+    return data.data;
+  } catch (error) {
+    console.error("Lỗi trong fetchUsers:", error);
+    
+    // Thử làm mới token nếu có dấu hiệu là lỗi xác thực
+    if (error instanceof Error && 
+        (error.message.includes("xác thực") || 
+         error.message.includes("authentication") ||
+         error.message.includes("jwt") ||
+         error.message.includes("token") ||
+         error.message.includes("auth"))) {
+      
+      console.log("Có thể là lỗi xác thực, thử làm mới token...");
+      await refreshSessionToken();
+    }
+    
     throw error;
   }
-
-  if (data.error) {
-    console.error("admin-users function trả về lỗi:", data.error);
-    throw new Error(data.error);
-  }
-
-  console.log(`Đã lấy được ${data.data.users.length} người dùng, tổng số: ${data.data.total}`);
-  return data.data;
 };
 
 export const useUserList = () => {
@@ -37,6 +64,9 @@ export const useUserList = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 5;
   const { toast } = useToast();
+  
+  // Thêm state để theo dõi trạng thái refreshing token
+  const [isRefreshingToken, setIsRefreshingToken] = useState(false);
 
   const {
     data,
@@ -59,6 +89,42 @@ export const useUserList = () => {
       }
     }
   });
+
+  // Thêm một effect để tự động thử làm mới token khi có lỗi
+  useEffect(() => {
+    if (isError && !isRefreshingToken) {
+      const errorMessage = error instanceof Error ? error.message : "Lỗi không xác định";
+      const isAuthError = 
+        errorMessage.includes("xác thực") || 
+        errorMessage.includes("authentication") ||
+        errorMessage.includes("jwt") || 
+        errorMessage.includes("token") ||
+        errorMessage.includes("auth");
+      
+      if (isAuthError) {
+        console.log("Phát hiện lỗi xác thực, đang thử làm mới token...");
+        setIsRefreshingToken(true);
+        
+        // Thử làm mới token và thử lại
+        refreshSessionToken()
+          .then(newToken => {
+            if (newToken) {
+              console.log("Đã làm mới token thành công, đang tải lại dữ liệu...");
+              setTimeout(() => refreshUsers(), 500);
+            } else {
+              console.log("Không thể làm mới token");
+            }
+          })
+          .finally(() => {
+            if (isMounted) setIsRefreshingToken(false);
+          });
+      }
+    }
+    
+    // Sử dụng biến để theo dõi component có còn mounted hay không
+    let isMounted = true;
+    return () => { isMounted = false; };
+  }, [isError, error, refreshUsers]);
 
   const handleSearch = useCallback((value: string) => {
     setSearchTerm(value);

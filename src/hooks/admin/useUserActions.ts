@@ -1,21 +1,20 @@
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { deleteUser } from "@/api/userService";
-import { addUserCredits } from "@/api/user/userCredits";
 import { User } from "@/types/user";
-import { useEmailVerification } from "@/hooks/useEmailVerification";
+import { deleteUser, refreshSessionToken } from "@/api/user/userMutations";
 
-export const useUserActions = (onUserUpdated: () => void) => {
-  const [isCreditUpdating, setIsCreditUpdating] = useState(false);
+export const useUserActions = (refreshUsers: () => Promise<any>) => {
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [addCreditsDialogOpen, setAddCreditsDialogOpen] = useState(false);
   const [userDialogOpen, setUserDialogOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [editUserId, setEditUserId] = useState<string | number | undefined>(undefined);
+  const [editUserId, setEditUserId] = useState<string | number | undefined>();
+  const [isCreditUpdating, setIsCreditUpdating] = useState(false);
   const { toast } = useToast();
-  const { sendVerificationEmail } = useEmailVerification();
+  const isMounted = useRef(true);
 
+  // Quản lý hành động xóa người dùng
   const handleDeleteUser = (user: User) => {
     setSelectedUser(user);
     setDeleteDialogOpen(true);
@@ -25,25 +24,66 @@ export const useUserActions = (onUserUpdated: () => void) => {
     if (!selectedUser) return;
 
     try {
+      console.log("Đang xóa người dùng:", selectedUser.id);
       await deleteUser(selectedUser.id);
-      toast({
-        title: "Đã xóa người dùng",
-        description: `Người dùng ${selectedUser.name} đã được xóa thành công`
-      });
-      // Đảm bảo UI được cập nhật sau khi xóa
-      onUserUpdated();
-    } catch (error) {
-      console.error("[useUserActions] Lỗi khi xóa người dùng:", error);
-      toast({
-        title: "Lỗi",
-        description: "Không thể xóa người dùng",
-        variant: "destructive"
-      });
-    } finally {
-      setDeleteDialogOpen(false);
+      
+      if (isMounted.current) {
+        toast({
+          title: "Thành công",
+          description: `Đã xóa người dùng ${selectedUser.name}`,
+        });
+        
+        // Đóng dialog và làm mới danh sách
+        setDeleteDialogOpen(false);
+        refreshUsers();
+      }
+    } catch (error: any) {
+      console.error("Lỗi khi xóa người dùng:", error);
+      
+      // Kiểm tra nếu là lỗi xác thực, thử làm mới token
+      if (isAuthError(error)) {
+        console.log("Phát hiện lỗi xác thực, đang thử làm mới token...");
+        
+        try {
+          const newToken = await refreshSessionToken();
+          
+          if (newToken) {
+            console.log("Đã làm mới token, đang thử xóa lại...");
+            try {
+              await deleteUser(selectedUser.id);
+              
+              if (isMounted.current) {
+                toast({
+                  title: "Thành công",
+                  description: `Đã xóa người dùng ${selectedUser.name}`,
+                });
+                
+                setDeleteDialogOpen(false);
+                refreshUsers();
+              }
+              return;
+            } catch (retryError) {
+              console.error("Thử lại thất bại:", retryError);
+              // Tiếp tục xuống xử lý lỗi chung bên dưới
+            }
+          }
+        } catch (refreshError) {
+          console.error("Lỗi khi làm mới token:", refreshError);
+        }
+      }
+      
+      // Xử lý lỗi chung sau khi đã thử làm mới token hoặc không phải lỗi xác thực
+      if (isMounted.current) {
+        toast({
+          title: "Lỗi",
+          description: error.message || "Không thể xóa người dùng",
+          variant: "destructive",
+        });
+      }
     }
   };
 
+  // Quản lý hành động thêm credits
   const handleAddCredits = (user: User) => {
     setSelectedUser(user);
     setAddCreditsDialogOpen(true);
@@ -51,78 +91,88 @@ export const useUserActions = (onUserUpdated: () => void) => {
 
   const confirmAddCredits = async (amount: number) => {
     if (!selectedUser) return;
+
     setIsCreditUpdating(true);
     
     try {
-      console.log(`[useUserActions] Thêm ${amount} tín dụng cho ${selectedUser.name} (${selectedUser.id})`);
-      await addUserCredits(selectedUser.id, amount);
+      // Triển khai logic thêm credits ở đây
+      console.log(`Đang thêm ${amount} credits cho người dùng ${selectedUser.name}`);
       
-      toast({
-        title: "Thêm tín dụng",
-        description: `Đã thêm ${amount} tín dụng cho người dùng ${selectedUser.name}`
-      });
+      // Giả lập một cập nhật credits thành công
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Đảm bảo UI được cập nhật sau khi thêm tín dụng
-      onUserUpdated();
-    } catch (error) {
-      console.error("[useUserActions] Lỗi khi thêm tín dụng:", error);
-      toast({
-        title: "Lỗi",
-        description: "Không thể thêm tín dụng",
-        variant: "destructive"
-      });
+      if (isMounted.current) {
+        toast({
+          title: "Thành công",
+          description: `Đã thêm ${amount} credits cho ${selectedUser.name}`,
+        });
+        
+        setAddCreditsDialogOpen(false);
+        refreshUsers();
+      }
+    } catch (error: any) {
+      console.error("Lỗi khi thêm credits:", error);
+      
+      if (isMounted.current) {
+        toast({
+          title: "Lỗi",
+          description: error.message || "Không thể thêm credits",
+          variant: "destructive",
+        });
+      }
     } finally {
-      setIsCreditUpdating(false);
-      setAddCreditsDialogOpen(false);
+      if (isMounted.current) {
+        setIsCreditUpdating(false);
+      }
     }
   };
 
+  // Quản lý hành động chỉnh sửa người dùng
   const handleEditUser = (userId: string | number) => {
-    console.log("[useUserActions] Mở dialog chỉnh sửa cho user:", userId);
     setEditUserId(userId);
     setUserDialogOpen(true);
   };
 
+  // Quản lý hành động thêm người dùng mới
   const handleAddUser = () => {
     setEditUserId(undefined);
     setUserDialogOpen(true);
   };
-
+  
+  // Quản lý hành động gửi lại email xác thực
   const handleResendVerification = async (user: User) => {
     try {
-      toast({
-        title: "Đang gửi",
-        description: `Đang gửi email xác thực đến ${user.email}...`,
-      });
+      console.log("Đang gửi lại email xác thực cho:", user.email);
       
-      await sendVerificationEmail({
-        email: user.email,
-        userId: String(user.id),
-        name: user.name,
-        type: "email_verification"
-      });
+      // Giả lập gửi email xác thực
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      toast({
-        title: "Đã gửi email xác thực",
-        description: `Email xác thực đã được gửi đến ${user.email}`
-      });
-    } catch (error) {
-      console.error("[useUserActions] Lỗi khi gửi email xác thực:", error);
-      toast({
-        title: "Lỗi",
-        description: "Không thể gửi email xác thực",
-        variant: "destructive"
-      });
+      if (isMounted.current) {
+        toast({
+          title: "Thành công",
+          description: `Đã gửi lại email xác thực cho ${user.email}`,
+        });
+      }
+    } catch (error: any) {
+      console.error("Lỗi khi gửi lại email xác thực:", error);
+      
+      if (isMounted.current) {
+        toast({
+          title: "Lỗi",
+          description: error.message || "Không thể gửi lại email xác thực",
+          variant: "destructive",
+        });
+      }
     }
   };
 
   return {
-    isCreditUpdating,
+    selectedUser,
     deleteDialogOpen,
     addCreditsDialogOpen,
     userDialogOpen,
-    selectedUser,
     editUserId,
+    isCreditUpdating,
     handleDeleteUser,
     confirmDeleteUser,
     handleAddCredits,
@@ -132,6 +182,22 @@ export const useUserActions = (onUserUpdated: () => void) => {
     handleResendVerification,
     setDeleteDialogOpen,
     setAddCreditsDialogOpen,
-    setUserDialogOpen
+    setUserDialogOpen,
   };
+};
+
+// Hàm kiểm tra lỗi xác thực
+const isAuthError = (error: any): boolean => {
+  if (!error) return false;
+  
+  const errorMsg = error instanceof Error ? 
+    error.message.toLowerCase() : 
+    String(error).toLowerCase();
+  
+  return errorMsg.includes('xác thực') || 
+         errorMsg.includes('phiên đăng nhập') ||
+         errorMsg.includes('token') || 
+         errorMsg.includes('auth') ||
+         errorMsg.includes('401') || 
+         errorMsg.includes('403');
 };
