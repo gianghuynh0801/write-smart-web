@@ -43,8 +43,8 @@ export const useRegisterUser = () => {
 
       console.log("Đăng ký thành công, ID người dùng:", data.user.id);
       
-      // Đợi 1 giây để đảm bảo trigger đã chạy xong trong database
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Đợi lâu hơn để đảm bảo trigger đã chạy xong trong database
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
       return data.user.id;
     } catch (error) {
@@ -57,26 +57,52 @@ export const useRegisterUser = () => {
     try {
       console.log("Đồng bộ dữ liệu cho người dùng:", userId);
       
-      const { data, error } = await supabase.functions.invoke("sync-user", {
-        body: { 
-          user_id: userId, 
-          email: email, 
-          name: name,
-          email_verified: false
-        }
-      });
+      // Thêm cơ chế thử lại
+      let attempts = 0;
+      const maxAttempts = 3;
+      let lastError: any = null;
       
-      if (error) {
-        console.error("Lỗi đồng bộ người dùng:", error);
-        throw error;
+      while (attempts < maxAttempts) {
+        try {
+          attempts++;
+          console.log(`Nỗ lực đồng bộ lần ${attempts}/${maxAttempts}`);
+          
+          const { data, error } = await supabase.functions.invoke("sync-user", {
+            body: { 
+              user_id: userId, 
+              email: email, 
+              name: name,
+              email_verified: false
+            }
+          });
+          
+          if (error) {
+            console.error(`Lỗi đồng bộ người dùng (lần thử ${attempts}):`, error);
+            lastError = error;
+            // Đợi tăng dần trước khi thử lại
+            await new Promise(resolve => setTimeout(resolve, attempts * 1000));
+            continue;
+          }
+          
+          console.log("Kết quả đồng bộ người dùng:", data);
+          
+          // Đồng bộ thành công, thoát vòng lặp
+          return data;
+        } catch (attemptError) {
+          console.error(`Lỗi đồng bộ lần ${attempts}:`, attemptError);
+          lastError = attemptError;
+          
+          if (attempts < maxAttempts) {
+            // Đợi tăng dần trước khi thử lại
+            await new Promise(resolve => setTimeout(resolve, attempts * 1500));
+          } else {
+            throw lastError;
+          }
+        }
       }
       
-      console.log("Kết quả đồng bộ người dùng:", data);
-      
-      // Đợi thêm 1 giây sau khi đồng bộ
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      return data;
+      // Nếu đã thử hết số lần mà vẫn không thành công
+      throw lastError || new Error("Không thể đồng bộ dữ liệu người dùng sau nhiều lần thử");
     } catch (error) {
       console.error("Lỗi trong quá trình đồng bộ:", error);
       throw error;
@@ -85,12 +111,12 @@ export const useRegisterUser = () => {
 
   const verifyUserCreation = async (userId: string) => {
     try {
-      // Thực hiện kiểm tra với timeout
-      let retries = 3;
-      let delay = 1000;
+      // Thực hiện kiểm tra với timeout và số lần thử tăng lên
+      let retries = 5; // Tăng số lần thử
+      let delay = 1500;  // Tăng thời gian delay ban đầu
       
       while (retries > 0) {
-        console.log(`Kiểm tra người dùng lần ${4-retries}/3...`);
+        console.log(`Kiểm tra người dùng lần ${6-retries}/5...`);
         
         const { data: user, error } = await supabase
           .from('users')

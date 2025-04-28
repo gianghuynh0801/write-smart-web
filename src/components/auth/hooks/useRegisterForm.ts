@@ -53,32 +53,28 @@ export const useRegisterForm = () => {
         throw new Error("Không thể tạo tài khoản. Vui lòng thử lại sau.");
       }
       
-      // Thử đồng bộ dữ liệu người dùng với số lần thử tối đa
+      // Thử đồng bộ dữ liệu người dùng
       console.log("Đồng bộ dữ liệu người dùng:", userId);
       let syncSuccess = false;
-      let syncAttempts = 0;
-      const maxSyncAttempts = 3;
       
-      while (!syncSuccess && syncAttempts < maxSyncAttempts) {
-        try {
-          syncAttempts++;
-          console.log(`Nỗ lực đồng bộ lần ${syncAttempts}/${maxSyncAttempts}`);
-          await syncUser(userId, formData.email, formData.name);
-          syncSuccess = true;
-        } catch (syncError) {
-          console.error(`Lỗi đồng bộ lần ${syncAttempts}:`, syncError);
-          if (syncAttempts < maxSyncAttempts) {
-            // Đợi tăng dần trước khi thử lại
-            await new Promise(resolve => setTimeout(resolve, syncAttempts * 1000));
-          } else {
-            throw syncError;
-          }
-        }
+      try {
+        await syncUser(userId, formData.email, formData.name);
+        syncSuccess = true;
+      } catch (syncError) {
+        console.error("Không thể đồng bộ dữ liệu người dùng:", syncError);
+        // Vẫn tiếp tục quy trình ngay cả khi không thể đồng bộ
       }
       
-      // Xác minh người dùng đã được tạo
-      console.log("Xác minh người dùng đã được tạo thành công");
-      await verifyUserCreation(userId);
+      if (syncSuccess) {
+        // Xác minh người dùng đã được tạo thành công
+        try {
+          console.log("Xác minh người dùng đã được tạo thành công");
+          await verifyUserCreation(userId);
+        } catch (verifyError) {
+          console.error("Lỗi xác minh:", verifyError);
+          // Vẫn tiếp tục quy trình
+        }
+      }
       
       // Đăng xuất người dùng sau khi đăng ký
       await supabase.auth.signOut();
