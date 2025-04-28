@@ -38,6 +38,9 @@ Deno.serve(async (req) => {
 
     // Lấy dữ liệu từ request
     const { id, userData } = await req.json()
+    if (!id || !userData) {
+      throw new Error('Missing required data')
+    }
 
     console.log("[update-user] Đang cập nhật user:", { id, userData })
 
@@ -48,12 +51,29 @@ Deno.serve(async (req) => {
       .eq('id', id)
       .maybeSingle()
 
-    if (getUserError || !existingUser) {
-      throw new Error('User not found')
+    if (getUserError) {
+      console.error('[update-user] Lỗi khi kiểm tra user:', getUserError)
+      return new Response(JSON.stringify({ 
+        data: null, 
+        error: `Lỗi khi kiểm tra user: ${getUserError.message}` 
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      })
+    }
+
+    if (!existingUser) {
+      return new Response(JSON.stringify({ 
+        data: null, 
+        error: 'User not found' 
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 404,
+      })
     }
 
     // Cập nhật thông tin user
-    const { data, error: updateError } = await supabaseAdmin
+    const { data: updatedUser, error: updateError } = await supabaseAdmin
       .from('users')
       .update({
         name: userData.name,
@@ -64,15 +84,17 @@ Deno.serve(async (req) => {
       })
       .eq('id', id)
       .select()
-      .maybeSingle()
+      .single()
 
     if (updateError) {
       console.error('[update-user] Lỗi khi cập nhật:', updateError)
-      throw new Error(`Lỗi cập nhật: ${updateError.message}`)
-    }
-
-    if (!data) {
-      throw new Error('Không nhận được dữ liệu sau khi cập nhật')
+      return new Response(JSON.stringify({ 
+        data: null, 
+        error: `Lỗi cập nhật: ${updateError.message}` 
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      })
     }
 
     // Nếu thay đổi gói đăng ký
@@ -83,11 +105,22 @@ Deno.serve(async (req) => {
       })
       
       // Tìm subscription id
-      const { data: subscriptionData } = await supabaseAdmin
+      const { data: subscriptionData, error: subError } = await supabaseAdmin
         .from('subscriptions')
         .select('id')
         .eq('name', userData.subscription)
         .maybeSingle()
+
+      if (subError) {
+        console.error('[update-user] Lỗi khi tìm gói đăng ký:', subError)
+        return new Response(JSON.stringify({ 
+          data: null, 
+          error: `Lỗi khi tìm gói đăng ký: ${subError.message}` 
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        })
+      }
 
       if (subscriptionData) {
         const startDate = new Date().toISOString().split('T')[0]
@@ -96,15 +129,26 @@ Deno.serve(async (req) => {
         const endDateStr = endDate.toISOString().split('T')[0]
 
         // Hủy các gói đăng ký cũ
-        await supabaseAdmin
+        const { error: cancelError } = await supabaseAdmin
           .from('user_subscriptions')
           .update({ status: 'cancelled' })
           .eq('user_id', id)
           .eq('status', 'active')
 
+        if (cancelError) {
+          console.error('[update-user] Lỗi khi hủy gói đăng ký cũ:', cancelError)
+          return new Response(JSON.stringify({ 
+            data: null, 
+            error: `Lỗi khi hủy gói đăng ký cũ: ${cancelError.message}` 
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 400,
+          })
+        }
+
         // Tạo gói đăng ký mới
         if (userData.subscription !== 'Không có') {
-          await supabaseAdmin
+          const { error: createSubError } = await supabaseAdmin
             .from('user_subscriptions')
             .insert({
               user_id: id,
@@ -113,12 +157,25 @@ Deno.serve(async (req) => {
               end_date: endDateStr,
               status: 'active'
             })
+
+          if (createSubError) {
+            console.error('[update-user] Lỗi khi tạo gói đăng ký mới:', createSubError)
+            return new Response(JSON.stringify({ 
+              data: null, 
+              error: `Lỗi khi tạo gói đăng ký mới: ${createSubError.message}` 
+            }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              status: 400,
+            })
+          }
         }
       }
     }
 
+    // Trả về kết quả thành công
     return new Response(JSON.stringify({ 
-      data: { ...data, subscription: userData.subscription }
+      data: { ...updatedUser, subscription: userData.subscription },
+      error: null
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
@@ -126,7 +183,10 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('[update-user] Lỗi:', error)
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ 
+      data: null,
+      error: error.message 
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400,
     })

@@ -80,7 +80,7 @@ export const updateUser = async (id: string | number, userData: UserFormValues):
   console.log("[updateUser] Cập nhật user qua Edge Function:", { userId, userData });
   
   try {
-    const { data: { data }, error } = await supabase.functions.invoke('update-user', {
+    const { data, error } = await supabase.functions.invoke('update-user', {
       body: { id: userId, userData }
     });
 
@@ -89,15 +89,15 @@ export const updateUser = async (id: string | number, userData: UserFormValues):
       throw new Error(error.message);
     }
     
-    if (!data) {
-      console.error("[updateUser] Không nhận được dữ liệu từ Edge Function");
-      throw new Error("Không nhận được dữ liệu sau khi cập nhật");
+    if (!data || !data.data) {
+      console.error("[updateUser] Không nhận được dữ liệu từ Edge Function:", data);
+      throw new Error(data?.error || "Không nhận được dữ liệu sau khi cập nhật");
     }
 
-    return parseUser(data);
+    return parseUser(data.data);
   } catch (error) {
     console.error("[updateUser] Lỗi không mong đợi:", error);
-    throw error;
+    throw new Error(`Lỗi cập nhật: ${error instanceof Error ? error.message : String(error)}`);
   }
 };
 
