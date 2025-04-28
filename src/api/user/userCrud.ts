@@ -78,83 +78,47 @@ export const fetchUsers = async (
     await syncMockUsersToDbIfNeeded();
     console.log("Đang lấy danh sách người dùng với các thông số:", { page, pageSize, status, searchTerm });
 
-    // Sử dụng adminAuthClient để bỏ qua RLS khi truy vấn dữ liệu users
-    // Đây là một giải pháp tạm thời, trong môi trường thực tế nên sử dụng edge function với service_role
-    let query = supabase
-      .from("users")
-      .select("*", { count: "exact" })
-      .order("created_at", { ascending: false });
-
-    if (status !== "all") {
-      query = query.eq("status", status);
+    // Lấy token JWT của người dùng hiện tại
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session || !session.access_token) {
+      throw new Error("Không có phiên đăng nhập hợp lệ");
     }
 
-    if (searchTerm) {
-      query = query
-        .or(
-          `name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`
-        );
-    }
-
-    const from = (page - 1) * pageSize;
-    const to = from + pageSize - 1;
-    query = query.range(from, to);
-
-    const { data, count, error } = await query;
-
-    if (error) {
-      console.error("Lỗi khi lấy danh sách users:", error.message);
-      // Trả về dữ liệu mẫu nếu API lỗi
-      return {
-        data: mockUsers.slice(from, from + pageSize),
-        total: mockUsers.length
-      };
-    }
-
-    console.log(`Đã lấy được ${data?.length || 0} người dùng, tổng số: ${count || 0}`);
-    
-    // Lấy thông tin gói đăng ký cho mỗi người dùng
-    const usersWithSubscription = await Promise.all((data || []).map(async (user) => {
-      try {
-        // Lấy thông tin gói đăng ký
-        const { data: subData, error: subError } = await supabase
-          .from("user_subscriptions")
-          .select(`
-            subscription_id,
-            status,
-            subscriptions (
-              name
-            )
-          `)
-          .eq("user_id", user.id)
-          .eq("status", "active")
-          .maybeSingle();
-          
-        if (subError && subError.code !== "PGRST116") {
-          console.error(`Lỗi khi lấy gói đăng ký cho user ${user.id}:`, subError);
-        }
-        
-        const subscriptionName = subData?.subscriptions?.name || "Không có";
-        
-        return {
-          ...parseUser(user),
-          subscription: subscriptionName
-        };
-      } catch (err) {
-        console.error(`Lỗi khi xử lý user ${user.id}:`, err);
-        return parseUser(user);
+    // Gọi Edge Function để lấy danh sách người dùng với quyền admin
+    const response = await supabase.functions.invoke('admin-users', {
+      body: {
+        page,
+        pageSize,
+        status,
+        searchTerm
+      },
+      headers: {
+        Authorization: `Bearer ${session.access_token}`
       }
-    }));
+    });
 
+    if (response.error) {
+      throw new Error(`Lỗi API: ${response.error.message}`);
+    }
+
+    if (!response.data) {
+      throw new Error("Không nhận được dữ liệu từ API");
+    }
+
+    const { data: users, total } = response.data;
+    
+    console.log(`Đã lấy được ${users?.length || 0} người dùng, tổng số: ${total || 0}`);
+    
     return {
-      data: usersWithSubscription,
-      total: count || 0
+      data: users || [],
+      total: total || 0
     };
   } catch (error) {
     console.error("Lỗi không mong muốn khi lấy danh sách users:", error);
     // Trả về dữ liệu mẫu nếu có lỗi
+    const mockData = mockUsers.slice((page - 1) * pageSize, page * pageSize);
     return {
-      data: mockUsers.slice((page - 1) * pageSize, page * pageSize),
+      data: mockData,
       total: mockUsers.length
     };
   }

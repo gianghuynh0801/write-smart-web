@@ -2,7 +2,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader } from "lucide-react";
+import { Loader, AlertTriangle } from "lucide-react";
 import { User } from "@/types/user";
 import UserActions from "./UserActions";
 import { useEffect, useState } from "react";
@@ -11,6 +11,8 @@ import { supabase } from "@/integrations/supabase/client";
 type UserTableProps = {
   users: User[];
   isLoading: boolean;
+  isError?: boolean;
+  errorMessage?: string;
   isCreditUpdating?: boolean;
   getRoleColor: (role: string) => string;
   onEditUser: (userId: string | number) => void;
@@ -22,6 +24,8 @@ type UserTableProps = {
 const UserTable = ({
   users,
   isLoading,
+  isError = false,
+  errorMessage = "",
   isCreditUpdating,
   getRoleColor,
   onEditUser,
@@ -98,6 +102,16 @@ const UserTable = ({
               <TableCell colSpan={7} className="h-24 text-center">
                 <div className="flex justify-center">
                   <Loader className="h-6 w-6 animate-spin text-primary" />
+                </div>
+              </TableCell>
+            </TableRow>
+          ) : isError ? (
+            <TableRow>
+              <TableCell colSpan={7} className="h-24 text-center">
+                <div className="flex flex-col items-center gap-2 text-red-500">
+                  <AlertTriangle className="h-8 w-8" />
+                  <div className="font-medium">Có lỗi xảy ra</div>
+                  <div className="text-sm">{errorMessage || "Không thể tải dữ liệu người dùng"}</div>
                 </div>
               </TableCell>
             </TableRow>

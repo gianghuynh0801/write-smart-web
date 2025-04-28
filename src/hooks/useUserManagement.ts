@@ -13,6 +13,8 @@ export const useUserManagement = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalUsers, setTotalUsers] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [isError, setIsError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const [isCreditUpdating, setIsCreditUpdating] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [addCreditsDialogOpen, setAddCreditsDialogOpen] = useState(false);
@@ -25,6 +27,9 @@ export const useUserManagement = () => {
 
   const loadUsers = useCallback(async () => {
     setIsLoading(true);
+    setIsError(false);
+    setErrorMessage("");
+    
     console.log("[useUserManagement] Đang tải danh sách người dùng...");
     try {
       const result = await fetchUsers(currentPage, pageSize, status, searchTerm);
@@ -46,9 +51,12 @@ export const useUserManagement = () => {
       console.log(`[useUserManagement] Đã tải ${enhancedUsers.length} người dùng, tổng số: ${result.total}`);
     } catch (error) {
       console.error("[useUserManagement] Lỗi khi tải danh sách người dùng:", error);
+      setIsError(true);
+      setErrorMessage(error instanceof Error ? error.message : "Không thể tải danh sách người dùng");
+      
       toast({
         title: "Lỗi",
-        description: "Không thể tải danh sách người dùng",
+        description: error instanceof Error ? error.message : "Không thể tải danh sách người dùng",
         variant: "destructive"
       });
     } finally {
@@ -174,6 +182,8 @@ export const useUserManagement = () => {
     users,
     totalUsers,
     isLoading,
+    isError,
+    errorMessage,
     isCreditUpdating,
     searchTerm,
     status,

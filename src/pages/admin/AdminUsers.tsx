@@ -2,7 +2,7 @@
 import { useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Download, RefreshCcw } from "lucide-react";
 import DeleteUserDialog from "@/components/admin/DeleteUserDialog";
 import AddCreditsDialog from "@/components/admin/AddCreditsDialog";
 import UserDialog from "@/components/admin/UserDialog";
@@ -17,6 +17,8 @@ const AdminUsers = () => {
     users,
     totalUsers,
     isLoading,
+    isError,
+    errorMessage,
     isCreditUpdating,
     searchTerm,
     status,
@@ -60,13 +62,21 @@ const AdminUsers = () => {
             <div>
               <CardTitle>Danh sách người dùng</CardTitle>
               <CardDescription>
-                Tổng cộng {totalUsers} người dùng
+                {!isError ? `Tổng cộng ${totalUsers} người dùng` : "Đang gặp lỗi khi tải dữ liệu"}
               </CardDescription>
             </div>
-            <Button variant="outline" size="sm">
-              <Download className="mr-2 h-4 w-4" />
-              Xuất CSV
-            </Button>
+            <div className="flex gap-2">
+              {isError && (
+                <Button variant="outline" size="sm" onClick={loadUsers}>
+                  <RefreshCcw className="mr-2 h-4 w-4" />
+                  Thử lại
+                </Button>
+              )}
+              <Button variant="outline" size="sm">
+                <Download className="mr-2 h-4 w-4" />
+                Xuất CSV
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -79,6 +89,8 @@ const AdminUsers = () => {
           <UserTable
             users={users}
             isLoading={isLoading}
+            isError={isError}
+            errorMessage={errorMessage}
             isCreditUpdating={isCreditUpdating}
             getRoleColor={getRoleColor}
             onEditUser={handleEditUser}
@@ -86,18 +98,18 @@ const AdminUsers = () => {
             onDeleteUser={handleDeleteUser}
             onResendVerification={handleResendVerification}
           />
-          <div className="flex items-center justify-between mt-4">
-            <div className="text-sm text-gray-500">
-              Hiển thị {users.length > 0 ? (currentPage - 1) * pageSize + 1 : 0} - {Math.min(currentPage * pageSize, totalUsers)} trên tổng số {totalUsers} người dùng
-            </div>
-            {totalPages > 0 && (
+          {!isError && totalPages > 0 && (
+            <div className="flex items-center justify-between mt-4">
+              <div className="text-sm text-gray-500">
+                Hiển thị {users.length > 0 ? (currentPage - 1) * pageSize + 1 : 0} - {Math.min(currentPage * pageSize, totalUsers)} trên tổng số {totalUsers} người dùng
+              </div>
               <UserPagination
                 currentPage={currentPage}
                 totalPages={totalPages}
                 onPageChange={handlePageChange}
               />
-            )}
-          </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
