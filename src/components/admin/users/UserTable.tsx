@@ -1,4 +1,3 @@
-
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -7,6 +6,7 @@ import { User } from "@/types/user";
 import UserActions from "./UserActions";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { Database } from "@/integrations/supabase/types";
 
 type UserTableProps = {
   users: User[];
@@ -19,6 +19,23 @@ type UserTableProps = {
   onAddCredits: (user: User) => void;
   onDeleteUser: (user: User) => void;
   onResendVerification?: (user: User) => void;
+};
+
+type UserPayload = {
+  id: string | number;
+  credits?: number;
+  name?: string;
+  email?: string;
+  role?: string;
+  status?: string;
+  subscription?: string;
+  [key: string]: any;
+};
+
+type SubscriptionPayload = {
+  user_id?: string | number;
+  subscription_id?: number;
+  [key: string]: any;
 };
 
 const UserTable = ({
@@ -35,7 +52,6 @@ const UserTable = ({
 }: UserTableProps) => {
   const [realtimeUsers, setRealtimeUsers] = useState<Record<string | number, User>>({});
 
-  // Thiết lập theo dõi thời gian thực cho thay đổi của users
   useEffect(() => {
     console.log("[UserTable] Thiết lập theo dõi realtime cho người dùng");
     
@@ -50,14 +66,18 @@ const UserTable = ({
         },
         (payload) => {
           console.log("[UserTable] Nhận thay đổi realtime cho người dùng:", payload.new);
-          // Cập nhật dữ liệu người dùng khi có thay đổi
-          setRealtimeUsers(prev => ({
-            ...prev,
-            [payload.new.id]: {
-              ...(users.find(u => u.id === payload.new.id) || {}),
-              ...payload.new
-            } as User
-          }));
+          
+          const newData = payload.new as UserPayload;
+          
+          if (newData && typeof newData.id !== 'undefined') {
+            setRealtimeUsers(prev => ({
+              ...prev,
+              [newData.id]: {
+                ...(users.find(u => u.id === newData.id) || {}),
+                ...newData
+              } as User
+            }));
+          }
         }
       )
       .subscribe((status) => {
@@ -70,7 +90,6 @@ const UserTable = ({
     };
   }, [users]);
 
-  // Thiết lập theo dõi thay đổi gói đăng ký
   useEffect(() => {
     console.log("[UserTable] Thiết lập theo dõi realtime cho gói đăng ký");
     
@@ -86,33 +105,34 @@ const UserTable = ({
         async (payload) => {
           console.log("[UserTable] Nhận thay đổi realtime cho gói đăng ký:", payload);
           
-          // Khi có thay đổi gói đăng ký, cập nhật người dùng tương ứng
-          if (payload.new && payload.new.user_id) {
-            const userId = payload.new.user_id;
+          const newData = payload.new as SubscriptionPayload;
+          
+          if (newData && typeof newData.user_id !== 'undefined') {
+            const userId = newData.user_id;
             const userToUpdate = users.find(u => u.id === userId);
             
             if (userToUpdate) {
               try {
                 console.log("[UserTable] Đang cập nhật thông tin gói đăng ký cho user:", userId);
                 
-                // Lấy thông tin gói đăng ký từ subscription_id
-                const { data: subscriptionData } = await supabase
-                  .from('subscriptions')
-                  .select('name')
-                  .eq('id', payload.new.subscription_id)
-                  .single();
-                  
-                if (subscriptionData) {
-                  console.log("[UserTable] Đã tìm thấy gói đăng ký:", subscriptionData.name);
-                  
-                  // Cập nhật thông tin người dùng với gói đăng ký mới
-                  setRealtimeUsers(prev => ({
-                    ...prev,
-                    [userId]: {
-                      ...(prev[userId] || userToUpdate),
-                      subscription: subscriptionData.name
-                    }
-                  }));
+                if (typeof newData.subscription_id !== 'undefined') {
+                  const { data: subscriptionData } = await supabase
+                    .from('subscriptions')
+                    .select('name')
+                    .eq('id', newData.subscription_id)
+                    .single();
+                    
+                  if (subscriptionData) {
+                    console.log("[UserTable] Đã tìm thấy gói đăng ký:", subscriptionData.name);
+                    
+                    setRealtimeUsers(prev => ({
+                      ...prev,
+                      [userId]: {
+                        ...(prev[userId] || userToUpdate),
+                        subscription: subscriptionData.name
+                      }
+                    }));
+                  }
                 }
               } catch (error) {
                 console.error("[UserTable] Lỗi khi cập nhật thông tin gói đăng ký:", error);
@@ -131,9 +151,7 @@ const UserTable = ({
     };
   }, [users]);
 
-  // Kết hợp dữ liệu người dùng với cập nhật realtime
   const displayUsers = users.map(user => {
-    // Nếu có dữ liệu thời gian thực cho người dùng này, sử dụng nó
     if (realtimeUsers[user.id]) {
       return {
         ...user,
