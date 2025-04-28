@@ -5,5 +5,5 @@
 import { authService as newAuthService, AuthError, AuthErrorType, isAuthError } from "./auth/authService";
 
 // Re-export everything
-export { AuthError, AuthErrorType };
+export { AuthError, AuthErrorType, isAuthError };
 export const authService = newAuthService;

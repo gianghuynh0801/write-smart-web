@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@/types/user";
 import { useToast } from "@/hooks/use-toast";
-import { authService, AuthErrorType, AuthError } from "@/services/authService";
+import { authService, AuthErrorType, AuthError, isAuthError } from "@/services/authService";
 
 // Hàm fetchUsers cải tiến với xử lý lỗi tốt hơn
 const fetchUsers = async (params: {
@@ -37,7 +37,7 @@ const fetchUsers = async (params: {
       console.error("Lỗi khi gọi admin-users function:", error);
       
       // Kiểm tra lỗi xác thực và thử làm mới token
-      if (authService.isAuthError(error)) {
+      if (isAuthError(error)) {
         console.log("Phát hiện lỗi xác thực trong phản hồi, thử làm mới token...");
         const newToken = await authService.getAdminToken(true); // Force refresh
         
@@ -72,7 +72,7 @@ const fetchUsers = async (params: {
     console.error("Lỗi trong fetchUsers:", error);
     
     // Nếu là lỗi xác thực, thử làm mới token
-    if (authService.isAuthError(error)) {
+    if (isAuthError(error)) {
       await authService.handleAuthError(error);
     }
     
@@ -110,7 +110,7 @@ export const useUserList = () => {
     queryFn: () => fetchUsers({ page: currentPage, pageSize, status, searchTerm }),
     retry: (failureCount, error) => {
       // Thử lại tối đa 3 lần nếu là lỗi xác thực
-      if (authService.isAuthError(error) && failureCount < 3) {
+      if (isAuthError(error) && failureCount < 3) {
         console.log(`Thử lại lần ${failureCount + 1} sau lỗi xác thực`);
         return true;
       }
@@ -162,7 +162,7 @@ export const useUserList = () => {
     if (isError && !isRefreshingToken) {
       console.log("Phát hiện lỗi, kiểm tra nếu là lỗi xác thực...");
       
-      if (authService.isAuthError(error)) {
+      if (isAuthError(error)) {
         if (isMounted.current) {
           setIsRefreshingToken(true);
           

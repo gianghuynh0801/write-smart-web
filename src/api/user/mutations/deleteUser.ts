@@ -1,6 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { authService } from "@/services/authService";
+import { authService, isAuthError } from "@/services/authService";
 
 /**
  * Xóa người dùng
@@ -29,7 +29,7 @@ export const deleteUser = async (id: string | number): Promise<void> => {
       console.error("[deleteUser] Lỗi khi gọi Edge Function:", invocationError);
       
       // Kiểm tra nếu là lỗi xác thực
-      if (authService.isAuthError(invocationError)) {
+      if (isAuthError(invocationError)) {
         // Làm mới token và thử lại
         const newToken = await authService.getAdminToken(true);
         
@@ -60,7 +60,7 @@ export const deleteUser = async (id: string | number): Promise<void> => {
     console.error("[deleteUser] Lỗi không mong đợi:", error);
     
     // Nếu là lỗi xác thực, thử làm mới token
-    if (authService.isAuthError(error)) {
+    if (isAuthError(error)) {
       await authService.handleAuthError(error);
     }
     

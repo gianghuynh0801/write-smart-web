@@ -2,7 +2,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { User, UserFormValues } from "@/types/user";
 import { parseUser } from "../userParser";
-import { authService } from "@/services/authService";
+import { authService, isAuthError } from "@/services/authService";
 
 // Function để đợi một khoảng thời gian
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -36,7 +36,7 @@ export const createUser = async (userData: UserFormValues): Promise<User> => {
       console.error("[createUser] Lỗi khi gọi Edge Function:", invocationError);
       
       // Kiểm tra nếu là lỗi xác thực
-      if (authService.isAuthError(invocationError)) {
+      if (isAuthError(invocationError)) {
         // Làm mới token và thử lại
         const newToken = await authService.getAdminToken(true);
         
@@ -74,7 +74,7 @@ export const createUser = async (userData: UserFormValues): Promise<User> => {
     if (responseData.error) {
       console.error("[createUser] Edge Function trả về lỗi:", responseData.error);
       
-      if (authService.isAuthError(new Error(responseData.error))) {
+      if (isAuthError(new Error(responseData.error))) {
         await authService.getAdminToken(true);
       }
       
@@ -93,7 +93,7 @@ export const createUser = async (userData: UserFormValues): Promise<User> => {
     console.error("[createUser] Lỗi không mong đợi:", error);
     
     // Nếu có lỗi xác thực, cố gắng làm mới phiên đăng nhập
-    if (authService.isAuthError(error)) {
+    if (isAuthError(error)) {
       await authService.handleAuthError(error);
     }
     

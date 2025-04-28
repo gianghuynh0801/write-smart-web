@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { User } from "@/types/user";
 import { deleteUser } from "@/api/user/userMutations";
-import { authService } from "@/services/authService";
+import { authService, isAuthError } from "@/services/authService";
 
 export const useUserActions = (refreshUsers: () => Promise<any>) => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -14,10 +14,8 @@ export const useUserActions = (refreshUsers: () => Promise<any>) => {
   const { toast } = useToast();
   const isMounted = useRef(true);
   
-  // Theo dõi trạng thái các operation đang thực hiện
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Quản lý hành động xóa người dùng
   const handleDeleteUser = (user: User) => {
     setSelectedUser(user);
     setDeleteDialogOpen(true);
@@ -30,7 +28,6 @@ export const useUserActions = (refreshUsers: () => Promise<any>) => {
       setIsDeleting(true);
       console.log("Đang xóa người dùng:", selectedUser.id);
       
-      // Lấy admin token trước khi thực hiện
       await authService.getAdminToken();
       
       await deleteUser(selectedUser.id);
@@ -41,19 +38,16 @@ export const useUserActions = (refreshUsers: () => Promise<any>) => {
           description: `Đã xóa người dùng ${selectedUser.name}`,
         });
         
-        // Đóng dialog và làm mới danh sách
         setDeleteDialogOpen(false);
         refreshUsers();
       }
     } catch (error: any) {
       console.error("Lỗi khi xóa người dùng:", error);
       
-      // Kiểm tra nếu là lỗi xác thực, thử làm mới token
-      if (authService.isAuthError(error)) {
+      if (isAuthError(error)) {
         console.log("Phát hiện lỗi xác thực, đang thử làm mới token...");
         
         try {
-          // Làm mới token
           const hasNewToken = await authService.handleAuthError(error);
           
           if (hasNewToken && selectedUser && isMounted.current) {
@@ -81,7 +75,6 @@ export const useUserActions = (refreshUsers: () => Promise<any>) => {
         }
       }
       
-      // Xử lý lỗi chung hoặc thử lại thất bại
       if (isMounted.current) {
         toast({
           title: "Lỗi",
@@ -96,7 +89,6 @@ export const useUserActions = (refreshUsers: () => Promise<any>) => {
     }
   };
 
-  // Quản lý hành động thêm credits
   const handleAddCredits = (user: User) => {
     setSelectedUser(user);
     setAddCreditsDialogOpen(true);
@@ -108,10 +100,8 @@ export const useUserActions = (refreshUsers: () => Promise<any>) => {
     setIsCreditUpdating(true);
     
     try {
-      // Triển khai logic thêm credits ở đây
       console.log(`Đang thêm ${amount} credits cho người dùng ${selectedUser.name}`);
       
-      // Giả lập một cập nhật credits thành công
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       if (isMounted.current) {
@@ -140,24 +130,20 @@ export const useUserActions = (refreshUsers: () => Promise<any>) => {
     }
   };
 
-  // Quản lý hành động chỉnh sửa người dùng
   const handleEditUser = (userId: string | number) => {
     setEditUserId(userId);
     setUserDialogOpen(true);
   };
 
-  // Quản lý hành động thêm người dùng mới
   const handleAddUser = () => {
     setEditUserId(undefined);
     setUserDialogOpen(true);
   };
   
-  // Quản lý hành động gửi lại email xác thực
   const handleResendVerification = async (user: User) => {
     try {
       console.log("Đang gửi lại email xác thực cho:", user.email);
       
-      // Giả lập gửi email xác thực
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       if (isMounted.current) {

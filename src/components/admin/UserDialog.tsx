@@ -1,4 +1,3 @@
-
 import { useEffect } from "react";
 import {
   Dialog,
@@ -14,7 +13,7 @@ import { UserDialogError } from "./users/components/UserDialogError";
 import { UserDialogLoading } from "./users/components/UserDialogLoading";
 import { useToast } from "@/hooks/use-toast";
 import { updateUser, createUser } from "@/api/user/userMutations";
-import { authService } from "@/services/authService";
+import { authService, isAuthError } from "@/services/authService";
 
 interface UserDialogProps {
   isOpen: boolean;
@@ -94,7 +93,7 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
       console.error("[UserDialog] Lỗi khi lưu thông tin user:", error);
       
       // Kiểm tra nếu là lỗi xác thực
-      if (authService.isAuthError(error)) {
+      if (isAuthError(error)) {
         try {
           console.log("[UserDialog] Phát hiện lỗi xác thực, đang thử làm mới token...");
           const hasNewToken = await authService.handleAuthError(error);
