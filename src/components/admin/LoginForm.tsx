@@ -16,6 +16,7 @@ export const LoginForm = ({ onSubmit, isLoading }: LoginFormProps) => {
     password: ""
   });
   const [showPassword, setShowPassword] = useState(false);
+  const [formSubmitted, setFormSubmitted] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -24,7 +25,15 @@ export const LoginForm = ({ onSubmit, isLoading }: LoginFormProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await onSubmit(formData.username, formData.password);
+    setFormSubmitted(true);
+    
+    try {
+      await onSubmit(formData.username, formData.password);
+    } catch (error) {
+      console.error("Lỗi khi xử lý form:", error);
+    } finally {
+      setFormSubmitted(false);
+    }
   };
 
   const togglePasswordVisibility = () => {
@@ -90,8 +99,12 @@ export const LoginForm = ({ onSubmit, isLoading }: LoginFormProps) => {
           </div>
         </div>
         
-        <Button type="submit" className="w-full" disabled={isLoading}>
-          {isLoading ? "Đang đăng nhập..." : "Đăng nhập"}
+        <Button 
+          type="submit" 
+          className="w-full" 
+          disabled={isLoading || formSubmitted}
+        >
+          {isLoading || formSubmitted ? "Đang đăng nhập..." : "Đăng nhập"}
         </Button>
         
         <Button 

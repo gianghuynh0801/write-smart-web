@@ -1,10 +1,9 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { defaultAdmin } from "@/services/admin/adminService";
-import { useSessionCheck } from "./useSessionCheck";
 
 export { defaultAdmin } from "@/services/admin/adminService";
 
@@ -12,7 +11,74 @@ export const useAdminAuth = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const { isChecking } = useSessionCheck();
+  const [isChecking, setIsChecking] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    
+    const checkExistingSession = async () => {
+      try {
+        console.log("Kiểm tra phiên hiện tại...");
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error("Lỗi khi kiểm tra phiên:", error);
+          if (isMounted) setIsChecking(false);
+          return;
+        }
+        
+        if (data.session) {
+          console.log("Đã tìm thấy phiên hiện tại:", data.session.user.id);
+          
+          // Kiểm tra xem phiên hiện tại có phải của tài khoản admin mặc định không
+          if (data.session.user.email === defaultAdmin.email) {
+            console.log("Phiên hiện tại là của tài khoản admin, chuyển hướng...");
+            if (isMounted) navigate("/admin");
+            return;
+          }
+
+          // Kiểm tra quyền admin
+          try {
+            const { data: roleData, error: roleError } = await supabase
+              .from('user_roles')
+              .select('*')
+              .eq('user_id', data.session.user.id)
+              .eq('role', 'admin')
+              .maybeSingle();
+              
+            if (!roleError && roleData) {
+              console.log("Tìm thấy quyền admin, chuyển hướng...");
+              if (isMounted) navigate("/admin");
+              return;
+            }
+          } catch (e) {
+            console.error("Lỗi khi kiểm tra quyền admin:", e);
+          }
+        }
+      } catch (error) {
+        console.error("Lỗi không xác định khi kiểm tra phiên:", error);
+      } finally {
+        if (isMounted) {
+          setIsChecking(false);
+        }
+      }
+    };
+    
+    // Thiết lập timeout để đảm bảo không bị kẹt vô thời hạn
+    const timeoutId = setTimeout(() => {
+      if (isMounted && isChecking) {
+        console.log("Timeout khi kiểm tra phiên, đặt trạng thái isChecking = false");
+        setIsChecking(false);
+      }
+    }, 5000); // Timeout sau 5 giây
+    
+    checkExistingSession();
+    
+    return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
+    };
+  }, [navigate]);
 
   const validateInput = (usernameOrEmail: string, password: string) => {
     if (!usernameOrEmail || !password) {
@@ -50,6 +116,9 @@ export const useAdminAuth = () => {
       }
 
       console.log("Đăng nhập với tài khoản admin mặc định");
+      
+      // Đảm bảo đăng xuất trước khi đăng nhập để tránh xung đột
+      await supabase.auth.signOut();
       
       // Thực hiện đăng nhập với Supabase
       // Sử dụng email của admin mặc định để đăng nhập vì Supabase chỉ chấp nhận email
