@@ -21,6 +21,30 @@ const standardResponse = (data: any = null, error: string | null = null, status 
   )
 }
 
+// Function để kiểm tra quyền admin dựa trên user_roles
+async function checkIsAdmin(userId: string): Promise<boolean> {
+  try {
+    console.log('[update-user] Kiểm tra quyền admin cho user:', userId);
+    
+    const { data: roleData, error: roleError } = await supabaseAdmin
+      .from('user_roles')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('role', 'admin')
+      .maybeSingle();
+
+    if (roleError) {
+      console.error('[update-user] Lỗi khi kiểm tra user_roles:', roleError);
+      return false;
+    }
+
+    return !!roleData;
+  } catch (error) {
+    console.error('[update-user] Lỗi không mong đợi trong checkIsAdmin:', error);
+    return false;
+  }
+}
+
 Deno.serve(async (req) => {
   // Xử lý CORS
   if (req.method === 'OPTIONS') {
@@ -52,132 +76,70 @@ Deno.serve(async (req) => {
     }
 
     console.log('[update-user] Xác thực thành công cho user:', caller.id)
-    
+
     // Kiểm tra quyền admin
-    console.log('[update-user] Đang kiểm tra quyền admin cho user:', caller.id)
-    
-    try {
-      // Kiểm tra từ nhiều nguồn để đảm bảo
-      let hasAdminRole = false;
-      
-      // 1. Kiểm tra từ RPC function is_admin
-      const { data: isAdminRpc, error: rpcError } = await supabaseAdmin.rpc('is_admin', { uid: caller.id })
-      
-      if (!rpcError && isAdminRpc === true) {
-        console.log('[update-user] Xác nhận quyền admin từ RPC');
-        hasAdminRole = true;
-      } else {
-        console.log('[update-user] Kiểm tra RPC không thành công, thử phương thức khác');
-        
-        // 2. Kiểm tra từ bảng user_roles
-        const { data: roleData, error: roleError } = await supabaseAdmin
-          .from('user_roles')
-          .select('*')
-          .eq('user_id', caller.id)
-          .eq('role', 'admin')
-          .single()
-        
-        if (!roleError && roleData) {
-          console.log('[update-user] Xác nhận quyền admin từ user_roles');
-          hasAdminRole = true;
-        } else {
-          console.log('[update-user] Kiểm tra user_roles không thành công, thử phương thức cuối');
-          
-          // 3. Kiểm tra từ trường role trong bảng users
-          const { data: userData, error: userError } = await supabaseAdmin
-            .from('users')
-            .select('role')
-            .eq('id', caller.id)
-            .single()
-          
-          if (!userError && userData?.role === 'admin') {
-            console.log('[update-user] Xác nhận quyền admin từ users table');
-            hasAdminRole = true;
-          } else {
-            console.log('[update-user] Người dùng không có quyền admin');
-            return standardResponse(
-              null,
-              'Bạn không có quyền thực hiện thao tác này',
-              403
-            );
-          }
-        }
-      }
-      
-      // Nếu không có quyền admin sau khi kiểm tra tất cả các nguồn
-      if (!hasAdminRole) {
-        console.error('[update-user] Người dùng không có quyền admin:', caller.id)
-        return standardResponse(
-          null,
-          'Bạn không có quyền thực hiện thao tác này',
-          403
-        )
-      }
-      
-      console.log('[update-user] Xác nhận quyền admin thành công')
-    } catch (adminError) {
-      console.error('[update-user] Lỗi khi kiểm tra quyền admin:', adminError)
+    const isAdmin = await checkIsAdmin(caller.id);
+    if (!isAdmin) {
+      console.error('[update-user] Người dùng không có quyền admin:', caller.id);
       return standardResponse(
         null,
-        `Lỗi xác thực quyền: ${adminError instanceof Error ? adminError.message : String(adminError)}`,
-        500
-      )
+        'Bạn không có quyền thực hiện thao tác này',
+        403
+      );
     }
 
     // Lấy dữ liệu từ request
-    let requestData
+    let requestData;
     try {
-      requestData = await req.json()
+      requestData = await req.json();
     } catch (parseError) {
-      console.error('[update-user] Lỗi khi parse dữ liệu request:', parseError)
+      console.error('[update-user] Lỗi khi parse dữ liệu request:', parseError);
       return standardResponse(
         null,
         'Dữ liệu request không hợp lệ',
         400
-      )
+      );
     }
     
-    const { id, userData } = requestData
+    const { id, userData } = requestData;
     
     if (!id || !userData) {
-      console.error('[update-user] Thiếu thông tin cần thiết:', requestData)
+      console.error('[update-user] Thiếu thông tin cần thiết:', requestData);
       return standardResponse(
         null,
         'Thiếu thông tin người dùng cần cập nhật',
         400
-      )
+      );
     }
 
-    console.log("[update-user] Đang cập nhật user:", { id, userData })
+    console.log("[update-user] Đang cập nhật user:", { id, userData });
 
     // Kiểm tra user tồn tại
-    console.log('[update-user] Đang kiểm tra tồn tại của user:', id)
     const { data: existingUser, error: getUserError } = await supabaseAdmin
       .from('users')
       .select('*')
       .eq('id', id)
-      .maybeSingle()
+      .maybeSingle();
 
     if (getUserError) {
-      console.error('[update-user] Lỗi khi kiểm tra user:', getUserError)
+      console.error('[update-user] Lỗi khi kiểm tra user:', getUserError);
       return standardResponse(
         null,
         `Lỗi khi kiểm tra người dùng: ${getUserError.message}`,
         500
-      )
+      );
     }
 
     if (!existingUser) {
-      console.error('[update-user] Không tìm thấy user:', id)
+      console.error('[update-user] Không tìm thấy user:', id);
       return standardResponse(
         null,
         'Không tìm thấy người dùng',
         404
-      )
+      );
     }
 
     // Cập nhật thông tin user
-    console.log('[update-user] Đang cập nhật thông tin user:', id)
     const { data: updatedUser, error: updateError } = await supabaseAdmin
       .from('users')
       .update({
@@ -185,34 +147,28 @@ Deno.serve(async (req) => {
         email: userData.email,
         credits: userData.credits,
         status: userData.status,
-        role: userData.role
+        role: userData.role,
+        subscription: userData.subscription
       })
       .eq('id', id)
       .select()
-      .single()
+      .single();
 
     if (updateError) {
-      console.error('[update-user] Lỗi khi cập nhật:', updateError)
+      console.error('[update-user] Lỗi khi cập nhật:', updateError);
       return standardResponse(
         null,
         `Lỗi cập nhật: ${updateError.message}`,
         500
-      )
+      );
     }
 
     // Xử lý thay đổi gói đăng ký nếu có
-    let subscriptionChanged = false
-    console.log('[update-user] Kiểm tra thay đổi gói đăng ký:', {
-      current: existingUser.subscription,
-      new: userData.subscription
-    })
-    
     if (existingUser.subscription !== userData.subscription) {
-      subscriptionChanged = true
-      console.log('[update-user] Cập nhật gói đăng ký:', { 
-        from: existingUser.subscription, 
-        to: userData.subscription 
-      })
+      console.log('[update-user] Cập nhật gói đăng ký:', {
+        from: existingUser.subscription,
+        to: userData.subscription
+      });
       
       try {
         // Tìm subscription id
@@ -220,44 +176,33 @@ Deno.serve(async (req) => {
           .from('subscriptions')
           .select('id')
           .eq('name', userData.subscription)
-          .maybeSingle()
-  
+          .maybeSingle();
+
         if (subError) {
-          console.error('[update-user] Lỗi khi tìm gói đăng ký:', subError)
+          console.error('[update-user] Lỗi khi tìm gói đăng ký:', subError);
           return standardResponse(
             null,
             `Lỗi khi tìm gói đăng ký: ${subError.message}`,
             500
-          )
+          );
         }
-  
+
         if (subscriptionData) {
-          const startDate = new Date().toISOString().split('T')[0]
-          const endDate = new Date()
-          endDate.setMonth(endDate.getMonth() + 1)
-          const endDateStr = endDate.toISOString().split('T')[0]
-  
+          const startDate = new Date().toISOString().split('T')[0];
+          const endDate = new Date();
+          endDate.setMonth(endDate.getMonth() + 1);
+          const endDateStr = endDate.toISOString().split('T')[0];
+
           // Hủy các gói đăng ký cũ
-          console.log('[update-user] Hủy gói đăng ký cũ của user:', id)
-          const { error: cancelError } = await supabaseAdmin
+          await supabaseAdmin
             .from('user_subscriptions')
             .update({ status: 'inactive' })
             .eq('user_id', id)
-            .eq('status', 'active')
-  
-          if (cancelError) {
-            console.error('[update-user] Lỗi khi hủy gói đăng ký cũ:', cancelError)
-            return standardResponse(
-              null,
-              `Lỗi khi hủy gói đăng ký cũ: ${cancelError.message}`,
-              500
-            )
-          }
-  
-          // Tạo gói đăng ký mới
+            .eq('status', 'active');
+
+          // Tạo gói đăng ký mới nếu không phải "Không có"
           if (userData.subscription !== 'Không có') {
-            console.log('[update-user] Tạo gói đăng ký mới cho user:', id)
-            const { error: createSubError } = await supabaseAdmin
+            await supabaseAdmin
               .from('user_subscriptions')
               .insert({
                 user_id: id,
@@ -265,75 +210,29 @@ Deno.serve(async (req) => {
                 start_date: startDate,
                 end_date: endDateStr,
                 status: 'active'
-              })
-  
-            if (createSubError) {
-              console.error('[update-user] Lỗi khi tạo gói đăng ký mới:', createSubError)
-              return standardResponse(
-                null,
-                `Lỗi khi tạo gói đăng ký mới: ${createSubError.message}`,
-                500
-              )
-            }
-          }
-
-          // Cập nhật thông tin user với subscription mới
-          console.log('[update-user] Cập nhật thông tin subscription trong bảng users')
-          const { error: updateUserSubError } = await supabaseAdmin
-            .from('users')
-            .update({ subscription: userData.subscription })
-            .eq('id', id)
-            
-          if (updateUserSubError) {
-            console.error('[update-user] Lỗi khi cập nhật subscription trong users:', updateUserSubError)
-            return standardResponse(
-              null,
-              `Lỗi khi cập nhật subscription: ${updateUserSubError.message}`,
-              500
-            )
+              });
           }
         }
       } catch (subProcessError) {
-        console.error('[update-user] Lỗi khi xử lý gói đăng ký:', subProcessError)
+        console.error('[update-user] Lỗi khi xử lý gói đăng ký:', subProcessError);
         return standardResponse(
           null,
           `Lỗi xử lý gói đăng ký: ${subProcessError instanceof Error ? subProcessError.message : String(subProcessError)}`,
           500
-        )
+        );
       }
     }
 
-    // Lấy thông tin đầy đủ của user sau khi cập nhật
-    console.log('[update-user] Lấy thông tin user sau khi cập nhật')
-    const { data: finalUserData, error: finalUserError } = await supabaseAdmin
-      .from('users')
-      .select('*')
-      .eq('id', id)
-      .single()
-      
-    if (finalUserError) {
-      console.error('[update-user] Lỗi khi lấy thông tin cuối cùng của user:', finalUserError)
-      return standardResponse(
-        updatedUser,
-        null,
-        200
-      )
-    }
-
     // Trả về kết quả thành công
-    console.log('[update-user] Cập nhật thành công, đang trả về kết quả')
-    return standardResponse(
-      finalUserData,
-      null,
-      200
-    )
+    console.log('[update-user] Cập nhật thành công, đang trả về kết quả');
+    return standardResponse(updatedUser, null, 200);
 
   } catch (error) {
-    console.error('[update-user] Lỗi không mong đợi:', error)
+    console.error('[update-user] Lỗi không mong đợi:', error);
     return standardResponse(
       null,
       error instanceof Error ? error.message : String(error),
       500
-    )
+    );
   }
-})
+});

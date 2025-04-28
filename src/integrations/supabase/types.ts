@@ -212,6 +212,7 @@ export type Database = {
           name: string
           role: string | null
           status: string | null
+          subscription: string | null
           updated_at: string | null
         }
         Insert: {
@@ -224,6 +225,7 @@ export type Database = {
           name: string
           role?: string | null
           status?: string | null
+          subscription?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -236,6 +238,7 @@ export type Database = {
           name?: string
           role?: string | null
           status?: string | null
+          subscription?: string | null
           updated_at?: string | null
         }
         Relationships: []
