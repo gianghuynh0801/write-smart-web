@@ -1,251 +1,154 @@
 
-// Follow this setup guide to integrate the Deno runtime into your project:
-// https://deno.com/manual/getting_started/javascript_runtime
-// Learn more about Deno: https://deno.com/runtime
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4'
+import { corsHeaders } from '../_shared/cors.ts'
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.43.1';
+const supabaseUrl = "https://lxhawtndkubaeljbaylp.supabase.co"
+const supabaseServiceRole = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRole, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+  },
+})
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+const standardResponse = (data: any = null, error: string | null = null, status = 200) => {
+  return new Response(
+    JSON.stringify({ data, error }), 
+    { 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status
+    }
+  )
 }
 
-interface FetchUsersParams {
-  page: number;
-  pageSize: number;
-  status?: string;
-  searchTerm?: string;
-}
+// Hàm kiểm tra quyền admin
+const checkUserIsAdmin = async (userId: string) => {
+  console.log("[checkUserIsAdmin] Đang kiểm tra quyền admin cho user:", userId);
 
-// Kiểm tra xem người dùng có phải là admin hay không
-async function isAdmin(supabase, userId) {
   try {
-    console.log("Đang kiểm tra quyền admin cho user:", userId);
-    
-    // Kiểm tra vai trò từ bảng users
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', userId)
-      .maybeSingle();
-      
-    if (userError) {
-      console.error("Lỗi khi kiểm tra role từ bảng users:", userError);
-      return false;
-    }
-    
-    if (userData?.role === 'admin') {
-      console.log("Người dùng là admin (từ bảng users)");
-      return true;
-    }
-    
-    // Kiểm tra trong bảng user_roles
-    const { data: roleData, error: roleError } = await supabase
+    // Kiểm tra từ bảng user_roles (chính thức)
+    const { data: roleData, error: roleError } = await supabaseAdmin
       .from('user_roles')
       .select('*')
       .eq('user_id', userId)
       .eq('role', 'admin')
       .maybeSingle();
-      
+
     if (roleError) {
-      console.error("Lỗi khi kiểm tra role từ bảng user_roles:", roleError);
+      console.error("[checkUserIsAdmin] Lỗi khi kiểm tra user_roles:", roleError);
       return false;
     }
-    
-    const isUserAdmin = roleData !== null;
-    console.log("Kết quả kiểm tra admin từ user_roles:", isUserAdmin);
-    return isUserAdmin;
-    
+
+    if (roleData) {
+      console.log("[checkUserIsAdmin] Tìm thấy quyền admin trong user_roles");
+      return true;
+    }
+
+    // Kiểm tra từ bảng users (backup)
+    const { data: userData, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('role')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (userError) {
+      console.error("[checkUserIsAdmin] Lỗi khi kiểm tra users:", userError);
+      return false;
+    }
+
+    return userData?.role === 'admin';
   } catch (error) {
-    console.error("Lỗi không mong muốn khi kiểm tra quyền admin:", error);
+    console.error("[checkUserIsAdmin] Lỗi không xác định:", error);
     return false;
   }
-}
+};
 
-Deno.serve(async (req) => {
-  console.log("Nhận request mới:", req.method, new URL(req.url).pathname);
-  
-  // Xử lý CORS preflight request
-  if (req.method === 'OPTIONS') {
-    console.log("Xử lý CORS preflight request");
-    return new Response(null, { 
-      headers: corsHeaders,
-      status: 204 
-    });
-  }
-  
+// Hàm lấy danh sách người dùng với phân trang và tìm kiếm
+const getUsers = async (page: number, pageSize: number, status: string, searchTerm: string) => {
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    console.log("Đang lấy danh sách người dùng với thông số:", { page, pageSize, status, searchTerm });
     
-    if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error('Missing environment variables SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
-    }
-    
-    // Tạo client Supabase với quyền service_role (Admin)
-    const adminAuthClient = createClient(supabaseUrl, supabaseServiceKey);
-    
-    // Tạo client Supabase dựa trên JWT của người dùng để kiểm tra quyền admin
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      console.error("Thiếu Authorization header");
-      throw new Error('Missing Authorization header');
-    }
-    
-    const jwt = authHeader.replace('Bearer ', '');
-    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
-    
-    // Lấy ID người dùng từ JWT
-    const {data: {user}} = await supabase.auth.getUser(jwt);
-    
-    if (!user) {
-      console.error("JWT token không hợp lệ");
-      throw new Error('Invalid JWT token');
-    }
-    
-    console.log("Đã xác thực người dùng:", user.id);
-    
-    // Kiểm tra xem người dùng có quyền admin không
-    const adminStatus = await isAdmin(supabase, user.id);
-    
-    if (!adminStatus) {
-      console.error("Người dùng không có quyền admin:", user.id);
-      throw new Error('User is not an admin');
-    }
-    
-    console.log("Xác nhận quyền admin thành công");
-    
-    let params: FetchUsersParams;
-    
-    // Xử lý cả GET và POST request
-    if (req.method === 'GET') {
-      const url = new URL(req.url);
-      params = {
-        page: Number(url.searchParams.get('page')) || 1,
-        pageSize: Number(url.searchParams.get('pageSize')) || 5,
-        status: url.searchParams.get('status') || 'all',
-        searchTerm: url.searchParams.get('searchTerm') || ''
-      };
-    } else if (req.method === 'POST') {
-      params = await req.json() as FetchUsersParams;
-    } else {
-      throw new Error(`Unsupported method: ${req.method}`);
-    }
-    
-    console.log("Các tham số truy vấn:", params);
-    
-    // Truy vấn dữ liệu users với quyền admin, loại trừ các admin
-    let query = adminAuthClient
-      .from("users")
-      .select("*", { count: "exact" })
-      .neq("role", "admin")
-      .order("created_at", { ascending: false });
+    let query = supabaseAdmin.from('users').select('*', { count: 'exact' });
 
-    if (params.status !== "all") {
-      query = query.eq("status", params.status);
+    // Áp dụng bộ lọc trạng thái
+    if (status && status !== 'all') {
+      query = query.eq('status', status);
     }
 
-    if (params.searchTerm) {
-      query = query
-        .or(
-          `name.ilike.%${params.searchTerm}%,email.ilike.%${params.searchTerm}%`
-        );
+    // Áp dụng tìm kiếm
+    if (searchTerm) {
+      query = query.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
     }
 
-    const from = (params.page - 1) * params.pageSize;
-    const to = from + params.pageSize - 1;
+    // Áp dụng phân trang
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
     query = query.range(from, to);
 
-    console.log("Đang thực thi truy vấn users...");
     const { data: users, count, error } = await query;
 
     if (error) {
       console.error("Lỗi khi truy vấn users:", error);
-      throw new Error(`Lỗi khi lấy danh sách người dùng: ${error.message}`);
+      throw error;
     }
 
-    console.log(`Đã tìm thấy ${users?.length || 0} người dùng, tổng số: ${count || 0}`);
-
-    if (!users || users.length === 0) {
-      return new Response(
-        JSON.stringify({
-          data: [],
-          total: 0
-        }),
-        { 
-          headers: { 
-            ...corsHeaders, 
-            'Content-Type': 'application/json' 
-          },
-          status: 200 
-        }
-      );
-    }
-    
-    // Lấy thông tin gói đăng ký cho từng người dùng
-    const usersWithSubscription = await Promise.all(users.map(async (user) => {
-      try {
-        console.log(`Đang lấy thông tin gói đăng ký cho user ${user.id}`);
-        const { data: subData } = await adminAuthClient
-          .from("user_subscriptions")
-          .select(`
-            subscription_id,
-            status,
-            subscriptions (
-              name
-            )
-          `)
-          .eq("user_id", user.id)
-          .eq("status", "active")
-          .maybeSingle();
-          
-        const subscriptionName = subData?.subscriptions?.name || "Không có";
-        console.log(`User ${user.id} có gói đăng ký: ${subscriptionName}`);
-        
-        return {
-          ...user,
-          subscription: subscriptionName
-        };
-      } catch (err) {
-        console.error(`Lỗi khi xử lý thông tin người dùng ${user.id}:`, err);
-        return user;
-      }
-    }));
-
-    console.log("Hoàn thành việc lấy thông tin users và gói đăng ký");
-    return new Response(
-      JSON.stringify({
-        data: usersWithSubscription,
-        total: count || 0
-      }),
-      { 
-        headers: { 
-          ...corsHeaders, 
-          'Content-Type': 'application/json' 
-        },
-        status: 200 
-      }
-    );
-    
+    return { users, total: count || 0 };
   } catch (error) {
-    console.error('Lỗi trong admin-users function:', error);
+    console.error("Lỗi khi lấy danh sách người dùng:", error);
+    throw error;
+  }
+};
+
+Deno.serve(async (req) => {
+  try {
+    // Xử lý CORS preflight request
+    if (req.method === 'OPTIONS') {
+      console.log("Xử lý CORS preflight request");
+      return new Response(null, { headers: corsHeaders });
+    }
+
+    // Xác thực người dùng
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error("Thiếu Authorization header");
+      return standardResponse(null, 'Thiếu thông tin xác thực', 401);
+    }
+
+    // Lấy token và xác thực người dùng
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+
+    if (authError || !user) {
+      console.error("Lỗi xác thực:", authError);
+      return standardResponse(null, 'Xác thực không thành công', 401);
+    }
+
+    console.log("Đã xác thực người dùng:", user.id);
+
+    // Kiểm tra quyền admin
+    const isAdmin = await checkUserIsAdmin(user.id);
+    if (!isAdmin) {
+      console.error("Người dùng không có quyền admin:", user.id);
+      return standardResponse(null, 'Bạn không có quyền thực hiện thao tác này', 403);
+    }
+
+    console.log("Xác nhận quyền admin thành công");
+
+    // Lấy tham số từ request
+    const { searchTerm = '', status = 'all', page = 1, pageSize = 5 } = await req.json();
     
-    return new Response(
-      JSON.stringify({ 
-        error: error.message || 'Internal server error'
-      }),
-      { 
-        headers: { 
-          ...corsHeaders, 
-          'Content-Type': 'application/json' 
-        },
-        status: error.message.includes('not an admin') ? 403 : 500
-      }
+    // Lấy danh sách người dùng
+    const { users, total } = await getUsers(page, pageSize, status, searchTerm);
+    
+    console.log(`Đã tìm thấy ${users.length} người dùng, tổng số: ${total}`);
+
+    return standardResponse({ users, total });
+  } catch (error) {
+    console.error("Lỗi không mong đợi:", error);
+    return standardResponse(
+      null,
+      error instanceof Error ? error.message : 'Lỗi không xác định',
+      500
     );
   }
 });
