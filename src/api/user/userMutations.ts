@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { supabaseAdmin } from "@/integrations/supabase/adminClient";
 import { parseUser } from "./userParser";
@@ -80,24 +81,33 @@ export const updateUser = async (id: string | number, userData: UserFormValues):
   console.log("[updateUser] Cập nhật user qua Edge Function:", { userId, userData });
   
   try {
-    const { data, error } = await supabase.functions.invoke('update-user', {
-      body: { id: userId, userData }
-    });
+    // Sử dụng adminClient để có quyền admin khi gọi Edge Function
+    const { data: { data, error: functionError }, error: invocationError } = await supabaseAdmin.functions.invoke(
+      'update-user',
+      {
+        body: { id: userId, userData }
+      }
+    );
 
-    if (error) {
-      console.error("[updateUser] Lỗi từ Edge Function:", error);
-      throw new Error(error.message);
+    if (invocationError) {
+      console.error("[updateUser] Lỗi khi gọi Edge Function:", invocationError);
+      throw new Error(`Lỗi cập nhật: ${invocationError.message}`);
     }
     
-    if (!data || !data.data) {
-      console.error("[updateUser] Không nhận được dữ liệu từ Edge Function:", data);
-      throw new Error(data?.error || "Không nhận được dữ liệu sau khi cập nhật");
+    if (functionError) {
+      console.error("[updateUser] Edge Function trả về lỗi:", functionError);
+      throw new Error(`Lỗi cập nhật: ${functionError}`);
+    }
+    
+    if (!data) {
+      console.error("[updateUser] Không nhận được dữ liệu từ Edge Function");
+      throw new Error("Không nhận được dữ liệu sau khi cập nhật");
     }
 
-    return parseUser(data.data);
+    return parseUser(data);
   } catch (error) {
     console.error("[updateUser] Lỗi không mong đợi:", error);
-    throw new Error(`Lỗi cập nhật: ${error instanceof Error ? error.message : String(error)}`);
+    throw error instanceof Error ? error : new Error(String(error));
   }
 };
 

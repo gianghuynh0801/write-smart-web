@@ -26,20 +26,50 @@ Deno.serve(async (req) => {
 
     const token = authHeader.replace('Bearer ', '')
     const { data: { user: caller }, error: authError } = await supabaseAdmin.auth.getUser(token)
+    
     if (authError || !caller) {
-      throw new Error('Invalid token')
+      console.error('[update-user] Lỗi xác thực:', authError)
+      return new Response(
+        JSON.stringify({ 
+          data: null, 
+          error: 'Xác thực không thành công' 
+        }), 
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 401 
+        }
+      )
     }
 
     // Kiểm tra quyền admin
     const { data: isAdmin } = await supabaseAdmin.rpc('is_admin', { uid: caller.id })
     if (!isAdmin) {
-      throw new Error('Unauthorized - Admin access required')
+      console.error('[update-user] Người dùng không có quyền admin:', caller.id)
+      return new Response(
+        JSON.stringify({ 
+          data: null, 
+          error: 'Yêu cầu quyền quản trị viên' 
+        }), 
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 403 
+        }
+      )
     }
 
     // Lấy dữ liệu từ request
     const { id, userData } = await req.json()
     if (!id || !userData) {
-      throw new Error('Missing required data')
+      return new Response(
+        JSON.stringify({ 
+          data: null, 
+          error: 'Thiếu thông tin cần thiết' 
+        }), 
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400 
+        }
+      )
     }
 
     console.log("[update-user] Đang cập nhật user:", { id, userData })
@@ -53,23 +83,29 @@ Deno.serve(async (req) => {
 
     if (getUserError) {
       console.error('[update-user] Lỗi khi kiểm tra user:', getUserError)
-      return new Response(JSON.stringify({ 
-        data: null, 
-        error: `Lỗi khi kiểm tra user: ${getUserError.message}` 
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
-      })
+      return new Response(
+        JSON.stringify({ 
+          data: null, 
+          error: `Lỗi khi kiểm tra user: ${getUserError.message}` 
+        }), 
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400
+        }
+      )
     }
 
     if (!existingUser) {
-      return new Response(JSON.stringify({ 
-        data: null, 
-        error: 'User not found' 
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 404,
-      })
+      return new Response(
+        JSON.stringify({ 
+          data: null, 
+          error: 'Không tìm thấy người dùng' 
+        }), 
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 404
+        }
+      )
     }
 
     // Cập nhật thông tin user
@@ -88,16 +124,19 @@ Deno.serve(async (req) => {
 
     if (updateError) {
       console.error('[update-user] Lỗi khi cập nhật:', updateError)
-      return new Response(JSON.stringify({ 
-        data: null, 
-        error: `Lỗi cập nhật: ${updateError.message}` 
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
-      })
+      return new Response(
+        JSON.stringify({ 
+          data: null, 
+          error: `Lỗi cập nhật: ${updateError.message}` 
+        }), 
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400
+        }
+      )
     }
 
-    // Nếu thay đổi gói đăng ký
+    // Xử lý thay đổi gói đăng ký nếu có
     if (existingUser.subscription !== userData.subscription) {
       console.log('[update-user] Cập nhật gói đăng ký:', { 
         from: existingUser.subscription, 
@@ -113,13 +152,16 @@ Deno.serve(async (req) => {
 
       if (subError) {
         console.error('[update-user] Lỗi khi tìm gói đăng ký:', subError)
-        return new Response(JSON.stringify({ 
-          data: null, 
-          error: `Lỗi khi tìm gói đăng ký: ${subError.message}` 
-        }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400,
-        })
+        return new Response(
+          JSON.stringify({ 
+            data: null, 
+            error: `Lỗi khi tìm gói đăng ký: ${subError.message}` 
+          }), 
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 400
+          }
+        )
       }
 
       if (subscriptionData) {
@@ -137,13 +179,16 @@ Deno.serve(async (req) => {
 
         if (cancelError) {
           console.error('[update-user] Lỗi khi hủy gói đăng ký cũ:', cancelError)
-          return new Response(JSON.stringify({ 
-            data: null, 
-            error: `Lỗi khi hủy gói đăng ký cũ: ${cancelError.message}` 
-          }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 400,
-          })
+          return new Response(
+            JSON.stringify({ 
+              data: null, 
+              error: `Lỗi khi hủy gói đăng ký cũ: ${cancelError.message}` 
+            }), 
+            {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              status: 400
+            }
+          )
         }
 
         // Tạo gói đăng ký mới
@@ -160,35 +205,44 @@ Deno.serve(async (req) => {
 
           if (createSubError) {
             console.error('[update-user] Lỗi khi tạo gói đăng ký mới:', createSubError)
-            return new Response(JSON.stringify({ 
-              data: null, 
-              error: `Lỗi khi tạo gói đăng ký mới: ${createSubError.message}` 
-            }), {
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-              status: 400,
-            })
+            return new Response(
+              JSON.stringify({ 
+                data: null, 
+                error: `Lỗi khi tạo gói đăng ký mới: ${createSubError.message}` 
+              }), 
+              {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 400
+              }
+            )
           }
         }
       }
     }
 
     // Trả về kết quả thành công
-    return new Response(JSON.stringify({ 
-      data: { ...updatedUser, subscription: userData.subscription },
-      error: null
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 200,
-    })
+    return new Response(
+      JSON.stringify({ 
+        data: { ...updatedUser, subscription: userData.subscription },
+        error: null
+      }), 
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200
+      }
+    )
 
   } catch (error) {
     console.error('[update-user] Lỗi:', error)
-    return new Response(JSON.stringify({ 
-      data: null,
-      error: error.message 
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 400,
-    })
+    return new Response(
+      JSON.stringify({ 
+        data: null,
+        error: error.message 
+      }), 
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400
+      }
+    )
   }
 })
