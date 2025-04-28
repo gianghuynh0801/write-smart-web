@@ -81,11 +81,26 @@ export const updateUser = async (id: string | number, userData: UserFormValues):
   console.log("[updateUser] Cập nhật user qua Edge Function:", { userId, userData });
   
   try {
-    // Sử dụng adminClient để có quyền admin khi gọi Edge Function
-    const { data: { data, error: functionError }, error: invocationError } = await supabaseAdmin.functions.invoke(
+    // Cần đảm bảo có session token hợp lệ trước khi gọi Edge Function
+    const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.getSession();
+    if (sessionError) {
+      console.error("[updateUser] Lỗi khi lấy session:", sessionError);
+      throw new Error(`Lỗi xác thực: ${sessionError.message}`);
+    }
+    
+    if (!sessionData.session) {
+      console.error("[updateUser] Không có session hợp lệ");
+      throw new Error("Không có phiên đăng nhập hợp lệ, vui lòng đăng nhập lại");
+    }
+    
+    // Gọi Edge Function với token xác thực từ session
+    const { data: responseData, error: invocationError } = await supabaseAdmin.functions.invoke(
       'update-user',
       {
-        body: { id: userId, userData }
+        body: { id: userId, userData },
+        headers: {
+          Authorization: `Bearer ${sessionData.session.access_token}`
+        }
       }
     );
 
@@ -94,17 +109,23 @@ export const updateUser = async (id: string | number, userData: UserFormValues):
       throw new Error(`Lỗi cập nhật: ${invocationError.message}`);
     }
     
-    if (functionError) {
-      console.error("[updateUser] Edge Function trả về lỗi:", functionError);
-      throw new Error(`Lỗi cập nhật: ${functionError}`);
+    // Kiểm tra phản hồi từ Edge Function
+    if (!responseData) {
+      console.error("[updateUser] Edge Function không trả về dữ liệu");
+      throw new Error("Không nhận được dữ liệu từ máy chủ");
     }
     
-    if (!data) {
-      console.error("[updateUser] Không nhận được dữ liệu từ Edge Function");
-      throw new Error("Không nhận được dữ liệu sau khi cập nhật");
+    if (responseData.error) {
+      console.error("[updateUser] Edge Function trả về lỗi:", responseData.error);
+      throw new Error(`Lỗi cập nhật: ${responseData.error}`);
+    }
+    
+    if (!responseData.data) {
+      console.error("[updateUser] Edge Function không trả về dữ liệu user:", responseData);
+      throw new Error("Dữ liệu người dùng không hợp lệ");
     }
 
-    return parseUser(data);
+    return parseUser(responseData.data);
   } catch (error) {
     console.error("[updateUser] Lỗi không mong đợi:", error);
     throw error instanceof Error ? error : new Error(String(error));

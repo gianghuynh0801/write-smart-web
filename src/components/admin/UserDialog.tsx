@@ -1,3 +1,4 @@
+
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Loader, AlertTriangle } from "lucide-react";
 import {
@@ -24,6 +25,7 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
   const [user, setUser] = useState<User | undefined>();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const isMounted = useRef(true);
   const { toast } = useToast();
   const retryCount = useRef(0);
@@ -34,6 +36,7 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
       setUser(undefined);
       setError(null);
       retryCount.current = 0;
+      setIsSubmitting(false);
     }
   }, [isOpen]);
   
@@ -103,15 +106,51 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
   }, [fetchUser, isOpen, userId]);
   
   const handleSubmit = async (data: UserFormValues) => {
-    if (isLoading) return;
+    if (isSubmitting) return;
     
-    setIsLoading(true);
+    setIsSubmitting(true);
     setError(null);
     
     try {
       console.log("Đang lưu thông tin user:", data);
+      
+      let savedUser: User;
+      
       if (userId) {
-        await updateUser(userId, data);
+        // Thêm xử lý thử lại cho việc cập nhật
+        let attempts = 0;
+        const maxAttempts = 2;
+        let lastError: Error | null = null;
+        
+        while (attempts < maxAttempts) {
+          try {
+            savedUser = await updateUser(userId, data);
+            console.log("Cập nhật user thành công:", savedUser);
+            lastError = null;
+            break;
+          } catch (updateError: any) {
+            lastError = updateError;
+            console.error(`Lỗi khi cập nhật (lần ${attempts + 1}/${maxAttempts}):`, updateError);
+            
+            // Nếu là lỗi xác thực, thử lại sau 1 giây
+            if (updateError.message && 
+              (updateError.message.includes('xác thực') || 
+               updateError.message.includes('Xác thực') || 
+               updateError.message.includes('401') || 
+               updateError.message.includes('403'))) {
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              attempts++;
+            } else {
+              // Nếu không phải lỗi xác thực, không thử lại
+              break;
+            }
+          }
+        }
+        
+        if (lastError) {
+          throw lastError;
+        }
+        
         if (isMounted.current) {
           toast({
             title: "Thành công",
@@ -119,7 +158,7 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
           });
         }
       } else {
-        await createUser(data);
+        savedUser = await createUser(data);
         if (isMounted.current) {
           toast({
             title: "Thành công",
@@ -138,7 +177,22 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
       console.error("Lỗi khi lưu thông tin user:", error);
       
       if (isMounted.current) {
-        const errorMessage = error.message || "Có lỗi xảy ra khi lưu thông tin";
+        // Hiển thị thông báo lỗi chi tiết hơn
+        let errorMessage = "Có lỗi xảy ra khi lưu thông tin";
+        
+        if (error.message) {
+          errorMessage = error.message;
+          
+          // Xử lý các thông báo lỗi cụ thể
+          if (error.message.includes('Edge Function returned a non-2xx status code')) {
+            errorMessage = "Lỗi từ máy chủ: Không thể cập nhật thông tin người dùng. Vui lòng thử lại sau.";
+          } else if (error.message.includes('Cannot read properties of null')) {
+            errorMessage = "Lỗi dữ liệu: Phản hồi từ máy chủ không đúng định dạng. Vui lòng thử lại.";
+          } else if (error.message.includes('401') || error.message.includes('403')) {
+            errorMessage = "Lỗi xác thực: Bạn không có quyền thực hiện thao tác này hoặc phiên làm việc đã hết hạn.";
+          }
+        }
+        
         setError(errorMessage);
         toast({
           title: "Lỗi",
@@ -148,18 +202,22 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
       }
     } finally {
       if (isMounted.current) {
-        setIsLoading(false);
+        setIsSubmitting(false);
       }
     }
   };
   
   const handleRetry = () => {
-    retryCount.current = 0;
-    fetchUser();
+    if (userId) {
+      retryCount.current = 0;
+      fetchUser();
+    } else {
+      setError(null);
+    }
   };
   
   const handleDialogClose = () => {
-    if (!isLoading) {
+    if (!isLoading && !isSubmitting) {
       onClose();
     }
   };
@@ -169,7 +227,7 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
       <DialogContent 
         className="sm:max-w-[600px]" 
         onInteractOutside={(e) => {
-          if (isLoading) {
+          if (isLoading || isSubmitting) {
             e.preventDefault();
           }
         }}
@@ -200,7 +258,7 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
             user={user}
             onSubmit={handleSubmit}
             onCancel={handleDialogClose}
-            isSubmitting={isLoading}
+            isSubmitting={isSubmitting}
           />
         )}
       </DialogContent>
