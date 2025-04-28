@@ -1,14 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { UserSubscription } from "@/types/subscriptions";
-import { createClient } from "@supabase/supabase-js";
-
-// Thay vì tạo client admin mới, hãy sử dụng client supabase hiện có
-// Điều này sẽ giúp tránh lỗi "Invalid API key"
-const getAdminClient = () => {
-  console.log("Sử dụng client Supabase hiện có thay vì tạo client admin mới");
-  return supabase;
-};
 
 export const createUserSubscriptionAsAdmin = async (
   userId: string, 
@@ -20,14 +12,12 @@ export const createUserSubscriptionAsAdmin = async (
   try {
     console.log("Thực hiện thao tác gói đăng ký:", { userId, subscriptionId, startDate, endDate, status });
     
-    // Kiểm tra user_id hợp lệ
     if (!userId) {
       throw new Error("ID người dùng không được để trống");
     }
     
     const client = getAdminClient();
     
-    // Nếu đang hủy gói đăng ký hiện tại (status = 'inactive')
     if (status === 'inactive') {
       console.log("Đang hủy tất cả gói đăng ký hiện tại của người dùng:", userId);
       
@@ -44,16 +34,13 @@ export const createUserSubscriptionAsAdmin = async (
       
       console.log("Đã hủy thành công tất cả gói đăng ký hiện tại");
       
-      // Nếu chỉ cần hủy gói đăng ký hiện tại thì dừng tại đây
       if (subscriptionId === -1 || !startDate || !endDate) {
         console.log("Không tạo gói đăng ký mới, chỉ hủy gói hiện tại");
         return true;
       }
     }
     
-    // Nếu đang tạo gói đăng ký mới (status = 'active')
     if (status === 'active') {
-      // Kiểm tra các tham số bắt buộc
       if (subscriptionId <= 0) {
         throw new Error("ID gói đăng ký không hợp lệ");
       }
@@ -62,7 +49,6 @@ export const createUserSubscriptionAsAdmin = async (
         throw new Error("Ngày bắt đầu và kết thúc là bắt buộc");
       }
       
-      // Kiểm tra gói đăng ký tồn tại trong hệ thống
       const { data: subscriptionExists, error: checkError } = await client
         .from("subscriptions")
         .select("id")
@@ -79,7 +65,6 @@ export const createUserSubscriptionAsAdmin = async (
         throw new Error(`Gói đăng ký ID=${subscriptionId} không tồn tại trong hệ thống`);
       }
       
-      // Đảm bảo đã hủy các gói đăng ký cũ trước khi tạo gói mới
       const { error: updateError } = await client
         .from("user_subscriptions")
         .update({ status: "inactive" })
@@ -91,7 +76,6 @@ export const createUserSubscriptionAsAdmin = async (
         throw new Error(`Không thể hủy gói đăng ký cũ: ${updateError.message}`);
       }
       
-      // Tạo gói đăng ký mới với quyền truy cập cơ sở dữ liệu trực tiếp
       console.log("Đang tạo gói đăng ký mới:", { userId, subscriptionId, startDate, endDate, status });
       
       const { error: insertError } = await client
@@ -115,7 +99,7 @@ export const createUserSubscriptionAsAdmin = async (
     return true;
   } catch (error) {
     console.error("Lỗi trong quá trình xử lý gói đăng ký:", error);
-    throw error; // Re-throw để xử lý lỗi ở các hàm gọi
+    throw error;
   }
 };
 
@@ -144,15 +128,13 @@ export const getUserActiveSubscription = async (userId: string) => {
       .maybeSingle();
       
     if (error) {
-      if (error.code !== 'PGRST116') { // PGRST116 = no rows returned
+      if (error.code !== 'PGRST116') {
         console.error("Lỗi khi lấy thông tin gói đăng ký:", error.message);
       }
       return null;
     }
     
-    // Explicitly type the result to match UserSubscription
     if (data) {
-      // Handle subscriptions data appropriately
       const subscription: UserSubscription = {
         id: data.id,
         user_id: data.user_id,
@@ -179,3 +161,10 @@ export const getUserActiveSubscription = async (userId: string) => {
     return null;
   }
 };
+
+// Helper function to get admin client
+const getAdminClient = () => {
+  console.log("Sử dụng client Supabase hiện có thay vì tạo client admin mới");
+  return supabase;
+};
+
