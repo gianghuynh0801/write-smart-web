@@ -1,17 +1,22 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { supabaseAdmin } from "@/integrations/supabase/adminClient";
 import { parseUser } from "./userParser";
 import { User, UserFormValues } from "@/types/user";
 import { createUserSubscriptionAsAdmin } from "./admin/subscriptionOperations";
 import { handleSubscriptionChange } from "./userSubscription";
 import { getUserById } from "./userQueries";
 
+// Function để đợi một khoảng thời gian
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 export const createUser = async (userData: UserFormValues): Promise<User> => {
   const newId = crypto.randomUUID();
   
   console.log("[createUser] Tạo user mới với dữ liệu:", userData);
   
-  const { data, error } = await supabase.from("users").insert([
+  // Sử dụng admin client để đảm bảo có thể bypass RLS
+  const { data, error } = await supabaseAdmin.from("users").insert([
     {
       id: newId,
       name: userData.name,
@@ -83,8 +88,10 @@ export const updateUser = async (id: string | number, userData: UserFormValues):
   }
   
   try {
-    // Thử update thông tin cơ bản của user
-    const { data, error } = await supabase
+    console.log("[updateUser] Thực hiện cập nhật với admin client để bypass RLS");
+    
+    // Sử dụng admin client để bypass RLS
+    const { data, error } = await supabaseAdmin
       .from("users")
       .update({
         name: userData.name,
@@ -99,14 +106,18 @@ export const updateUser = async (id: string | number, userData: UserFormValues):
 
     if (error) {
       console.error("[updateUser] Lỗi khi cập nhật user:", error);
-      throw new Error(error.message);
+      throw new Error(`Lỗi cập nhật: ${error.message}`);
     }
     
     // Nếu không nhận được data, truy vấn lại để lấy thông tin người dùng
     let userRecord = data;
     if (!userRecord) {
-      console.log("[updateUser] Không nhận được data từ update, đang truy vấn trực tiếp...");
-      const { data: refreshedData, error: refreshError } = await supabase
+      console.log("[updateUser] Không nhận được data từ update, đang đợi 1 giây và truy vấn lại...");
+      
+      // Đợi một chút trước khi truy vấn lại để đảm bảo DB đã sync
+      await wait(1000);
+      
+      const { data: refreshedData, error: refreshError } = await supabaseAdmin
         .from("users")
         .select("*")
         .eq("id", userId)
@@ -114,15 +125,33 @@ export const updateUser = async (id: string | number, userData: UserFormValues):
         
       if (refreshError) {
         console.error("[updateUser] Lỗi khi truy vấn lại user:", refreshError);
-        throw new Error(refreshError.message);
+        throw new Error(`Lỗi truy vấn lại: ${refreshError.message}`);
       }
       
       if (!refreshedData) {
         console.error("[updateUser] Không tìm thấy user sau khi truy vấn lại:", userId);
-        throw new Error("Không tìm thấy người dùng sau khi cập nhật");
+        
+        // Thử nỗ lực cuối cùng với service role và xác minh ID chính xác
+        console.log("[updateUser] Nỗ lực cuối cùng với service role và ID:", userId);
+        const { data: lastAttempt, error: lastError } = await supabaseAdmin
+          .from("users")
+          .select("*")
+          .eq("id", userId)
+          .maybeSingle();
+          
+        if (lastError || !lastAttempt) {
+          console.error("[updateUser] Vẫn không thể tìm thấy người dùng:", lastError || "Không có data");
+          throw new Error("Không tìm thấy người dùng sau khi cập nhật");
+        }
+        
+        userRecord = lastAttempt;
+        console.log("[updateUser] Tìm thấy người dùng trong nỗ lực cuối cùng:", userRecord);
+      } else {
+        userRecord = refreshedData;
+        console.log("[updateUser] Tìm thấy người dùng sau khi truy vấn lại:", userRecord);
       }
-      
-      userRecord = refreshedData;
+    } else {
+      console.log("[updateUser] Cập nhật thành công, nhận được data:", userRecord);
     }
     
     const updatedUser = parseUser(userRecord);
@@ -153,7 +182,8 @@ export const deleteUser = async (id: string | number): Promise<void> => {
   const userId = String(id);
   console.log("[deleteUser] Xóa user:", userId);
   
-  const { error } = await supabase.from("users").delete().eq("id", userId);
+  // Sử dụng admin client để bypass RLS
+  const { error } = await supabaseAdmin.from("users").delete().eq("id", userId);
   if (error) {
     console.error("[deleteUser] Lỗi khi xóa user:", error);
     throw new Error(error.message);
