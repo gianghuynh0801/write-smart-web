@@ -57,17 +57,52 @@ Deno.serve(async (req) => {
     console.log('[update-user] Đang kiểm tra quyền admin cho user:', caller.id)
     
     try {
-      const { data: isAdmin, error: adminCheckError } = await supabaseAdmin.rpc('is_admin', { uid: caller.id })
+      // Kiểm tra từ nhiều nguồn để đảm bảo
       
-      if (adminCheckError) {
-        console.error('[update-user] Lỗi khi kiểm tra quyền admin:', adminCheckError)
-        return standardResponse(
-          null,
-          `Lỗi khi kiểm tra quyền quản trị: ${adminCheckError.message}`,
-          403
-        )
+      // 1. Kiểm tra từ RPC function is_admin
+      const { data: isAdmin, error: rpcError } = await supabaseAdmin.rpc('is_admin', { uid: caller.id })
+      
+      if (!rpcError && isAdmin === true) {
+        console.log('[update-user] Xác nhận quyền admin từ RPC');
+      } else {
+        console.log('[update-user] Kiểm tra RPC không thành công, thử phương thức khác');
+        
+        // 2. Kiểm tra từ bảng user_roles
+        const { data: roleData, error: roleError } = await supabaseAdmin
+          .from('user_roles')
+          .select('*')
+          .eq('user_id', caller.id)
+          .eq('role', 'admin')
+          .single()
+        
+        if (!roleError && roleData) {
+          console.log('[update-user] Xác nhận quyền admin từ user_roles');
+          isAdmin = true;
+        } else {
+          console.log('[update-user] Kiểm tra user_roles không thành công, thử phương thức cuối');
+          
+          // 3. Kiểm tra từ trường role trong bảng users
+          const { data: userData, error: userError } = await supabaseAdmin
+            .from('users')
+            .select('role')
+            .eq('id', caller.id)
+            .single()
+          
+          if (!userError && userData?.role === 'admin') {
+            console.log('[update-user] Xác nhận quyền admin từ users table');
+            isAdmin = true;
+          } else {
+            console.log('[update-user] Người dùng không có quyền admin');
+            return standardResponse(
+              null,
+              'Bạn không có quyền thực hiện thao tác này',
+              403
+            );
+          }
+        }
       }
       
+      // Nếu không có quyền admin sau khi kiểm tra tất cả các nguồn
       if (!isAdmin) {
         console.error('[update-user] Người dùng không có quyền admin:', caller.id)
         return standardResponse(

@@ -109,8 +109,8 @@ export const useUserList = () => {
     queryKey: ['users', currentPage, pageSize, status, searchTerm],
     queryFn: () => fetchUsers({ page: currentPage, pageSize, status, searchTerm }),
     retry: (failureCount, error) => {
-      // Custom retry logic based on error type
-      if (authService.isAuthError(error) && failureCount < 2) {
+      // Thử lại tối đa 3 lần nếu là lỗi xác thực
+      if (authService.isAuthError(error) && failureCount < 3) {
         console.log(`Thử lại lần ${failureCount + 1} sau lỗi xác thực`);
         return true;
       }
@@ -121,11 +121,37 @@ export const useUserList = () => {
         console.error("Lỗi khi tải danh sách người dùng:", err);
         
         if (isMounted.current) {
-          toast({
-            title: "Lỗi",
-            description: err instanceof Error ? err.message : "Không thể tải danh sách người dùng",
-            variant: "destructive"
-          });
+          // Hiển thị thông báo lỗi chi tiết hơn
+          if (err instanceof AuthError) {
+            switch (err.type) {
+              case AuthErrorType.TOKEN_EXPIRED:
+                toast({
+                  title: "Phiên làm việc hết hạn",
+                  description: "Vui lòng đăng nhập lại để tiếp tục.",
+                  variant: "destructive"
+                });
+                break;
+              case AuthErrorType.PERMISSION_DENIED:
+                toast({
+                  title: "Không có quyền truy cập",
+                  description: "Bạn không có quyền thực hiện thao tác này.",
+                  variant: "destructive"
+                });
+                break;
+              default:
+                toast({
+                  title: "Lỗi xác thực",
+                  description: err.message,
+                  variant: "destructive"
+                });
+            }
+          } else {
+            toast({
+              title: "Lỗi",
+              description: err.message || "Không thể tải danh sách người dùng",
+              variant: "destructive"
+            });
+          }
         }
       }
     }

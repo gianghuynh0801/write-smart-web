@@ -1,4 +1,3 @@
-
 import { tokenManager } from "@/utils/tokenManager";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -48,6 +47,7 @@ class AuthService {
   public async getAdminToken(forceRefresh = false): Promise<string> {
     try {
       console.log("[AuthService] Đang lấy admin token...");
+
       // Nếu yêu cầu làm mới token
       if (forceRefresh) {
         console.log("[AuthService] Làm mới token theo yêu cầu");
