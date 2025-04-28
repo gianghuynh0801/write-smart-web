@@ -29,7 +29,6 @@ const AdminUsers = () => {
     addCreditsDialogOpen,
     userDialogOpen,
     editUserId,
-    loadUsers,
     refreshUsers,
     handleSearch,
     handleStatusChange,
@@ -48,8 +47,8 @@ const AdminUsers = () => {
   } = useUserManagement();
 
   useEffect(() => {
-    loadUsers();
-  }, [loadUsers]);
+    refreshUsers();
+  }, [refreshUsers]);
 
   const totalPages = Math.ceil(totalUsers / pageSize);
 

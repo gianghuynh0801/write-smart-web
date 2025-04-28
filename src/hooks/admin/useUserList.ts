@@ -48,13 +48,15 @@ export const useUserList = () => {
     queryKey: ['users', currentPage, pageSize, status, searchTerm],
     queryFn: () => fetchUsers({ page: currentPage, pageSize, status, searchTerm }),
     retry: 2,
-    onError: (err) => {
-      console.error("Lỗi khi tải danh sách người dùng:", err);
-      toast({
-        title: "Lỗi",
-        description: err instanceof Error ? err.message : "Không thể tải danh sách người dùng",
-        variant: "destructive"
-      });
+    meta: {
+      onError: (err: Error) => {
+        console.error("Lỗi khi tải danh sách người dùng:", err);
+        toast({
+          title: "Lỗi",
+          description: err instanceof Error ? err.message : "Không thể tải danh sách người dùng",
+          variant: "destructive"
+        });
+      }
     }
   });
 
