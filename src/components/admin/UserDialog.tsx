@@ -13,6 +13,7 @@ import { useUserDialog } from "./users/hooks/useUserDialog";
 import { UserDialogError } from "./users/components/UserDialogError";
 import { UserDialogLoading } from "./users/components/UserDialogLoading";
 import { useToast } from "@/hooks/use-toast";
+import { updateUser, createUser } from "@/api/user/userMutations";
 
 interface UserDialogProps {
   isOpen: boolean;
@@ -59,7 +60,17 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
     setIsSubmitting(true);
 
     try {
-      console.log("Đang lưu thông tin user:", data);
+      console.log("[UserDialog] Đang lưu thông tin user:", data);
+      
+      if (userId) {
+        // Cập nhật người dùng hiện có
+        await updateUser(userId, data);
+        console.log("[UserDialog] Đã cập nhật thông tin người dùng thành công");
+      } else {
+        // Tạo người dùng mới
+        await createUser(data);
+        console.log("[UserDialog] Đã tạo người dùng mới thành công");
+      }
       
       if (isMounted.current) {
         toast({
@@ -70,12 +81,13 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
       
       if (isMounted.current) {
         onClose();
+        // Đảm bảo onUserSaved được gọi sau khi đã đóng dialog
         setTimeout(() => {
           onUserSaved();
         }, 300);
       }
     } catch (error: any) {
-      console.error("Lỗi khi lưu thông tin user:", error);
+      console.error("[UserDialog] Lỗi khi lưu thông tin user:", error);
       
       if (isMounted.current) {
         toast({

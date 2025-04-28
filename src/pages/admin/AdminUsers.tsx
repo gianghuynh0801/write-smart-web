@@ -30,6 +30,7 @@ const AdminUsers = () => {
     userDialogOpen,
     editUserId,
     loadUsers,
+    refreshUsers,
     handleSearch,
     handleStatusChange,
     handlePageChange,
@@ -52,6 +53,11 @@ const AdminUsers = () => {
 
   const totalPages = Math.ceil(totalUsers / pageSize);
 
+  const handleRefresh = () => {
+    console.log("[AdminUsers] Đang làm mới dữ liệu...");
+    refreshUsers();
+  };
+
   return (
     <div className="space-y-6">
       <AdminUsersHeader onAddUser={handleAddUser} />
@@ -66,12 +72,10 @@ const AdminUsers = () => {
               </CardDescription>
             </div>
             <div className="flex gap-2">
-              {isError && (
-                <Button variant="outline" size="sm" onClick={loadUsers}>
-                  <RefreshCcw className="mr-2 h-4 w-4" />
-                  Thử lại
-                </Button>
-              )}
+              <Button variant="outline" size="sm" onClick={handleRefresh}>
+                <RefreshCcw className="mr-2 h-4 w-4" />
+                Làm mới
+              </Button>
               <Button variant="outline" size="sm">
                 <Download className="mr-2 h-4 w-4" />
                 Xuất CSV
@@ -135,7 +139,7 @@ const AdminUsers = () => {
         isOpen={userDialogOpen}
         onClose={() => setUserDialogOpen(false)}
         userId={editUserId}
-        onUserSaved={loadUsers}
+        onUserSaved={refreshUsers}
       />
     </div>
   );

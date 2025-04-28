@@ -204,7 +204,7 @@ Deno.serve(async (req) => {
           console.log('[update-user] Hủy gói đăng ký cũ của user:', id)
           const { error: cancelError } = await supabaseAdmin
             .from('user_subscriptions')
-            .update({ status: 'cancelled' })
+            .update({ status: 'inactive' })
             .eq('user_id', id)
             .eq('status', 'active')
   
@@ -239,6 +239,22 @@ Deno.serve(async (req) => {
               )
             }
           }
+
+          // Cập nhật thông tin user với subscription mới
+          console.log('[update-user] Cập nhật thông tin subscription trong bảng users')
+          const { error: updateUserSubError } = await supabaseAdmin
+            .from('users')
+            .update({ subscription: userData.subscription })
+            .eq('id', id)
+            
+          if (updateUserSubError) {
+            console.error('[update-user] Lỗi khi cập nhật subscription trong users:', updateUserSubError)
+            return standardResponse(
+              null,
+              `Lỗi khi cập nhật subscription: ${updateUserSubError.message}`,
+              500
+            )
+          }
         }
       } catch (subProcessError) {
         console.error('[update-user] Lỗi khi xử lý gói đăng ký:', subProcessError)
@@ -250,10 +266,27 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Lấy thông tin đầy đủ của user sau khi cập nhật
+    console.log('[update-user] Lấy thông tin user sau khi cập nhật')
+    const { data: finalUserData, error: finalUserError } = await supabaseAdmin
+      .from('users')
+      .select('*')
+      .eq('id', id)
+      .single()
+      
+    if (finalUserError) {
+      console.error('[update-user] Lỗi khi lấy thông tin cuối cùng của user:', finalUserError)
+      return standardResponse(
+        updatedUser,
+        null,
+        200
+      )
+    }
+
     // Trả về kết quả thành công
     console.log('[update-user] Cập nhật thành công, đang trả về kết quả')
     return standardResponse(
-      { ...updatedUser, subscription: userData.subscription },
+      finalUserData,
       null,
       200
     )

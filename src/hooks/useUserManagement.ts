@@ -16,6 +16,7 @@ export const useUserManagement = () => {
     currentPage,
     pageSize,
     loadUsers,
+    refreshUsers,
     handleSearch,
     handleStatusChange,
     handlePageChange,
@@ -38,7 +39,7 @@ export const useUserManagement = () => {
     setDeleteDialogOpen,
     setAddCreditsDialogOpen,
     setUserDialogOpen
-  } = useUserActions(loadUsers);
+  } = useUserActions(refreshUsers); // Sử dụng refreshUsers thay vì loadUsers
 
   const { getRoleColor } = useUserStyles();
 
@@ -58,6 +59,7 @@ export const useUserManagement = () => {
     currentPage,
     pageSize,
     loadUsers,
+    refreshUsers,
     handleSearch,
     handleStatusChange,
     handlePageChange,

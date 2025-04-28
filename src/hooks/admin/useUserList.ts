@@ -1,5 +1,5 @@
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { fetchUsers } from "@/api/userService";
 import { User } from "@/types/user";
@@ -13,6 +13,7 @@ export const useUserList = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [status, setStatus] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
+  const [lastUpdate, setLastUpdate] = useState(Date.now()); // Thêm state để theo dõi thời điểm cập nhật cuối
   const pageSize = 5;
   const { toast } = useToast();
 
@@ -50,6 +51,16 @@ export const useUserList = () => {
     }
   }, [currentPage, pageSize, status, searchTerm, toast]);
 
+  const refreshUsers = useCallback(() => {
+    console.log("[useUserList] Refresh danh sách người dùng");
+    setLastUpdate(Date.now()); // Cập nhật thời điểm cập nhật cuối
+  }, []);
+
+  // Đảm bảo tải lại dữ liệu khi lastUpdate thay đổi
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers, lastUpdate]);
+
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
     setCurrentPage(1);
@@ -75,6 +86,7 @@ export const useUserList = () => {
     currentPage,
     pageSize,
     loadUsers,
+    refreshUsers,
     handleSearch,
     handleStatusChange,
     handlePageChange,

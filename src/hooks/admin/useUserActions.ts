@@ -30,13 +30,17 @@ export const useUserActions = (onUserUpdated: () => void) => {
         title: "Đã xóa người dùng",
         description: `Người dùng ${selectedUser.name} đã được xóa thành công`
       });
+      // Đảm bảo UI được cập nhật sau khi xóa
       onUserUpdated();
     } catch (error) {
+      console.error("[useUserActions] Lỗi khi xóa người dùng:", error);
       toast({
         title: "Lỗi",
         description: "Không thể xóa người dùng",
         variant: "destructive"
       });
+    } finally {
+      setDeleteDialogOpen(false);
     }
   };
 
@@ -58,6 +62,7 @@ export const useUserActions = (onUserUpdated: () => void) => {
         description: `Đã thêm ${amount} tín dụng cho người dùng ${selectedUser.name}`
       });
       
+      // Đảm bảo UI được cập nhật sau khi thêm tín dụng
       onUserUpdated();
     } catch (error) {
       console.error("[useUserActions] Lỗi khi thêm tín dụng:", error);
@@ -68,10 +73,12 @@ export const useUserActions = (onUserUpdated: () => void) => {
       });
     } finally {
       setIsCreditUpdating(false);
+      setAddCreditsDialogOpen(false);
     }
   };
 
   const handleEditUser = (userId: string | number) => {
+    console.log("[useUserActions] Mở dialog chỉnh sửa cho user:", userId);
     setEditUserId(userId);
     setUserDialogOpen(true);
   };
@@ -100,7 +107,7 @@ export const useUserActions = (onUserUpdated: () => void) => {
         description: `Email xác thực đã được gửi đến ${user.email}`
       });
     } catch (error) {
-      console.error("Error sending verification email:", error);
+      console.error("[useUserActions] Lỗi khi gửi email xác thực:", error);
       toast({
         title: "Lỗi",
         description: "Không thể gửi email xác thực",

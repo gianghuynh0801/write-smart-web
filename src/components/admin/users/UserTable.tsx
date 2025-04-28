@@ -70,6 +70,67 @@ const UserTable = ({
     };
   }, [users]);
 
+  // Thiết lập theo dõi thay đổi gói đăng ký
+  useEffect(() => {
+    console.log("[UserTable] Thiết lập theo dõi realtime cho gói đăng ký");
+    
+    const channel = supabase
+      .channel('subscription-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // INSERT, UPDATE, DELETE
+          schema: 'public',
+          table: 'user_subscriptions'
+        },
+        async (payload) => {
+          console.log("[UserTable] Nhận thay đổi realtime cho gói đăng ký:", payload);
+          
+          // Khi có thay đổi gói đăng ký, cập nhật người dùng tương ứng
+          if (payload.new && payload.new.user_id) {
+            const userId = payload.new.user_id;
+            const userToUpdate = users.find(u => u.id === userId);
+            
+            if (userToUpdate) {
+              try {
+                console.log("[UserTable] Đang cập nhật thông tin gói đăng ký cho user:", userId);
+                
+                // Lấy thông tin gói đăng ký từ subscription_id
+                const { data: subscriptionData } = await supabase
+                  .from('subscriptions')
+                  .select('name')
+                  .eq('id', payload.new.subscription_id)
+                  .single();
+                  
+                if (subscriptionData) {
+                  console.log("[UserTable] Đã tìm thấy gói đăng ký:", subscriptionData.name);
+                  
+                  // Cập nhật thông tin người dùng với gói đăng ký mới
+                  setRealtimeUsers(prev => ({
+                    ...prev,
+                    [userId]: {
+                      ...(prev[userId] || userToUpdate),
+                      subscription: subscriptionData.name
+                    }
+                  }));
+                }
+              } catch (error) {
+                console.error("[UserTable] Lỗi khi cập nhật thông tin gói đăng ký:", error);
+              }
+            }
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log("[UserTable] Trạng thái đăng ký realtime cho gói đăng ký:", status);
+      });
+
+    return () => {
+      console.log("[UserTable] Hủy đăng ký realtime cho gói đăng ký");
+      supabase.removeChannel(channel);
+    };
+  }, [users]);
+
   // Kết hợp dữ liệu người dùng với cập nhật realtime
   const displayUsers = users.map(user => {
     // Nếu có dữ liệu thời gian thực cho người dùng này, sử dụng nó
