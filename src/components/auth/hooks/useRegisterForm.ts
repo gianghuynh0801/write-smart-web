@@ -36,6 +36,7 @@ export const useRegisterForm = () => {
     }
     
     setIsLoading(true);
+    let userId: string | null = null;
     
     try {
       // Kiểm tra email trước khi đăng ký
@@ -47,22 +48,37 @@ export const useRegisterForm = () => {
       }
 
       // Đăng ký tài khoản mới
-      console.log("Tiến hành đăng ký người dùng mới");
-      const userId = await registerUser(formData);
-      if (!userId) {
-        throw new Error("Không thể tạo tài khoản. Vui lòng thử lại sau.");
+      try {
+        console.log("Tiến hành đăng ký người dùng mới");
+        userId = await registerUser(formData);
+        if (!userId) {
+          throw new Error("Không thể tạo tài khoản. Vui lòng thử lại sau.");
+        }
+        console.log("Đã tạo người dùng thành công với ID:", userId);
+      } catch (registerError: any) {
+        console.error("Lỗi đăng ký người dùng:", registerError);
+        if (registerError.message?.includes("23505") || registerError.message?.includes("đã được sử dụng")) {
+          throw new Error("Email này đã được sử dụng. Vui lòng chọn email khác hoặc đăng nhập.");
+        }
+        throw registerError;
       }
       
       // Thử đồng bộ dữ liệu người dùng
-      console.log("Đồng bộ dữ liệu người dùng:", userId);
       let syncSuccess = false;
       
       try {
+        console.log("Đồng bộ dữ liệu người dùng:", userId);
         await syncUser(userId, formData.email, formData.name);
         syncSuccess = true;
-      } catch (syncError) {
+        console.log("Đồng bộ dữ liệu người dùng thành công");
+      } catch (syncError: any) {
         console.error("Không thể đồng bộ dữ liệu người dùng:", syncError);
-        // Vẫn tiếp tục quy trình ngay cả khi không thể đồng bộ
+        // Không ném lỗi ở đây, vẫn tiếp tục quy trình ngay cả khi không thể đồng bộ
+        toast({
+          title: "Cảnh báo",
+          description: "Đã tạo tài khoản nhưng gặp vấn đề khi thiết lập dữ liệu. Điều này sẽ không ảnh hưởng đến việc sử dụng tài khoản của bạn.",
+          variant: "default"
+        });
       }
       
       if (syncSuccess) {
@@ -77,21 +93,30 @@ export const useRegisterForm = () => {
       }
       
       // Đăng xuất người dùng sau khi đăng ký
-      await supabase.auth.signOut();
-      console.log("Đã đăng xuất người dùng sau khi đăng ký");
+      try {
+        await supabase.auth.signOut();
+        console.log("Đã đăng xuất người dùng sau khi đăng ký");
+      } catch (signOutError) {
+        console.error("Lỗi đăng xuất:", signOutError);
+        // Bỏ qua lỗi này
+      }
       
       // Gửi email xác thực
       try {
         console.log("Gửi email xác thực cho:", formData.email);
-        await sendVerificationEmail({
-          email: formData.email,
-          name: formData.name,
-          userId: userId,
-          type: "email_verification"
-        });
-        
-        console.log("Đã gửi email xác thực thành công");
-        setShowVerificationDialog(true);
+        if (userId) {
+          await sendVerificationEmail({
+            email: formData.email,
+            name: formData.name,
+            userId: userId,
+            type: "email_verification"
+          });
+          
+          console.log("Đã gửi email xác thực thành công");
+          setShowVerificationDialog(true);
+        } else {
+          throw new Error("Không có ID người dùng để gửi email xác thực");
+        }
       } catch (emailError: any) {
         console.error("Lỗi gửi email xác thực:", emailError);
         toast({
@@ -104,8 +129,13 @@ export const useRegisterForm = () => {
     } catch (error: any) {
       console.error("Lỗi đăng ký:", error);
       
-      if (error.code === "23505" || error.message?.includes("users_email_key")) {
+      // Xử lý lỗi cụ thể
+      if (error.message?.includes("duplicate") || 
+          error.message?.includes("users_email_key") || 
+          error.message?.includes("đã được sử dụng")) {
         setError("Email này đã được sử dụng. Vui lòng chọn email khác hoặc đăng nhập.");
+      } else if (error.message?.includes("URL")) {
+        setError("Lỗi cấu hình URL xác thực. Vui lòng liên hệ admin.");
       } else {
         setError(error.message || "Đã có lỗi xảy ra khi đăng ký. Vui lòng thử lại sau.");
       }
@@ -115,6 +145,12 @@ export const useRegisterForm = () => {
         description: error.message || "Đã có lỗi xảy ra khi đăng ký. Vui lòng thử lại sau.",
         variant: "destructive"
       });
+      
+      // Nếu đã tạo user nhưng gặp lỗi trong các bước sau
+      if (userId) {
+        console.log("Người dùng đã được tạo nhưng gặp lỗi trong quá trình hoàn tất đăng ký.");
+        // Có thể thêm logic xử lý ở đây như báo admin hoặc đánh dấu để làm sạch sau
+      }
     } finally {
       setIsLoading(false);
     }

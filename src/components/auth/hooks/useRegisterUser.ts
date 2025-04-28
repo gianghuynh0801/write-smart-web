@@ -44,7 +44,7 @@ export const useRegisterUser = () => {
       console.log("Đăng ký thành công, ID người dùng:", data.user.id);
       
       // Đợi lâu hơn để đảm bảo trigger đã chạy xong trong database
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise(resolve => setTimeout(resolve, 3000));
       
       return data.user.id;
     } catch (error) {
@@ -59,7 +59,7 @@ export const useRegisterUser = () => {
       
       // Thêm cơ chế thử lại
       let attempts = 0;
-      const maxAttempts = 3;
+      const maxAttempts = 5; // Tăng số lần thử
       let lastError: any = null;
       
       while (attempts < maxAttempts) {
@@ -80,7 +80,7 @@ export const useRegisterUser = () => {
             console.error(`Lỗi đồng bộ người dùng (lần thử ${attempts}):`, error);
             lastError = error;
             // Đợi tăng dần trước khi thử lại
-            await new Promise(resolve => setTimeout(resolve, attempts * 1000));
+            await new Promise(resolve => setTimeout(resolve, attempts * 1500));
             continue;
           }
           
@@ -94,7 +94,7 @@ export const useRegisterUser = () => {
           
           if (attempts < maxAttempts) {
             // Đợi tăng dần trước khi thử lại
-            await new Promise(resolve => setTimeout(resolve, attempts * 1500));
+            await new Promise(resolve => setTimeout(resolve, attempts * 2000));
           } else {
             throw lastError;
           }
@@ -112,11 +112,11 @@ export const useRegisterUser = () => {
   const verifyUserCreation = async (userId: string) => {
     try {
       // Thực hiện kiểm tra với timeout và số lần thử tăng lên
-      let retries = 5; // Tăng số lần thử
-      let delay = 1500;  // Tăng thời gian delay ban đầu
+      let retries = 7; // Tăng số lần thử
+      let delay = 2000;  // Tăng thời gian delay ban đầu
       
       while (retries > 0) {
-        console.log(`Kiểm tra người dùng lần ${6-retries}/5...`);
+        console.log(`Kiểm tra người dùng lần ${8-retries}/7...`);
         
         const { data: user, error } = await supabase
           .from('users')
