@@ -1,10 +1,11 @@
 
-import { User } from "@/types/user";
+import React from "react";
 import { TableCell, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader } from "lucide-react";
+import UserBadge from "./UserBadge";
+import UserStatusBadge from "./UserStatusBadge";
 import UserActions from "../UserActions";
+import { User } from "@/types/user";
+import { formatDate } from "@/utils/formatDate";
 
 interface UserTableRowProps {
   user: User;
@@ -23,50 +24,56 @@ export const UserTableRow = ({
   onEditUser,
   onAddCredits,
   onDeleteUser,
-  onResendVerification
+  onResendVerification,
 }: UserTableRowProps) => {
+  // Format registration date
+  const formattedDate = formatDate(user.registeredAt);
+
+  // Get dynamic class for credit cell
+  const getCreditCellClass = () => {
+    if (isCreditUpdating) {
+      return "animate-pulse bg-muted";
+    }
+    return "";
+  };
+
   return (
     <TableRow>
-      <TableCell>
-        <div className="flex items-center gap-3">
-          <Avatar>
-            <AvatarImage src={user.avatar} alt={user.name} />
-            <AvatarFallback>{user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
-          </Avatar>
-          <div>
-            <div className="font-medium">{user.name}</div>
-            <div className="text-sm text-gray-500">{user.email}</div>
-          </div>
+      <TableCell className="font-medium">
+        <div className="flex flex-col">
+          <span className="text-sm font-medium">{user.name}</span>
+          <span className="text-xs text-gray-500">{user.email}</span>
         </div>
       </TableCell>
-      <TableCell>
-        <div className="flex items-center gap-2">
-          <span>{user.credits}</span>
-          {isCreditUpdating && <Loader className="h-3 w-3 animate-spin text-primary" />}
-        </div>
-      </TableCell>
-      <TableCell>{user.subscription || "Không có"}</TableCell>
-      <TableCell>
-        <Badge variant={user.status === "active" ? "default" : "secondary"}>
-          {user.status === "active" ? "Hoạt động" : "Không hoạt động"}
-        </Badge>
+      <TableCell className={getCreditCellClass()}>
+        {user.credits}
       </TableCell>
       <TableCell>
-        <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${getRoleColor(user.role)}`}>
-          {user.role === "admin" ? "Quản trị viên" : 
-            user.role === "editor" ? "Biên tập viên" : "Người dùng"}
-        </span>
+        {user.subscription || "Không có"}
       </TableCell>
-      <TableCell>{new Date(user.registeredAt).toLocaleDateString("vi-VN")}</TableCell>
+      <TableCell>
+        <UserStatusBadge status={user.status} />
+        {user.email_verified === false && (
+          <span className="ml-2 text-xs bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">
+            Chưa xác thực
+          </span>
+        )}
+      </TableCell>
+      <TableCell>
+        <UserBadge role={user.role} color={getRoleColor(user.role)} />
+      </TableCell>
+      <TableCell className="text-muted-foreground text-sm">
+        {formattedDate}
+      </TableCell>
       <TableCell className="text-right">
         <UserActions
           user={user}
           onEditUser={onEditUser}
           onAddCredits={onAddCredits}
           onDeleteUser={onDeleteUser}
-          onResendVerification={onResendVerification}
+          onResendVerification={user.email_verified === false ? onResendVerification : undefined}
         />
       </TableCell>
     </TableRow>
   );
-};
+}

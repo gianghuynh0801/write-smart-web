@@ -1,26 +1,45 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 export function useEmailVerification() {
   const [unconfirmedEmail, setUnconfirmedEmail] = useState<string>("");
-  const [isEmailVerificationRequired, setIsEmailVerificationRequired] = useState<boolean>(true);
+  const [isEmailVerificationRequired, setIsEmailVerificationRequired] = useState<boolean>(false); // Mặc định là false
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
   // Hàm để lấy cấu hình xác thực email
   const fetchEmailVerificationConfig = async () => {
-    const { data, error } = await supabase
-      .from('system_configurations')
-      .select('value')
-      .eq('key', 'require_email_verification')
-      .maybeSingle();
-    
-    if (!error && data) {
-      setIsEmailVerificationRequired(data.value === 'true');
+    try {
+      const { data, error } = await supabase
+        .from('system_configurations')
+        .select('value')
+        .eq('key', 'require_email_verification')
+        .maybeSingle();
+      
+      if (error) {
+        console.error("Lỗi khi lấy cấu hình xác thực email:", error);
+        // Nếu không có cấu hình, mặc định là không yêu cầu xác thực email
+        setIsEmailVerificationRequired(false);
+        return;
+      }
+      
+      // Nếu có dữ liệu thì sử dụng, nếu không thì mặc định là false
+      setIsEmailVerificationRequired(data?.value === 'true');
+      
+      console.log("Cấu hình xác thực email:", data?.value, "Yêu cầu xác thực:", data?.value === 'true');
+    } catch (error) {
+      console.error("Lỗi không xác định khi lấy cấu hình:", error);
+      // Trong trường hợp lỗi, mặc định là không yêu cầu xác thực email
+      setIsEmailVerificationRequired(false);
     }
   };
+
+  // Gọi fetchEmailVerificationConfig khi component được mount
+  useEffect(() => {
+    fetchEmailVerificationConfig();
+  }, []);
 
   // Gửi lại email xác thực
   const handleResendVerification = async () => {

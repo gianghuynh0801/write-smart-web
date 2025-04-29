@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -7,66 +7,86 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 export const ArticleCostCard = () => {
-  const [cost, setCost] = useState<number>(1);
+  const [cost, setCost] = useState<string>("1");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
+  // Tải cấu hình hiện tại khi component được mount
   useEffect(() => {
-    const fetchCost = async () => {
-      const { data, error } = await supabase
-        .from("system_configurations")
-        .select("value")
-        .eq("key", "article_cost")
-        .maybeSingle();
-
-      if (!error && data) {
-        setCost(parseInt(data.value) || 1);
+    const loadConfig = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("system_configurations")
+          .select("value")
+          .eq("key", "article_cost")
+          .single();
+          
+        if (error) {
+          console.error("Lỗi khi tải cấu hình chi phí bài viết:", error);
+          return;
+        }
+        
+        if (data) {
+          setCost(data.value);
+        }
+      } catch (error) {
+        console.error("Lỗi không xác định khi tải cấu hình:", error);
       }
     };
-
-    fetchCost();
+    
+    loadConfig();
   }, []);
 
   const handleSave = async () => {
     setIsLoading(true);
+    
     try {
       // Kiểm tra xem cấu hình đã tồn tại chưa
-      const { data: existingConfig, error: checkError } = await supabase
-        .from('system_configurations')
-        .select('id')
-        .eq('key', 'article_cost')
+      const { data, error: selectError } = await supabase
+        .from("system_configurations")
+        .select("id")
+        .eq("key", "article_cost")
         .maybeSingle();
-
-      if (checkError && checkError.code !== 'PGRST116') {
-        throw checkError;
+      
+      if (selectError) {
+        console.error("Lỗi khi kiểm tra cấu hình:", selectError);
+        toast({
+          title: "Lỗi",
+          description: "Không thể kiểm tra cấu hình hiện tại",
+          variant: "destructive",
+        });
+        return;
       }
-
+      
       let result;
-      if (existingConfig?.id) {
-        // Cập nhật nếu đã tồn tại
+      
+      if (data) {
+        // Cập nhật cấu hình hiện có
         result = await supabase
-          .from('system_configurations')
-          .update({ value: cost.toString() })
-          .eq('id', existingConfig.id);
+          .from("system_configurations")
+          .update({ value: cost })
+          .eq("id", data.id);
       } else {
-        // Thêm mới nếu chưa tồn tại
+        // Thêm cấu hình mới
         result = await supabase
-          .from('system_configurations')
-          .insert([{ key: 'article_cost', value: cost.toString() }]);
+          .from("system_configurations")
+          .insert([{ key: "article_cost", value: cost }]);
       }
-
-      if (result.error) throw result.error;
-
+      
+      if (result.error) {
+        throw result.error;
+      }
+      
       toast({
-        title: "Đã lưu cấu hình",
-        description: `Đã cập nhật giá credit cho mỗi bài viết: ${cost} credit`,
+        title: "Thành công",
+        description: "Đã cập nhật chi phí tín dụng cho mỗi bài viết",
       });
-    } catch (error) {
-      console.error('Lỗi khi cập nhật giá:', error);
+    } catch (error: any) {
+      console.error("Lỗi khi lưu cấu hình:", error);
       toast({
         title: "Lỗi",
-        description: "Không thể cập nhật giá credit. Vui lòng thử lại sau.",
-        variant: "destructive"
+        description: error.message || "Không thể lưu cấu hình",
+        variant: "destructive",
       });
     } finally {
       setIsLoading(false);
@@ -78,26 +98,24 @@ export const ArticleCostCard = () => {
       <CardHeader>
         <CardTitle>Chi phí bài viết</CardTitle>
         <CardDescription>
-          Cấu hình số credit cần thiết để tạo một bài viết mới
+          Đặt số tín dụng tiêu thụ cho mỗi bài viết được tạo
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex items-end gap-4">
-          <div className="flex-1">
-            <Input
-              type="number"
-              min="1"
-              value={cost}
-              onChange={(e) => setCost(parseInt(e.target.value) || 1)}
-            />
-          </div>
-          <Button 
-            onClick={handleSave}
-            disabled={isLoading}
-          >
-            Lưu cấu hình
-          </Button>
+        <div className="flex items-center space-x-2">
+          <Input
+            type="number"
+            min="1"
+            step="1"
+            value={cost}
+            onChange={(e) => setCost(e.target.value)}
+            className="w-24"
+          />
+          <span className="text-sm text-muted-foreground">tín dụng</span>
         </div>
+        <Button onClick={handleSave} disabled={isLoading}>
+          {isLoading ? "Đang lưu..." : "Lưu thay đổi"}
+        </Button>
       </CardContent>
     </Card>
   );

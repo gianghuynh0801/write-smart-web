@@ -1,167 +1,123 @@
-import { useState, useRef } from "react";
-import { useToast } from "@/hooks/use-toast";
-import { User } from "@/types/user";
-import { deleteUser } from "@/api/user/userMutations";
-import { authService, isAuthError } from "@/services/auth";
 
-export const useUserActions = (refreshUsers: () => Promise<any>) => {
+import { useState } from "react";
+import { User } from "@/types/user";
+import { useToast } from "@/hooks/use-toast";
+import { deleteUser, addUserCredits } from "@/api/userService";
+import { useEmailVerification } from "@/hooks/useEmailVerification";
+
+export const useUserActions = (refreshUsers: () => Promise<void>) => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [addCreditsDialogOpen, setAddCreditsDialogOpen] = useState(false);
   const [userDialogOpen, setUserDialogOpen] = useState(false);
-  const [editUserId, setEditUserId] = useState<string | number | undefined>();
+  const [editUserId, setEditUserId] = useState<string | number | undefined>(undefined);
   const [isCreditUpdating, setIsCreditUpdating] = useState(false);
+
   const { toast } = useToast();
-  const isMounted = useRef(true);
-  
-  const [isDeleting, setIsDeleting] = useState(false);
+  const { sendVerificationEmail } = useEmailVerification();
 
-  const handleDeleteUser = (user: User) => {
-    setSelectedUser(user);
-    setDeleteDialogOpen(true);
-  };
-
-  const confirmDeleteUser = async () => {
-    if (!selectedUser || isDeleting) return;
-
-    try {
-      setIsDeleting(true);
-      console.log("Đang xóa người dùng:", selectedUser.id);
-      
-      await authService.getAdminToken();
-      
-      await deleteUser(selectedUser.id);
-      
-      if (isMounted.current) {
-        toast({
-          title: "Thành công",
-          description: `Đã xóa người dùng ${selectedUser.name}`,
-        });
-        
-        setDeleteDialogOpen(false);
-        refreshUsers();
-      }
-    } catch (error: any) {
-      console.error("Lỗi khi xóa người dùng:", error);
-      
-      if (isAuthError(error)) {
-        console.log("Phát hiện lỗi xác thực, đang thử làm mới token...");
-        
-        try {
-          const hasNewToken = await authService.handleAuthError(error);
-          
-          if (hasNewToken && selectedUser && isMounted.current) {
-            console.log("Đã làm mới token, đang thử xóa lại...");
-            
-            try {
-              await deleteUser(selectedUser.id);
-              
-              if (isMounted.current) {
-                toast({
-                  title: "Thành công",
-                  description: `Đã xóa người dùng ${selectedUser.name}`,
-                });
-                
-                setDeleteDialogOpen(false);
-                refreshUsers();
-                return;
-              }
-            } catch (retryError) {
-              console.error("Thử lại thất bại:", retryError);
-            }
-          }
-        } catch (refreshError) {
-          console.error("Lỗi khi làm mới token:", refreshError);
-        }
-      }
-      
-      if (isMounted.current) {
-        toast({
-          title: "Lỗi",
-          description: error.message || "Không thể xóa người dùng",
-          variant: "destructive",
-        });
-      }
-    } finally {
-      if (isMounted.current) {
-        setIsDeleting(false);
-      }
-    }
-  };
-
+  // Xử lý thêm tín dụng
   const handleAddCredits = (user: User) => {
     setSelectedUser(user);
     setAddCreditsDialogOpen(true);
   };
 
-  const confirmAddCredits = async (amount: number) => {
-    if (!selectedUser) return;
-
-    setIsCreditUpdating(true);
-    
-    try {
-      console.log(`Đang thêm ${amount} credits cho người dùng ${selectedUser.name}`);
-      
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      if (isMounted.current) {
-        toast({
-          title: "Thành công",
-          description: `Đã thêm ${amount} credits cho ${selectedUser.name}`,
-        });
-        
-        setAddCreditsDialogOpen(false);
-        refreshUsers();
-      }
-    } catch (error: any) {
-      console.error("Lỗi khi thêm credits:", error);
-      
-      if (isMounted.current) {
-        toast({
-          title: "Lỗi",
-          description: error.message || "Không thể thêm credits",
-          variant: "destructive",
-        });
-      }
-    } finally {
-      if (isMounted.current) {
-        setIsCreditUpdating(false);
-      }
-    }
+  // Xử lý xóa người dùng
+  const handleDeleteUser = (user: User) => {
+    setSelectedUser(user);
+    setDeleteDialogOpen(true);
   };
 
+  // Xử lý chỉnh sửa người dùng
   const handleEditUser = (userId: string | number) => {
     setEditUserId(userId);
     setUserDialogOpen(true);
   };
 
+  // Xử lý thêm người dùng mới
   const handleAddUser = () => {
     setEditUserId(undefined);
     setUserDialogOpen(true);
   };
-  
-  const handleResendVerification = async (user: User) => {
+
+  // Xác nhận xóa người dùng
+  const confirmDeleteUser = async () => {
+    if (!selectedUser) return;
+    
     try {
-      console.log("Đang gửi lại email xác thực cho:", user.email);
+      await deleteUser(selectedUser.id);
       
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      toast({
+        title: "Đã xóa người dùng",
+        description: `Đã xóa người dùng ${selectedUser.name} thành công.`,
+      });
       
-      if (isMounted.current) {
-        toast({
-          title: "Thành công",
-          description: `Đã gửi lại email xác thực cho ${user.email}`,
-        });
-      }
+      setDeleteDialogOpen(false);
+      refreshUsers();
+    } catch (error: any) {
+      console.error("Lỗi khi xóa người dùng:", error);
+      
+      toast({
+        title: "Lỗi",
+        description: error.message || "Không thể xóa người dùng.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Xác nhận thêm tín dụng
+  const confirmAddCredits = async (amount: number) => {
+    if (!selectedUser || amount <= 0) return;
+    
+    try {
+      setIsCreditUpdating(true);
+      
+      await addUserCredits(selectedUser.id, amount);
+      
+      toast({
+        title: "Đã thêm tín dụng",
+        description: `Đã thêm ${amount} tín dụng cho ${selectedUser.name}.`,
+      });
+      
+      setAddCreditsDialogOpen(false);
+      refreshUsers();
+    } catch (error: any) {
+      console.error("Lỗi khi thêm tín dụng:", error);
+      
+      toast({
+        title: "Lỗi",
+        description: error.message || "Không thể thêm tín dụng.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCreditUpdating(false);
+    }
+  };
+
+  // Gửi lại email xác thực
+  const handleResendVerification = async (user: User) => {
+    if (!user || !user.email) return;
+    
+    try {
+      await sendVerificationEmail({
+        email: user.email,
+        name: user.name,
+        userId: user.id.toString(),
+        type: "email_verification"
+      });
+      
+      toast({
+        title: "Đã gửi email xác thực",
+        description: `Đã gửi lại email xác thực cho ${user.name}.`,
+      });
     } catch (error: any) {
       console.error("Lỗi khi gửi lại email xác thực:", error);
       
-      if (isMounted.current) {
-        toast({
-          title: "Lỗi",
-          description: error.message || "Không thể gửi lại email xác thực",
-          variant: "destructive",
-        });
-      }
+      toast({
+        title: "Lỗi",
+        description: error.message || "Không thể gửi lại email xác thực.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -172,16 +128,15 @@ export const useUserActions = (refreshUsers: () => Promise<any>) => {
     userDialogOpen,
     editUserId,
     isCreditUpdating,
-    isDeleting,
     handleDeleteUser,
-    confirmDeleteUser,
     handleAddCredits,
-    confirmAddCredits,
     handleEditUser,
     handleAddUser,
     handleResendVerification,
+    confirmDeleteUser,
+    confirmAddCredits,
     setDeleteDialogOpen,
     setAddCreditsDialogOpen,
-    setUserDialogOpen,
+    setUserDialogOpen
   };
 };

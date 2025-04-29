@@ -1,147 +1,124 @@
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/auth";
-import { useUserDataRefresh } from "@/hooks/useUserDataRefresh";
-import { LOCAL_STORAGE_KEYS, setItem } from "@/utils/localStorageService";
+import { useToast } from "@/hooks/use-toast";
+import { setItem, LOCAL_STORAGE_KEYS } from "@/utils/localStorageService";
 
 export function useLoginSubmit() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [redirectInProgress, setRedirectInProgress] = useState<boolean>(false);
+  const [redirectInProgress, setRedirectInProgress] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { fetchUserDetails } = useAuth();
-  const { refreshUserData } = useUserDataRefresh();
+  const { login } = useAuth();
 
-  // Xử lý đăng nhập
   const handleLogin = async (
     email: string, 
     password: string, 
     isEmailVerificationRequired: boolean,
     setUnconfirmedEmail: (email: string) => void,
-    setRedirectInProgress: (value: boolean) => void
+    setRedirect: (value: boolean) => void
   ) => {
-    if (redirectInProgress) return;
+    if (isLoading || redirectInProgress) return;
     
-    setError(null);
     setIsLoading(true);
+    setError(null);
     
     try {
-      console.log("Login: Đang xử lý đăng nhập với email:", email);
-      const { data, error } = await supabase.auth.signInWithPassword({ 
-        email, 
-        password 
-      });
+      // Sử dụng phương thức login từ AuthContext
+      await login(email, password);
       
-      if (error) {
-        // Nếu xác thực email không bắt buộc HOẶC lỗi không phải về việc email chưa xác nhận, ném lỗi
-        if (!isEmailVerificationRequired || !error.message?.includes("Email not confirmed")) {
-          throw error;
-        }
-        
-        // Nếu email cần xác thực nhưng email chưa xác nhận,
-        // chúng ta sẽ thử đăng nhập lại với luồng xác thực tùy chỉnh
-        console.log("Email verification required but user email not confirmed. Attempting bypass...");
-        
-        // Nếu admin đã tắt tính năng xác thực email,
-        // chúng ta có thể bỏ qua lỗi này và tiếp tục đăng nhập
-        setUnconfirmedEmail(email);
-        
-        // Đảm bảo lấy thông tin chi tiết người dùng sau khi đăng nhập thành công
-        try {
-          const { data: userData } = await supabase
-            .from('users')
-            .select('id')
-            .eq('email', email)
-            .single();
-            
-          if (userData) {
-            await fetchUserDetails(userData.id);
-            await refreshUserData();
-          }
-        } catch (userDataError) {
-          console.error("Không thể lấy thông tin người dùng:", userDataError);
-        }
-        
-        toast({
-          title: "Đăng nhập thành công!",
-          description: "Đang chuyển hướng đến bảng điều khiển...",
-        });
-        
-        setRedirectInProgress(true);
-
-        // Lưu thông tin chuyển hướng vào localStorage
-        setItem(LOCAL_STORAGE_KEYS.SESSION_TOKEN, "pending_redirect");
-        localStorage.setItem('redirect_timestamp', Date.now().toString());
-        localStorage.setItem('redirect_target', '/dashboard');
-        
-        setTimeout(() => {
-          console.log("Login: Chuyển hướng đến dashboard sau 3 giây");
-          // Sử dụng window.location thay vì navigate để đảm bảo refresh trang
-          window.location.href = "/dashboard";
-        }, 3000);
-        return;
-      }
+      console.log("Đăng nhập thành công, chuyển hướng đến dashboard");
+      setRedirect(true);
       
-      if (data.user) {
-        console.log("Login: Đăng nhập thành công với user:", data.user.id);
-        
-        // Refresh các thông tin người dùng ngay sau khi đăng nhập
-        try {
-          await fetchUserDetails(data.user.id);
-          await refreshUserData();
-          console.log("Login: Đã cập nhật thông tin người dùng thành công");
-        } catch (refreshError) {
-          console.error("Lỗi khi refresh dữ liệu người dùng:", refreshError);
-        }
-        
-        toast({
-          title: "Đăng nhập thành công!",
-          description: "Đang chuyển hướng đến bảng điều khiển...",
-        });
-        
-        // Đặt cờ redirect và thêm thời gian chờ dài hơn
-        setRedirectInProgress(true);
-        
-        // Thêm thời gian chờ vào local storage để đánh dấu đang chuyển hướng
-        localStorage.setItem('redirect_timestamp', Date.now().toString());
-        localStorage.setItem('redirect_target', '/dashboard');
-        
-        setTimeout(() => {
-          console.log("Login: Thực hiện chuyển hướng đến dashboard ngay bây giờ");
-          // Sử dụng window.location thay vì navigate để đảm bảo refresh trang
-          window.location.href = "/dashboard";
-        }, 3000);
-      }
+      // Chuyển hướng đến dashboard sau khi đăng nhập thành công
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 500);
+      
     } catch (error: any) {
-      console.error("Login error:", error);
+      console.error("Lỗi đăng nhập:", error);
       
-      if (error.message?.includes("Email not confirmed") && isEmailVerificationRequired) {
-        setUnconfirmedEmail(email);
-        toast({
-          title: "Email chưa được xác thực",
-          description: "Vui lòng kiểm tra hộp thư của bạn và xác nhận email trước khi đăng nhập.",
-          variant: "destructive"
-        });
+      // Kiểm tra lỗi email chưa xác thực
+      if (error.message?.includes('Email not confirmed') || error.message?.includes('email không được xác minh')) {
+        console.log("Email chưa được xác thực:", email);
+        
+        // Chỉ xử lý yêu cầu xác thực email nếu cấu hình yêu cầu
+        if (isEmailVerificationRequired) {
+          setError("Email chưa được xác thực. Vui lòng xác thực email trước khi đăng nhập.");
+          setUnconfirmedEmail(email);
+        } else {
+          console.log("Bỏ qua lỗi email chưa xác thực vì cấu hình không yêu cầu");
+          
+          // Đánh dấu email đã được xác thực trong database
+          await markEmailAsVerified(email);
+          
+          // Thử đăng nhập lại
+          try {
+            await login(email, password);
+            
+            console.log("Đăng nhập thành công sau khi đánh dấu email đã xác thực");
+            setRedirect(true);
+            
+            setTimeout(() => {
+              navigate('/dashboard');
+            }, 500);
+            
+            return;
+          } catch (retryError: any) {
+            console.error("Vẫn lỗi sau khi đánh dấu email đã xác thực:", retryError);
+            setError(retryError.message);
+          }
+        }
       } else {
-        setError(error.message?.includes("Invalid login credentials") 
-          ? "Email hoặc mật khẩu không chính xác."
-          : "Đã có lỗi xảy ra khi đăng nhập. Vui lòng thử lại sau."
-        );
+        setError(error.message);
       }
     } finally {
       setIsLoading(false);
+    }
+  };
+  
+  // Hàm đánh dấu email đã được xác thực
+  const markEmailAsVerified = async (email: string) => {
+    try {
+      // Lấy thông tin người dùng từ email
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', email)
+        .maybeSingle();
+      
+      if (userError || !userData) {
+        console.error("Không tìm thấy người dùng với email:", email);
+        return false;
+      }
+      
+      // Cập nhật trạng thái xác thực email
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ email_verified: true })
+        .eq('id', userData.id);
+      
+      if (updateError) {
+        console.error("Lỗi khi cập nhật trạng thái xác thực email:", updateError);
+        return false;
+      }
+      
+      console.log("Đã đánh dấu email đã xác thực:", email);
+      return true;
+    } catch (error) {
+      console.error("Lỗi không xác định khi đánh dấu email đã xác thực:", error);
+      return false;
     }
   };
 
   return {
     isLoading,
     error,
-    handleLogin,
     redirectInProgress,
-    setRedirectInProgress
+    setRedirectInProgress,
+    handleLogin
   };
 }
