@@ -12,6 +12,8 @@ export const useRegisterFormState = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showVerificationDialog, setShowVerificationDialog] = useState(false);
+  // Thêm state để theo dõi tiến trình
+  const [progress, setProgress] = useState(0);
   const [formData, setFormData] = useState<RegisterFormData>({
     name: "",
     email: "",
@@ -30,6 +32,8 @@ export const useRegisterFormState = () => {
     isLoading,
     error,
     showVerificationDialog,
+    progress,
+    setProgress,
     setIsLoading,
     setError,
     setShowVerificationDialog,

@@ -11,6 +11,49 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRole, {
   },
 })
 
+// Cache cho kết quả truy vấn để tránh truy vấn lặp lại
+const queryCache = new Map();
+const CACHE_TTL = 60 * 1000; // 1 phút
+
+// Hàm truy vấn có cache
+async function cachedQuery(cacheKey: string, queryFn: () => Promise<any>) {
+  const now = Date.now();
+  const cachedResult = queryCache.get(cacheKey);
+  
+  if (cachedResult && now - cachedResult.timestamp < CACHE_TTL) {
+    console.log(`[sync-user] Sử dụng kết quả cache cho ${cacheKey}`);
+    return cachedResult.data;
+  }
+  
+  const result = await queryFn();
+  queryCache.set(cacheKey, { data: result, timestamp: now });
+  return result;
+}
+
+// Tối ưu hóa retry với backoff
+async function retryOperation<T>(
+  operation: () => Promise<T>, 
+  maxAttempts: number = 3,
+  baseDelay: number = 500
+): Promise<T> {
+  let attempt = 1;
+  
+  while (true) {
+    try {
+      return await operation();
+    } catch (error) {
+      if (attempt >= maxAttempts) {
+        throw error;
+      }
+      
+      const delay = Math.min(baseDelay * Math.pow(1.5, attempt - 1), 5000);
+      console.log(`[sync-user] Lỗi, thử lại sau ${delay}ms (lần ${attempt}/${maxAttempts})`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      attempt++;
+    }
+  }
+}
+
 Deno.serve(async (req) => {
   // Xử lý CORS
   if (req.method === 'OPTIONS') {
@@ -36,17 +79,15 @@ Deno.serve(async (req) => {
   try {
     console.log(`[sync-user] Bắt đầu đồng bộ dữ liệu cho người dùng: ${user_id}`);
 
-    // Kiểm tra xem người dùng đã tồn tại chưa
-    const { data: existingUser, error: checkError } = await supabaseAdmin
-      .from('users')
-      .select('id')
-      .eq('id', user_id)
-      .maybeSingle();
-    
-    if (checkError) {
-      console.log('[sync-user] Lỗi khi kiểm tra người dùng:', checkError);
-      // Không throw error ở đây, vẫn tiếp tục thử tạo người dùng
-    }
+    // Kiểm tra xem người dùng đã tồn tại chưa - dùng cache nếu có thể
+    const { data: existingUser } = await cachedQuery(
+      `user_${user_id}`,
+      () => supabaseAdmin
+        .from('users')
+        .select('id')
+        .eq('id', user_id)
+        .maybeSingle()
+    );
     
     let userData = null;
     let userCreated = false;
@@ -56,17 +97,10 @@ Deno.serve(async (req) => {
     if (!existingUser) {
       console.log('[sync-user] Người dùng chưa tồn tại, đang tạo mới');
       
-      // Sử dụng cơ chế thử lại khi tạo người dùng
-      let userCreationAttempts = 0;
-      const maxUserCreationAttempts = 5; // Tăng lên 5 lần thử
-      
-      while (userCreationAttempts < maxUserCreationAttempts) {
-        try {
-          userCreationAttempts++;
-          console.log(`[sync-user] Nỗ lực tạo người dùng lần ${userCreationAttempts}/${maxUserCreationAttempts}`);
-          
-          // Tạo người dùng mới với thông tin cơ bản
-          const { data: newUser, error: insertError } = await supabaseAdmin
+      try {
+        // Tạo người dùng mới với thông tin cơ bản - sử dụng retry logic
+        const { data: newUser, error: insertError } = await retryOperation(
+          () => supabaseAdmin
             .from('users')
             .insert([
               {
@@ -78,63 +112,40 @@ Deno.serve(async (req) => {
                 credits: 10,
                 role: 'user',
                 status: 'active',
-                subscription: 'Cơ bản' // Mặc định gán gói Cơ bản
+                subscription: 'Cơ bản'
               }
             ])
             .select()
-            .single();
-    
-          if (insertError) {
-            console.error(`[sync-user] Lỗi khi tạo người dùng (lần thử ${userCreationAttempts}):`, insertError);
-            
-            // Kiểm tra lỗi trùng lặp dữ liệu
-            if (insertError.message.includes('duplicate') || insertError.message.includes('already exists')) {
-              console.log('[sync-user] Phát hiện user đã tồn tại (lỗi trùng lặp), kiểm tra lại');
-              const { data: existingUserRetry } = await supabaseAdmin
-                .from('users')
-                .select('*')
-                .eq('id', user_id)
-                .maybeSingle();
-                
-              if (existingUserRetry) {
-                console.log('[sync-user] Đã xác nhận user tồn tại:', existingUserRetry);
-                userData = existingUserRetry;
-                userCreated = false;
-                break; // Thoát khỏi vòng lặp nếu xác nhận người dùng đã tồn tại
-              }
-            }
-            
-            if (userCreationAttempts < maxUserCreationAttempts) {
-              // Đợi tăng dần trước khi thử lại
-              const delay = userCreationAttempts * 1000;
-              console.log(`[sync-user] Đợi ${delay}ms trước khi thử lại...`);
-              await new Promise(resolve => setTimeout(resolve, delay));
-              continue;
+            .single(),
+          4  // Giảm số lần thử xuống 4
+        );
+        
+        if (insertError) {
+          if (insertError.message.includes('duplicate') || insertError.message.includes('already exists')) {
+            // Kiểm tra lại người dùng nếu gặp lỗi trùng lặp
+            const { data: existingUserRetry } = await supabaseAdmin
+              .from('users')
+              .select('*')
+              .eq('id', user_id)
+              .maybeSingle();
+              
+            if (existingUserRetry) {
+              userData = existingUserRetry;
+              userCreated = false;
+              console.log('[sync-user] Đã xác nhận user tồn tại:', existingUserRetry);
             } else {
               throw insertError;
             }
+          } else {
+            throw insertError;
           }
-          
+        } else {
           userData = newUser;
           userCreated = true;
-          console.log('[sync-user] Đã tạo người dùng thành công:', userData);
-          
-          // Đợi ngắn để đảm bảo user đã được tạo xong
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          break; // Thoát khỏi vòng lặp nếu tạo thành công
-        } catch (attemptError) {
-          console.error(`[sync-user] Lỗi tạo người dùng lần ${userCreationAttempts}:`, attemptError);
-          
-          if (userCreationAttempts >= maxUserCreationAttempts) {
-            warnings.push(`Không thể tạo người dùng sau ${maxUserCreationAttempts} lần thử`);
-            throw new Error(`Không thể tạo người dùng sau ${maxUserCreationAttempts} lần thử: ${attemptError.message || 'Lỗi không xác định'}`);
-          }
-          
-          // Đợi tăng dần trước khi thử lại
-          const delay = userCreationAttempts * 1000;
-          console.log(`[sync-user] Đợi ${delay}ms trước khi thử lại...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
         }
+      } catch (createError) {
+        console.error('[sync-user] Lỗi khi tạo người dùng:', createError);
+        throw createError;
       }
     } else {
       console.log('[sync-user] Người dùng đã tồn tại, id:', existingUser.id);
@@ -146,10 +157,11 @@ Deno.serve(async (req) => {
     try {
       console.log('[sync-user] Đang kiểm tra gói đăng ký cho người dùng');
       
-      // Kiểm tra xem bảng subscriptions có tồn tại không
-      const { data: tableExists } = await supabaseAdmin.rpc('check_table_exists', { 
-        table_name: 'subscriptions'
-      });
+      // Kiểm tra xem bảng subscriptions có tồn tại không - sử dụng cache
+      const { data: tableExists } = await cachedQuery(
+        'check_subscriptions_table',
+        () => supabaseAdmin.rpc('check_table_exists', { table_name: 'subscriptions' })
+      );
       
       if (!tableExists) {
         console.warn('[sync-user] Bảng subscriptions không tồn tại');
@@ -171,86 +183,59 @@ Deno.serve(async (req) => {
         if (!existingSub) {
           console.log('[sync-user] Người dùng chưa có gói đăng ký, đang tạo gói Cơ bản');
           
-          // Sử dụng cơ chế thử lại khi truy vấn gói Cơ bản
-          let subAttempts = 0;
-          const maxSubAttempts = 3;
-          let basicSubId = null;
-          
-          while (subAttempts < maxSubAttempts && basicSubId === null) {
-            try {
-              subAttempts++;
-              console.log(`[sync-user] Nỗ lực tìm gói Cơ bản lần ${subAttempts}/${maxSubAttempts}`);
-              
-              // Lấy ID của gói Cơ bản - chính xác tên "Cơ bản"
-              const { data: basicSub, error: basicSubError } = await supabaseAdmin
+          // Tìm gói đăng ký cơ bản - sử dụng cache
+          const findBasicSubscription = async () => {
+            // Lấy ID của gói Cơ bản
+            const { data: basicSub, error: basicSubError } = await cachedQuery(
+              'basic_subscription',
+              () => supabaseAdmin
                 .from('subscriptions')
                 .select('id')
                 .eq('name', 'Cơ bản')
-                .maybeSingle();
-              
-              if (basicSubError) {
-                console.warn(`[sync-user] Lỗi khi tìm gói Cơ bản (lần ${subAttempts}):`, basicSubError);
-                const delay = subAttempts * 1000;
-                await new Promise(resolve => setTimeout(resolve, delay));
-                continue;
-              }
-              
-              if (basicSub) {
-                basicSubId = basicSub.id;
-                console.log('[sync-user] Đã tìm thấy gói Cơ bản, ID:', basicSubId);
-              } else {
-                console.warn('[sync-user] Không tìm thấy gói có tên "Cơ bản", thử tìm bất kỳ gói đầu tiên');
-                
-                // Nếu không tìm thấy "Cơ bản", thử lấy gói đầu tiên
-                const { data: firstSub, error: firstSubError } = await supabaseAdmin
-                  .from('subscriptions')
-                  .select('id, name')
-                  .order('id', { ascending: true })
-                  .limit(1)
-                  .single();
-                
-                if (firstSubError || !firstSub) {
-                  console.error('[sync-user] Lỗi khi tìm bất kỳ gói đăng ký nào:', firstSubError);
-                  const delay = subAttempts * 1000;
-                  await new Promise(resolve => setTimeout(resolve, delay));
-                  continue;
-                } else {
-                  basicSubId = firstSub.id;
-                  console.log(`[sync-user] Sử dụng gói đăng ký đầu tiên "${firstSub.name}" với ID: ${basicSubId}`);
-                }
-              }
-            } catch (subQueryError) {
-              console.error(`[sync-user] Lỗi không xác định khi tìm gói Cơ bản (lần ${subAttempts}):`, subQueryError);
-              if (subAttempts >= maxSubAttempts) {
-                console.error('[sync-user] Đã hết số lần thử tìm gói Cơ bản');
-                warnings.push('Không thể tìm gói đăng ký Cơ bản sau nhiều lần thử');
-                break;
-              }
-              const delay = subAttempts * 1000;
-              await new Promise(resolve => setTimeout(resolve, delay));
+                .maybeSingle()
+            );
+            
+            if (basicSubError) {
+              throw basicSubError;
             }
-          }
-
-          // Nếu tìm được gói đăng ký
-          if (basicSubId !== null) {
-            console.log('[sync-user] Tạo subscription với gói ID:', basicSubId);
             
-            const startDate = new Date().toISOString().split('T')[0];
-            const endDate = new Date();
-            endDate.setMonth(endDate.getMonth() + 1);
-            const endDateStr = endDate.toISOString().split('T')[0];
+            if (basicSub) {
+              return basicSub.id;
+            }
             
-            // Thử tạo subscription nhiều lần nếu cần
-            let createSubAttempts = 0;
-            const maxCreateSubAttempts = 3;
+            // Nếu không tìm thấy "Cơ bản", thử lấy gói đầu tiên
+            const { data: firstSub, error: firstSubError } = await cachedQuery(
+              'first_subscription',
+              () => supabaseAdmin
+                .from('subscriptions')
+                .select('id, name')
+                .order('id', { ascending: true })
+                .limit(1)
+                .single()
+            );
             
-            while (createSubAttempts < maxCreateSubAttempts) {
-              try {
-                createSubAttempts++;
-                console.log(`[sync-user] Nỗ lực tạo subscription lần ${createSubAttempts}/${maxCreateSubAttempts}`);
-                
-                // Tạo subscription cho user
-                const { data: newSub, error: subError } = await supabaseAdmin
+            if (firstSubError || !firstSub) {
+              throw firstSubError || new Error("Không tìm thấy gói đăng ký nào");
+            }
+            
+            return firstSub.id;
+          };
+          
+          try {
+            // Tìm gói đăng ký với retry
+            const basicSubId = await retryOperation(() => findBasicSubscription());
+            
+            if (basicSubId) {
+              console.log('[sync-user] Tạo subscription với gói ID:', basicSubId);
+              
+              const startDate = new Date().toISOString().split('T')[0];
+              const endDate = new Date();
+              endDate.setMonth(endDate.getMonth() + 1);
+              const endDateStr = endDate.toISOString().split('T')[0];
+              
+              // Tạo subscription với retry tối ưu
+              const { data: newSub, error: subError } = await retryOperation(
+                () => supabaseAdmin
                   .from('user_subscriptions')
                   .insert({
                     user_id: user_id,
@@ -259,42 +244,21 @@ Deno.serve(async (req) => {
                     end_date: endDateStr,
                     status: 'active'
                   })
-                  .select();
-                
-                if (subError) {
-                  console.error(`[sync-user] Lỗi khi tạo gói đăng ký (lần ${createSubAttempts}):`, subError);
-                  
-                  if (createSubAttempts < maxCreateSubAttempts) {
-                    const delay = createSubAttempts * 1500;
-                    console.log(`[sync-user] Đợi ${delay}ms trước khi thử lại...`);
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                    continue;
-                  } else {
-                    warnings.push(`Không thể tạo gói đăng ký sau ${maxCreateSubAttempts} lần thử`);
-                    throw subError;
-                  }
-                }
-                
-                console.log('[sync-user] Đã tạo gói đăng ký thành công:', newSub);
-                break; // Thoát vòng lặp khi thành công
-              } catch (createSubError) {
-                console.error(`[sync-user] Lỗi khi tạo gói đăng ký lần ${createSubAttempts}:`, createSubError);
-                
-                if (createSubAttempts >= maxCreateSubAttempts) {
-                  // Nếu đã thử đủ số lần, ghi nhật ký nhưng không ném lỗi - người dùng vẫn được tạo
-                  console.error('[sync-user] Không thể tạo gói đăng ký sau nhiều lần thử.');
-                  warnings.push('Không thể tạo gói đăng ký sau nhiều lần thử');
-                  break;
-                }
-                
-                // Đợi trước khi thử lại
-                const delay = createSubAttempts * 1500;
-                await new Promise(resolve => setTimeout(resolve, delay));
+                  .select()
+              );
+              
+              if (subError) {
+                throw subError;
               }
+              
+              console.log('[sync-user] Đã tạo gói đăng ký thành công:', newSub);
+            } else {
+              console.warn('[sync-user] Không tìm thấy gói đăng ký để gán cho người dùng.');
+              warnings.push('Không tìm thấy gói đăng ký để gán cho người dùng');
             }
-          } else {
-            console.warn('[sync-user] Không thể tìm gói đăng ký nào để gán cho người dùng.');
-            warnings.push('Không tìm thấy gói đăng ký để gán cho người dùng');
+          } catch (subError) {
+            console.error('[sync-user] Lỗi khi tạo gói đăng ký:', subError);
+            warnings.push(`Lỗi khi tạo gói đăng ký: ${subError.message || 'Lỗi không xác định'}`);
           }
         } else {
           console.log('[sync-user] Người dùng đã có gói đăng ký, ID:', existingSub.id);

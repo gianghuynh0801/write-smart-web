@@ -44,8 +44,8 @@ export const useRegisterUser = () => {
 
       console.log("Đăng ký thành công, ID người dùng:", data.user.id);
       
-      // Đợi lâu hơn để đảm bảo trigger đã chạy xong trong database
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // Giảm thời gian chờ xuống còn 1000ms (từ 3000ms)
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       return data.user.id;
     } catch (error) {
@@ -58,9 +58,9 @@ export const useRegisterUser = () => {
     try {
       console.log("Đồng bộ dữ liệu cho người dùng:", userId);
       
-      // Thêm cơ chế thử lại
+      // Cải thiện cơ chế thử lại
       let attempts = 0;
-      const maxAttempts = 5; // Tăng số lần thử
+      const maxAttempts = 4; // Giảm từ 5 xuống 4
       let lastError: any = null;
       let result: UserSyncResponse | null = null;
       
@@ -81,8 +81,9 @@ export const useRegisterUser = () => {
           if (error) {
             console.error(`Lỗi đồng bộ người dùng (lần thử ${attempts}):`, error);
             lastError = error;
-            // Đợi tăng dần trước khi thử lại
-            await new Promise(resolve => setTimeout(resolve, attempts * 1500));
+            // Tối ưu công thức tính thời gian chờ
+            const delay = Math.min(500 * Math.pow(1.5, attempts-1), 5000);
+            await new Promise(resolve => setTimeout(resolve, delay));
             continue;
           }
           
@@ -96,8 +97,9 @@ export const useRegisterUser = () => {
           lastError = attemptError;
           
           if (attempts < maxAttempts) {
-            // Đợi tăng dần trước khi thử lại
-            await new Promise(resolve => setTimeout(resolve, attempts * 2000));
+            // Tối ưu công thức tính thời gian chờ
+            const delay = Math.min(500 * Math.pow(1.5, attempts-1), 5000);
+            await new Promise(resolve => setTimeout(resolve, delay));
           } else {
             return {
               success: false,
@@ -126,12 +128,12 @@ export const useRegisterUser = () => {
 
   const verifyUserCreation = async (userId: string) => {
     try {
-      // Thực hiện kiểm tra với timeout và số lần thử tăng lên
-      let retries = 7; // Tăng số lần thử
-      let delay = 2000;  // Tăng thời gian delay ban đầu
+      // Tối ưu: giảm số lần thử và thời gian chờ
+      let retries = 5; // Giảm từ 7 xuống 5
+      let delay = 1000;  // Giảm từ 2000ms xuống 1000ms
       
       while (retries > 0) {
-        console.log(`Kiểm tra người dùng lần ${8-retries}/7...`);
+        console.log(`Kiểm tra người dùng lần ${6-retries}/5...`);
         
         const { data: user, error } = await supabase
           .from('users')
@@ -151,7 +153,7 @@ export const useRegisterUser = () => {
         
         await new Promise(resolve => setTimeout(resolve, delay));
         retries--;
-        delay *= 1.5;
+        delay = Math.min(delay * 1.3, 3000); // Tăng delay với giới hạn tối đa 3000ms
       }
       
       console.warn("Không thể xác minh người dùng trong database sau nhiều lần thử. Tiếp tục quá trình.");

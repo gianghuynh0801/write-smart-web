@@ -28,6 +28,68 @@ const supabase = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
 );
 
+// Tạo HTML template cho email - tách thành function riêng để tối ưu hiệu suất
+const generateEmailHtml = (name: string, verification_type: string, verificationUrl: string): string => {
+  return `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2 style="color: #333;">Xin chào ${name || "bạn"}!</h2>
+      
+      ${verification_type === "email_verification" 
+        ? `<p>Cảm ơn bạn đã đăng ký tài khoản. Vui lòng xác nhận địa chỉ email của bạn bằng cách nhấp vào liên kết dưới đây:</p>`
+        : `<p>Chúng tôi đã nhận được yêu cầu đặt lại mật khẩu của bạn. Vui lòng nhấp vào liên kết dưới đây để đặt lại mật khẩu:</p>`
+      }
+      
+      <p style="margin: 20px 0;">
+        <a href="${verificationUrl}" 
+           style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px;">
+          ${verification_type === "email_verification" ? "Xác nhận Email" : "Đặt lại Mật khẩu"}
+        </a>
+      </p>
+      
+      <p>Hoặc copy liên kết này vào trình duyệt của bạn:</p>
+      <p style="background-color: #f8f9fa; padding: 10px; word-break: break-all;">
+        ${verificationUrl}
+      </p>
+      
+      <p style="color: #666; font-size: 0.9em; margin-top: 20px;">
+        Nếu bạn không yêu cầu thao tác này, vui lòng bỏ qua email này.<br>
+        Liên kết này sẽ hết hạn sau 72 giờ.
+      </p>
+
+      <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+      <p style="color: #666; font-size: 0.8em;">
+        Email này được gửi tự động, vui lòng không trả lời.
+      </p>
+    </div>
+  `;
+};
+
+// Gửi email trong background task
+const sendEmailInBackground = async (
+  transporterConfig: any, 
+  emailOptions: any
+): Promise<void> => {
+  try {
+    const transporter = nodemailer.createTransport({
+      host: transporterConfig.host,
+      port: transporterConfig.port,
+      secure: transporterConfig.port === 465,
+      auth: {
+        user: transporterConfig.username,
+        pass: transporterConfig.password,
+      },
+      tls: {
+        rejectUnauthorized: false
+      }
+    });
+
+    const info = await transporter.sendMail(emailOptions);
+    console.log("Email đã được gửi thành công tới:", emailOptions.to, "messageId:", info.messageId);
+  } catch (error) {
+    console.error("Lỗi gửi email trong background:", error);
+  }
+};
+
 serve(async (req) => {
   // Xử lý CORS preflight
   if (req.method === "OPTIONS") {
@@ -65,8 +127,6 @@ serve(async (req) => {
 
     const { host, port, username, password, from_email, from_name } = JSON.parse(smtpConfig.value);
 
-    console.log(`Kết nối tới SMTP server: ${host}:${port}`);
-
     // Tạo verification URL
     const verificationUrl = verification_type === "email_verification" 
       ? `${site_url}/email-verified#access_token=${verification_token}`
@@ -77,76 +137,30 @@ serve(async (req) => {
       ? "Xác nhận địa chỉ email của bạn"
       : "Đặt lại mật khẩu của bạn";
 
-    // Tạo HTML template cho email
-    const htmlContent = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #333;">Xin chào ${name || "bạn"}!</h2>
-        
-        ${verification_type === "email_verification" 
-          ? `<p>Cảm ơn bạn đã đăng ký tài khoản. Vui lòng xác nhận địa chỉ email của bạn bằng cách nhấp vào liên kết dưới đây:</p>`
-          : `<p>Chúng tôi đã nhận được yêu cầu đặt lại mật khẩu của bạn. Vui lòng nhấp vào liên kết dưới đây để đặt lại mật khẩu:</p>`
-        }
-        
-        <p style="margin: 20px 0;">
-          <a href="${verificationUrl}" 
-             style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px;">
-            ${verification_type === "email_verification" ? "Xác nhận Email" : "Đặt lại Mật khẩu"}
-          </a>
-        </p>
-        
-        <p>Hoặc copy liên kết này vào trình duyệt của bạn:</p>
-        <p style="background-color: #f8f9fa; padding: 10px; word-break: break-all;">
-          ${verificationUrl}
-        </p>
-        
-        <p style="color: #666; font-size: 0.9em; margin-top: 20px;">
-          Nếu bạn không yêu cầu thao tác này, vui lòng bỏ qua email này.<br>
-          Liên kết này sẽ hết hạn sau 72 giờ.
-        </p>
+    // Tạo HTML content
+    const htmlContent = generateEmailHtml(name || "", verification_type, verificationUrl);
 
-        <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-        <p style="color: #666; font-size: 0.8em;">
-          Email này được gửi tự động, vui lòng không trả lời.
-        </p>
-      </div>
-    `;
+    // Gửi email trong background - không chờ đợi kết quả
+    const transporterConfig = { host, port: parseInt(port), username, password };
+    const emailOptions = {
+      from: `${from_name || "Admin"} <${from_email}>`,
+      to: email,
+      subject: subject,
+      html: htmlContent,
+    };
 
-    console.log("Đang gửi email...");
-
-    try {
-      // Khởi tạo nodemailer transport
-      const transporter = nodemailer.createTransport({
-        host: host,
-        port: parseInt(port),
-        secure: parseInt(port) === 465, // true for 465, false for other ports
-        auth: {
-          user: username,
-          pass: password,
-        },
-        tls: {
-          // Chấp nhận các self-signed certificates
-          rejectUnauthorized: false
-        }
-      });
-
-      // Gửi email
-      const info = await transporter.sendMail({
-        from: `${from_name || "Admin"} <${from_email}>`,
-        to: email,
-        subject: subject,
-        html: htmlContent,
-      });
-
-      console.log("Email đã được gửi thành công tới:", email, "messageId:", info.messageId);
-    } catch (emailError) {
-      console.error("Lỗi khi gửi email:", emailError);
-      throw new Error(`Không thể gửi email: ${emailError instanceof Error ? emailError.message : "Lỗi không xác định"}`);
+    // Sử dụng EdgeRuntime.waitUntil để xử lý gửi email trong background
+    if (typeof EdgeRuntime !== 'undefined') {
+      EdgeRuntime.waitUntil(sendEmailInBackground(transporterConfig, emailOptions));
+    } else {
+      // Fallback cho môi trường không hỗ trợ EdgeRuntime
+      setTimeout(() => sendEmailInBackground(transporterConfig, emailOptions), 0);
     }
     
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: `Email đã được gửi thành công tới ${email}` 
+        message: `Yêu cầu gửi email đã được xử lý và sẽ được gửi tới ${email}` 
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

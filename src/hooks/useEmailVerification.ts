@@ -18,44 +18,65 @@ export const useEmailVerification = () => {
     try {
       console.log("Sending verification email for:", params.email, "userId:", params.userId);
       
-      // Đầu tiên đảm bảo người dùng tồn tại trong bảng users bằng cách sử dụng hàm sync-user
-      console.log("Syncing user to ensure existence in database");
-      const { data: syncData, error: syncError } = await supabase.functions.invoke("sync-user", {
-        body: { 
-          user_id: params.userId, 
-          email: params.email, 
-          name: params.name,
-          email_verified: false
+      // Sử dụng cơ chế retry tối ưu hơn cho việc đồng bộ người dùng
+      const syncUser = async () => {
+        let attempts = 0;
+        const maxAttempts = 3; // Giảm số lần thử
+        
+        while (attempts < maxAttempts) {
+          try {
+            attempts++;
+            console.log(`Syncing user attempt ${attempts}/${maxAttempts}`);
+            
+            const { data, error } = await supabase.functions.invoke("sync-user", {
+              body: { 
+                user_id: params.userId, 
+                email: params.email, 
+                name: params.name,
+                email_verified: false
+              }
+            });
+            
+            if (error) {
+              console.error("Error syncing user:", error);
+              if (attempts >= maxAttempts) {
+                throw error;
+              }
+              
+              // Tối ưu thời gian chờ
+              const delay = Math.min(500 * Math.pow(1.5, attempts-1), 3000);
+              await new Promise(resolve => setTimeout(resolve, delay));
+              continue;
+            }
+            
+            return data;
+          } catch (err) {
+            if (attempts >= maxAttempts) throw err;
+            const delay = Math.min(500 * Math.pow(1.5, attempts-1), 3000);
+            await new Promise(resolve => setTimeout(resolve, delay));
+          }
         }
-      });
+        
+        throw new Error("Failed to sync user after multiple attempts");
+      };
       
-      if (syncError) {
-        console.error("Error syncing user:", syncError);
-        throw new Error(`Failed to sync user: ${syncError.message}`);
-      }
-      
-      console.log("User sync response:", syncData);
-      
-      // Tạo token xác minh với thời gian hết hạn dài hơn
+      // Tạo token xác minh
       const token = generateRandomToken(32);
-      const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000); // Kéo dài tới 72 giờ để test
+      const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000); // 72 giờ
       
-      console.log("Creating verification token for user:", params.userId);
+      // Xóa các token hiện có song song với việc đồng bộ user
+      const [syncResult] = await Promise.all([
+        syncUser(),
+        supabase
+          .from('verification_tokens')
+          .delete()
+          .eq('user_id', params.userId)
+          .eq('type', params.type)
+      ]);
       
-      // Xóa các token hiện có cho người dùng này và loại này
-      console.log("Cleaning up existing tokens for user:", params.userId);
-      const { error: deleteError } = await supabase
-        .from('verification_tokens')
-        .delete()
-        .eq('user_id', params.userId)
-        .eq('type', params.type);
-
-      if (deleteError) {
-        console.error("Error deleting existing tokens:", deleteError);
-      }
+      console.log("Sync user result:", syncResult);
       
       // Tạo token mới
-      console.log("Creating new verification token");
       const { error: tokenError } = await supabase
         .from('verification_tokens')
         .insert({
@@ -66,37 +87,21 @@ export const useEmailVerification = () => {
         });
 
       if (tokenError) {
-        console.error("Error creating verification token:", tokenError);
         throw tokenError;
       }
 
-      console.log("Verification token created successfully");
-
       // Lấy URL trang web từ cấu hình hệ thống
-      console.log("Fetching site URL from system configurations");
       const { data: configData, error: configError } = await supabase
         .from('system_configurations')
         .select('value')
         .eq('key', 'site_url')
         .single();
       
-      if (configError) {
-        console.error("Error fetching site URL:", configError);
-      }
-      
       // Sử dụng origin làm URL trang web mặc định nếu không được cấu hình trong cơ sở dữ liệu
       const siteUrl = configData?.value || window.location.origin;
       console.log("Site URL for verification:", siteUrl);
 
-      // Gọi edge function tùy chỉnh để gửi email sử dụng cài đặt SMTP
-      console.log("Invoking send-verification function with params:", {
-        email: params.email,
-        name: params.name,
-        verification_type: params.type,
-        verification_token: token,
-        site_url: siteUrl
-      });
-      
+      // Gọi edge function để gửi email
       const { data, error } = await supabase.functions.invoke("send-verification", {
         body: {
           email: params.email,
@@ -107,15 +112,11 @@ export const useEmailVerification = () => {
         }
       });
 
-      console.log("Edge function response:", data, error);
-      
       if (error) {
-        console.error("Error from edge function:", error);
         throw new Error(`Error sending verification email: ${error.message}`);
       }
       
       if (!data?.success) {
-        console.error("Edge function reported failure:", data?.message);
         throw new Error(data?.message || "Failed to send verification email");
       }
 

@@ -17,7 +17,8 @@ export const useRegisterForm = () => {
     setIsLoading,
     setError,
     setShowVerificationDialog,
-    handleChange
+    handleChange,
+    setProgress
   } = useRegisterFormState();
 
   const { toast } = useToast();
@@ -36,17 +37,20 @@ export const useRegisterForm = () => {
     }
     
     setIsLoading(true);
+    setProgress(10); // Khởi tạo tiến trình
     let userId: string | null = null;
     
     try {
       // Kiểm tra email trước khi đăng ký
       console.log("Kiểm tra email:", formData.email);
+      setProgress(20);
       const emailExists = await checkEmailExists(formData.email);
       
       if (emailExists) {
         throw new Error("Email này đã được sử dụng. Vui lòng chọn email khác hoặc đăng nhập.");
       }
 
+      setProgress(30);
       // Đăng ký tài khoản mới
       try {
         console.log("Tiến hành đăng ký người dùng mới");
@@ -55,6 +59,7 @@ export const useRegisterForm = () => {
           throw new Error("Không thể tạo tài khoản. Vui lòng thử lại sau.");
         }
         console.log("Đã tạo người dùng thành công với ID:", userId);
+        setProgress(50);
       } catch (registerError: any) {
         console.error("Lỗi đăng ký người dùng:", registerError);
         
@@ -72,73 +77,57 @@ export const useRegisterForm = () => {
         throw registerError;
       }
       
-      // Thử đồng bộ dữ liệu người dùng
-      let syncSuccess = false;
+      // Song song hóa: Tạo đồng thời các Promise cho đồng bộ người dùng và kiểm tra
+      setProgress(60);
+      const syncPromise = syncUser(userId, formData.email, formData.name);
+      const verifyPromise = verifyUserCreation(userId);
       
-      try {
-        console.log("Đồng bộ dữ liệu người dùng:", userId);
-        const syncResult = await syncUser(userId, formData.email, formData.name);
-        syncSuccess = syncResult?.success || false;
-        
-        if (!syncSuccess && syncResult?.warnings?.length > 0) {
-          console.warn("Cảnh báo khi đồng bộ dữ liệu:", syncResult.warnings);
-        }
-        
-        console.log("Kết quả đồng bộ dữ liệu người dùng:", syncResult);
-      } catch (syncError: any) {
-        console.error("Không thể đồng bộ dữ liệu người dùng:", syncError);
-        // Không ném lỗi ở đây, vẫn tiếp tục quy trình ngay cả khi không thể đồng bộ
-        toast({
-          title: "Cảnh báo",
-          description: "Đã tạo tài khoản nhưng gặp vấn đề khi thiết lập dữ liệu. Điều này sẽ không ảnh hưởng đến việc sử dụng tài khoản của bạn.",
-          variant: "default"
-        });
+      // Chờ cả hai hoàn thành
+      const [syncResult, verifySuccess] = await Promise.all([syncPromise, verifyPromise]);
+      
+      const syncSuccess = syncResult?.success || false;
+      setProgress(75);
+      
+      if (!syncSuccess && syncResult?.warnings?.length > 0) {
+        console.warn("Cảnh báo khi đồng bộ dữ liệu:", syncResult.warnings);
       }
       
-      if (syncSuccess) {
-        // Xác minh người dùng đã được tạo thành công
-        try {
-          console.log("Xác minh người dùng đã được tạo thành công");
-          await verifyUserCreation(userId);
-        } catch (verifyError) {
-          console.error("Lỗi xác minh:", verifyError);
-          // Vẫn tiếp tục quy trình
-        }
-      }
+      console.log("Kết quả đồng bộ dữ liệu người dùng:", syncResult);
       
       // Đăng xuất người dùng sau khi đăng ký
       try {
         await supabase.auth.signOut();
         console.log("Đã đăng xuất người dùng sau khi đăng ký");
+        setProgress(85);
       } catch (signOutError) {
         console.error("Lỗi đăng xuất:", signOutError);
         // Bỏ qua lỗi này
       }
       
-      // Gửi email xác thực
-      try {
-        console.log("Gửi email xác thực cho:", formData.email);
-        if (userId) {
-          await sendVerificationEmail({
+      // Gửi email xác thực - chuyển thành background task
+      if (userId) {
+        // Hiển thị dialog xác thực sớm để cải thiện UX
+        setProgress(95);
+        setShowVerificationDialog(true);
+        
+        // Gửi email xác thực trong background
+        setTimeout(() => {
+          sendVerificationEmail({
             email: formData.email,
             name: formData.name,
-            userId: userId,
+            userId: userId!,
             type: "email_verification"
+          }).catch((emailError: any) => {
+            console.error("Lỗi gửi email xác thực trong background:", emailError);
+            toast({
+              title: "Cảnh báo",
+              description: "Đã tạo tài khoản nhưng không thể gửi email xác thực. Vui lòng liên hệ hỗ trợ.",
+              variant: "destructive"
+            });
           });
-          
-          console.log("Đã gửi email xác thực thành công");
-          setShowVerificationDialog(true);
-        } else {
-          throw new Error("Không có ID người dùng để gửi email xác thực");
-        }
-      } catch (emailError: any) {
-        console.error("Lỗi gửi email xác thực:", emailError);
-        toast({
-          title: "Cảnh báo",
-          description: "Đã tạo tài khoản nhưng không thể gửi email xác thực. Vui lòng liên hệ hỗ trợ.",
-          variant: "destructive"
-        });
-        navigate("/verify-email-prompt");
+        }, 0);
+
+        setProgress(100);
       }
     } catch (error: any) {
       console.error("Lỗi đăng ký:", error);
@@ -187,6 +176,7 @@ export const useRegisterForm = () => {
     showVerificationDialog,
     handleChange,
     handleSubmit,
-    closeVerificationDialog
+    closeVerificationDialog,
+    progress: useRegisterFormState().progress
   };
 };
