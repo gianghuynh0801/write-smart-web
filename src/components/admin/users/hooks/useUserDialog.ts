@@ -15,10 +15,11 @@ export const useUserDialog = (
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isMounted = useRef(true);
   const retryCount = useRef(0);
-  const maxRetries = 3;
+  const maxRetries = 2; // Giảm số lần retry xuống
   const { toast } = useToast();
   const abortControllerRef = useRef<AbortController | null>(null);
   const fetchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fetchDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Đảm bảo các biến tham chiếu được reset khi component unmount
   useEffect(() => {
@@ -29,6 +30,9 @@ export const useUserDialog = (
       }
       if (fetchTimeoutRef.current) {
         clearTimeout(fetchTimeoutRef.current);
+      }
+      if (fetchDelayRef.current) {
+        clearTimeout(fetchDelayRef.current);
       }
     };
   }, []);
@@ -44,6 +48,10 @@ export const useUserDialog = (
       if (fetchTimeoutRef.current) {
         clearTimeout(fetchTimeoutRef.current);
         fetchTimeoutRef.current = null;
+      }
+      if (fetchDelayRef.current) {
+        clearTimeout(fetchDelayRef.current);
+        fetchDelayRef.current = null;
       }
     }
   }, [isOpen]);
@@ -66,6 +74,11 @@ export const useUserDialog = (
       clearTimeout(fetchTimeoutRef.current);
       fetchTimeoutRef.current = null;
     }
+    
+    if (fetchDelayRef.current) {
+      clearTimeout(fetchDelayRef.current);
+      fetchDelayRef.current = null;
+    }
   }, []);
 
   const handleError = useCallback((errorMessage: string, shouldRetry = true) => {
@@ -77,13 +90,16 @@ export const useUserDialog = (
       retryCount.current += 1;
       console.log(`[useUserDialog] Đang thử lại lần ${retryCount.current}/${maxRetries}...`);
       
+      // Tăng thời gian chờ giữa các lần retry
+      const retryDelay = 1500 * retryCount.current;
+      
       // Sử dụng ref để có thể hủy timeout khi cần
       fetchTimeoutRef.current = setTimeout(() => {
         fetchTimeoutRef.current = null;
         if (isMounted.current) {
           fetchUser(true);
         }
-      }, 1000 * retryCount.current);
+      }, retryDelay);
     } else if (retryCount.current >= maxRetries && isMounted.current) {
       toast({
         title: "Lỗi",
@@ -107,54 +123,63 @@ export const useUserDialog = (
       abortControllerRef.current.abort();
     }
     
-    // Tạo controller mới cho request hiện tại
-    abortControllerRef.current = new AbortController();
-    
-    if (isMounted.current) {
-      setIsLoading(true);
-      setError(null);
+    // Hủy timeout trước đó nếu có
+    if (fetchDelayRef.current) {
+      clearTimeout(fetchDelayRef.current);
     }
-
-    try {
-      console.log("[useUserDialog] Đang lấy thông tin user:", userId);
+    
+    // Trì hoãn fetch để tránh quá nhiều request liên tiếp
+    fetchDelayRef.current = setTimeout(() => {
+      fetchDelayRef.current = null;
       
-      // Đặt timeout cho việc fetch user để không bị treo
+      // Tạo controller mới cho request hiện tại
+      abortControllerRef.current = new AbortController();
+      
+      if (isMounted.current) {
+        setIsLoading(true);
+        setError(null);
+      }
+
       const timeoutPromise = new Promise<never>((_, reject) => {
         const id = setTimeout(() => {
           reject(new Error("Timeout khi lấy thông tin người dùng"));
-        }, 10000);
+        }, 8000); // Giảm xuống 8 giây
         
         // Đảm bảo timeout được xóa khi abort
         abortControllerRef.current?.signal.addEventListener('abort', () => {
           clearTimeout(id);
         });
       });
-      
+
       // Race giữa fetch user và timeout
-      const userData = await Promise.race([
+      Promise.race([
         getUserById(userId),
         timeoutPromise
-      ]);
+      ])
+      .then(userData => {
+        if (!isMounted.current) return;
+        
+        console.log("[useUserDialog] Đã lấy được thông tin user:", userData);
+        setUser(userData);
+        setError(null);
+      })
+      .catch(error => {
+        if (!isMounted.current) return;
+        
+        console.error("[useUserDialog] Lỗi khi lấy thông tin user:", error);
+        
+        // Chỉ xử lý error khi không phải do abort
+        if (error.name !== 'AbortError') {
+          handleError(error.message || "Không thể tải thông tin người dùng", shouldRetry);
+        }
+      })
+      .finally(() => {
+        if (isMounted.current) {
+          setIsLoading(false);
+        }
+      });
       
-      if (!isMounted.current) return;
-      
-      console.log("[useUserDialog] Đã lấy được thông tin user:", userData);
-      setUser(userData);
-      setError(null);
-    } catch (error: any) {
-      if (!isMounted.current) return;
-      
-      console.error("[useUserDialog] Lỗi khi lấy thông tin user:", error);
-      
-      // Chỉ xử lý error khi không phải do abort
-      if (error.name !== 'AbortError') {
-        handleError(error.message || "Không thể tải thông tin người dùng", shouldRetry);
-      }
-    } finally {
-      if (isMounted.current) {
-        setIsLoading(false);
-      }
-    }
+    }, 300); // Trì hoãn 300ms để giảm số lượng request
   }, [userId, isOpen, handleError, resetDialog]);
 
   return {

@@ -1,5 +1,5 @@
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -36,6 +36,7 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
   } = useUserDialog(userId, isOpen, onClose);
   
   const { toast } = useToast();
+  const [isClosing, setIsClosing] = useState(false);
 
   useEffect(() => {
     if (!isOpen) {
@@ -51,14 +52,20 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
   }, []);
 
   useEffect(() => {
-    // Chỉ fetch dữ liệu khi dialog mở và có userId
-    if (isOpen && userId) {
-      fetchUser();
+    if (isOpen && userId && !isClosing) {
+      // Thêm độ trễ nhỏ để tránh gửi quá nhiều request ngay khi dialog mở
+      const timer = setTimeout(() => {
+        if (isMounted.current && isOpen) {
+          fetchUser();
+        }
+      }, 100);
+      
+      return () => clearTimeout(timer);
     }
-  }, [fetchUser, isOpen, userId]);
+  }, [fetchUser, isOpen, userId, isClosing]);
 
   const handleSubmit = async (data: UserFormValues) => {
-    if (isSubmitting) return;
+    if (isSubmitting || isClosing) return;
     setIsSubmitting(true);
 
     try {
@@ -68,20 +75,26 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
       await authService.getAdminToken();
       
       let successMessage = "";
+      let success = false;
       
       if (userId) {
         // Cập nhật người dùng hiện có
         await updateUser(userId, data);
         console.log("[UserDialog] Đã cập nhật thông tin người dùng thành công");
         successMessage = "Cập nhật thông tin người dùng thành công";
+        success = true;
       } else {
         // Tạo người dùng mới
         await createUser(data);
         console.log("[UserDialog] Đã tạo người dùng mới thành công");
         successMessage = "Tạo người dùng mới thành công";
+        success = true;
       }
       
-      if (isMounted.current) {
+      if (isMounted.current && success) {
+        // Đánh dấu đang đóng dialog để tránh fetch dữ liệu không cần thiết
+        setIsClosing(true);
+        
         // Đóng dialog trước khi hiển thị thông báo thành công
         onClose();
         
@@ -98,9 +111,9 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
               if (isMounted.current) {
                 onUserSaved();
               }
-            }, 300);
+            }, 600);
           }
-        }, 100);
+        }, 300);
       }
     } catch (error: any) {
       console.error("[UserDialog] Lỗi khi lưu thông tin user:", error);
@@ -117,15 +130,20 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
             console.log("[UserDialog] Đã làm mới token thành công, đang thử lại...");
             
             try {
+              let success = false;
+              
               if (userId) {
                 await updateUser(userId, data);
                 console.log("[UserDialog] Đã cập nhật thông tin người dùng thành công sau khi làm mới token");
+                success = true;
               } else {
                 await createUser(data);
                 console.log("[UserDialog] Đã tạo người dùng mới thành công sau khi làm mới token");
+                success = true;
               }
               
-              if (isMounted.current) {
+              if (isMounted.current && success) {
+                setIsClosing(true);
                 onClose();
                 
                 // Hiển thị thông báo thành công sau khi đóng dialog
@@ -141,9 +159,9 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
                       if (isMounted.current) {
                         onUserSaved();
                       }
-                    }, 300);
+                    }, 600);
                   }
-                }, 100);
+                }, 300);
               }
               
               return;
@@ -185,16 +203,34 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
   };
 
   const handleDialogClose = () => {
-    if (!isLoading && !isSubmitting) {
-      onClose();
-    }
+    if (isLoading || isSubmitting) return;
+    
+    setIsClosing(true);
+    onClose();
   };
 
+  // Reset trạng thái đóng khi dialog mở lại
+  useEffect(() => {
+    if (isOpen) {
+      setIsClosing(false);
+    }
+  }, [isOpen]);
+
   return (
-    <Dialog open={isOpen} onOpenChange={handleDialogClose}>
+    <Dialog 
+      open={isOpen} 
+      onOpenChange={(open) => {
+        if (!open) handleDialogClose();
+      }}
+    >
       <DialogContent 
         className="sm:max-w-[600px]" 
         onInteractOutside={(e) => {
+          if (isLoading || isSubmitting) {
+            e.preventDefault();
+          }
+        }}
+        onEscapeKeyDown={(e) => {
           if (isLoading || isSubmitting) {
             e.preventDefault();
           }

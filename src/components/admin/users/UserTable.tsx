@@ -1,3 +1,4 @@
+
 import { Table, TableBody, TableHead, TableHeader, TableRow, TableCell } from "@/components/ui/table";
 import { User } from "@/types/user";
 import { useRealtimeUsers } from "./hooks/useRealtimeUsers";
@@ -5,6 +6,7 @@ import { useRealtimeSubscriptions } from "./hooks/useRealtimeSubscriptions";
 import { UserTableRow } from "./components/UserTableRow";
 import { UserTableLoading } from "./components/UserTableLoading";
 import { UserTableError } from "./components/UserTableError";
+import { useMemo } from "react";
 
 type UserTableProps = {
   users: User[];
@@ -31,17 +33,23 @@ const UserTable = ({
   onDeleteUser,
   onResendVerification,
 }: UserTableProps) => {
-  const realtimeUserUpdates = useRealtimeUsers(users);
-  const realtimeSubscriptionUpdates = useRealtimeSubscriptions(users);
+  // Chỉ lấy danh sách ID thay vì toàn bộ đối tượng user để tránh re-render không cần thiết
+  const userIds = useMemo(() => users.map(u => u.id), [users.map(u => u.id).join(',')]);
+  
+  const realtimeUserUpdates = useRealtimeUsers(userIds);
+  const realtimeSubscriptionUpdates = useRealtimeSubscriptions(userIds);
 
-  const displayUsers = users.map(user => {
-    const realtimeUser = {
-      ...user,
-      ...realtimeUserUpdates[user.id],
-      ...realtimeSubscriptionUpdates[user.id]
-    };
-    return realtimeUser;
-  });
+  // Tính toán danh sách user với dữ liệu realtime
+  const displayUsers = useMemo(() => {
+    return users.map(user => {
+      const realtimeUser = {
+        ...user,
+        ...realtimeUserUpdates[user.id],
+        ...realtimeSubscriptionUpdates[user.id]
+      };
+      return realtimeUser;
+    });
+  }, [users, realtimeUserUpdates, realtimeSubscriptionUpdates]);
 
   return (
     <div className="rounded-md border">

@@ -1,5 +1,5 @@
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Download, RefreshCcw } from "lucide-react";
@@ -17,6 +17,7 @@ import { tokenManager } from "@/utils/tokenManager";
 const AdminUsers = () => {
   const [isDataRefreshing, setIsDataRefreshing] = useState(false);
   const [refreshTimeout, setRefreshTimeout] = useState<NodeJS.Timeout | null>(null);
+  const isMounted = useRef(true);
   
   const {
     users,
@@ -53,12 +54,28 @@ const AdminUsers = () => {
 
   const { toast } = useToast();
 
+  // Cleanup khi component unmount
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { 
+      isMounted.current = false;
+      if (refreshTimeout) {
+        clearTimeout(refreshTimeout);
+      }
+    };
+  }, [refreshTimeout]);
+
   // Tạo phiên bản debounced của hàm refreshUsers
-  const debouncedRefreshUsers = useCallback((showToast = false) => {
+  const debouncedRefreshUsers = useCallback((showToast = false, delay = 500) => {
     // Hủy timeout hiện tại nếu có
     if (refreshTimeout) {
       clearTimeout(refreshTimeout);
       setRefreshTimeout(null);
+    }
+    
+    if (isDataRefreshing) {
+      console.log("[AdminUsers] Đang làm mới dữ liệu, bỏ qua yêu cầu mới");
+      return;
     }
     
     setIsDataRefreshing(true);
@@ -70,7 +87,7 @@ const AdminUsers = () => {
         await refreshUsers();
         
         // Chỉ hiển thị toast khi được yêu cầu
-        if (showToast) {
+        if (showToast && isMounted.current) {
           toast({
             title: "Đã làm mới dữ liệu",
             description: "Danh sách người dùng đã được cập nhật.",
@@ -78,32 +95,25 @@ const AdminUsers = () => {
         }
       } catch (error) {
         console.error("[AdminUsers] Lỗi khi làm mới dữ liệu:", error);
-        toast({
-          title: "Lỗi làm mới dữ liệu",
-          description: "Không thể làm mới danh sách người dùng. Vui lòng thử lại sau.",
-          variant: "destructive"
-        });
+        if (isMounted.current) {
+          toast({
+            title: "Lỗi làm mới dữ liệu",
+            description: "Không thể làm mới danh sách người dùng. Vui lòng thử lại sau.",
+            variant: "destructive"
+          });
+        }
       } finally {
-        setIsDataRefreshing(false);
+        if (isMounted.current) {
+          setIsDataRefreshing(false);
+        }
       }
-    }, 300); // Đợi 300ms trước khi thực hiện refresh
+    }, delay);
     
     setRefreshTimeout(timeoutId);
-  }, [refreshUsers, refreshTimeout, toast]);
-
-  // Đảm bảo hủy timeout khi unmount component
-  useEffect(() => {
-    return () => {
-      if (refreshTimeout) {
-        clearTimeout(refreshTimeout);
-      }
-    };
-  }, [refreshTimeout]);
+  }, [refreshUsers, refreshTimeout, toast, isDataRefreshing]);
 
   // Chỉ tải dữ liệu khi component được mount
   useEffect(() => {
-    let isMounted = true;
-    
     const loadData = async () => {
       try {
         console.log("[AdminUsers] Đang khởi tạo dữ liệu...");
@@ -111,11 +121,11 @@ const AdminUsers = () => {
         const hasToken = await tokenManager.getToken();
         
         if (hasToken) {
-          if (isMounted) {
-            debouncedRefreshUsers(false);
+          if (isMounted.current) {
+            debouncedRefreshUsers(false, 100);
           }
         } else {
-          if (isMounted) {
+          if (isMounted.current) {
             toast({
               title: "Lỗi phiên đăng nhập",
               description: "Phiên đăng nhập không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.",
@@ -124,7 +134,7 @@ const AdminUsers = () => {
           }
         }
       } catch (error) {
-        if (isMounted) {
+        if (isMounted.current) {
           console.error("[AdminUsers] Lỗi khi tải dữ liệu ban đầu:", error);
           toast({
             title: "Lỗi tải dữ liệu",
@@ -136,33 +146,25 @@ const AdminUsers = () => {
     };
     
     loadData();
-    
-    return () => {
-      isMounted = false;
-    };
   }, [debouncedRefreshUsers, toast]);
 
   const totalPages = Math.ceil(totalUsers / pageSize);
 
   const handleRefresh = () => {
-    debouncedRefreshUsers(true);
+    debouncedRefreshUsers(true, 300);
   };
 
   // Handler cập nhật sau khi user được lưu
   const handleUserSaved = useCallback(() => {
-    console.log("[AdminUsers] Đã phát hiện người dùng được lưu, đang làm mới dữ liệu sau 500ms...");
+    console.log("[AdminUsers] Đã phát hiện người dùng được lưu, đang làm mới dữ liệu sau 1000ms...");
     // Delay refresh để giao diện người dùng có thời gian cập nhật
-    setTimeout(() => {
-      debouncedRefreshUsers(true);
-    }, 500);
+    debouncedRefreshUsers(true, 1000);
   }, [debouncedRefreshUsers]);
 
   // Handler sau khi xóa hoặc cập nhật credits
   const handleUserActionComplete = useCallback(() => {
-    console.log("[AdminUsers] Hoàn thành hành động người dùng, đang làm mới dữ liệu sau 300ms...");
-    setTimeout(() => {
-      debouncedRefreshUsers(true);
-    }, 300);
+    console.log("[AdminUsers] Hoàn thành hành động người dùng, đang làm mới dữ liệu sau 800ms...");
+    debouncedRefreshUsers(true, 800);
   }, [debouncedRefreshUsers]);
 
   // Xử lý xóa người dùng
@@ -174,11 +176,13 @@ const AdminUsers = () => {
       handleUserActionComplete();
     } catch (error) {
       console.error("[AdminUsers] Lỗi khi xóa người dùng:", error);
-      toast({
-        title: "Lỗi",
-        description: "Không thể xóa người dùng. Vui lòng thử lại sau.",
-        variant: "destructive"
-      });
+      if (isMounted.current) {
+        toast({
+          title: "Lỗi",
+          description: "Không thể xóa người dùng. Vui lòng thử lại sau.",
+          variant: "destructive"
+        });
+      }
     }
   }, [confirmDeleteUser, setDeleteDialogOpen, handleUserActionComplete, toast]);
 
@@ -191,11 +195,13 @@ const AdminUsers = () => {
       handleUserActionComplete();
     } catch (error) {
       console.error("[AdminUsers] Lỗi khi thêm credits:", error);
-      toast({
-        title: "Lỗi",
-        description: "Không thể thêm credits. Vui lòng thử lại sau.",
-        variant: "destructive"
-      });
+      if (isMounted.current) {
+        toast({
+          title: "Lỗi",
+          description: "Không thể thêm credits. Vui lòng thử lại sau.",
+          variant: "destructive"
+        });
+      }
     }
   }, [confirmAddCredits, setAddCreditsDialogOpen, handleUserActionComplete, toast]);
 

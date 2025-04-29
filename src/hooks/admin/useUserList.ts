@@ -23,14 +23,47 @@ function debounce<F extends (...args: any[]) => any>(func: F, wait: number) {
   };
 }
 
-// Hàm fetchUsers cải tiến với xử lý lỗi tốt hơn và timeout
+// Cache cho kết quả API
+interface UsersCache {
+  data: {
+    users: User[];
+    total: number;
+  };
+  timestamp: number;
+  params: {
+    page: number;
+    pageSize: number;
+    status: string;
+    searchTerm: string;
+  };
+}
+
+const cacheValidTime = 30000; // 30 giây
+let usersCache: UsersCache | null = null;
+
+// Hàm fetchUsers cải tiến với xử lý lỗi tốt hơn, timeout và caching
 const fetchUsers = async (params: {
   page: number;
   pageSize: number;
   status: string;
   searchTerm: string;
-}) => {
+}, abortSignal?: AbortSignal) => {
   console.log("Đang lấy danh sách người dùng với các thông số:", params);
+
+  // Kiểm tra cache trước
+  const now = Date.now();
+  if (usersCache && 
+      now - usersCache.timestamp < cacheValidTime &&
+      usersCache.params.page === params.page &&
+      usersCache.params.pageSize === params.pageSize &&
+      usersCache.params.status === params.status &&
+      usersCache.params.searchTerm === params.searchTerm) {
+    console.log("Sử dụng kết quả từ cache", {
+      cacheAge: (now - usersCache.timestamp) / 1000,
+      userCount: usersCache.data.users.length
+    });
+    return usersCache.data;
+  }
 
   try {
     // Lấy admin token từ TokenManager
@@ -51,10 +84,18 @@ const fetchUsers = async (params: {
     });
     
     // Tạo timeout promise
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => {
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      const id = setTimeout(() => {
         reject(new Error('Timeout khi lấy danh sách người dùng'));
-      }, 15000); // 15 giây timeout
+      }, 12000); // 12 giây timeout
+      
+      // Xóa timeout nếu có abort signal
+      if (abortSignal) {
+        abortSignal.addEventListener('abort', () => {
+          clearTimeout(id);
+          reject(new Error('Request bị hủy'));
+        });
+      }
     });
     
     // Sử dụng Promise.race để áp dụng timeout
@@ -84,6 +125,13 @@ const fetchUsers = async (params: {
             throw new Error(retryResponse.error.message);
           }
           
+          // Lưu vào cache
+          usersCache = {
+            data: retryResponse.data.data,
+            timestamp: Date.now(),
+            params: { ...params }
+          };
+          
           return retryResponse.data.data;
         }
       }
@@ -97,9 +145,22 @@ const fetchUsers = async (params: {
     }
 
     console.log(`Đã lấy được ${data.data.users.length} người dùng, tổng số: ${data.data.total}`);
+    
+    // Lưu vào cache
+    usersCache = {
+      data: data.data,
+      timestamp: Date.now(),
+      params: { ...params }
+    };
+    
     return data.data;
   } catch (error) {
     console.error("Lỗi trong fetchUsers:", error);
+    
+    if (abortSignal?.aborted) {
+      console.log("Request bị hủy, không xử lý lỗi");
+      throw new Error("Request bị hủy");
+    }
     
     // Nếu là lỗi xác thực, thử làm mới token
     if (isAuthError(error)) {
@@ -123,23 +184,29 @@ export const useUserList = () => {
   const isMounted = useRef(true);
   // Theo dõi thời gian refresh cuối cùng để tránh refresh quá nhanh
   const lastRefreshTime = useRef(0);
-  const minRefreshInterval = 1000; // 1 giây giữa các lần refresh
+  const minRefreshInterval = 3000; // 3 giây giữa các lần refresh
+  // Theo dõi request hiện tại
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     isMounted.current = true;
     return () => { 
-      isMounted.current = false; 
+      isMounted.current = false;
+      // Hủy request đang chạy khi unmount
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
     };
   }, []);
 
-  // Debounced search term setter
+  // Debounced search term setter với thời gian dài hơn
   const debouncedSetSearchTerm = useCallback(
     debounce((value: string) => {
       if (isMounted.current) {
         setSearchTerm(value);
         setCurrentPage(1);
       }
-    }, 500),
+    }, 800), // Tăng lên 800ms để giảm số lượng request
     []
   );
 
@@ -151,33 +218,53 @@ export const useUserList = () => {
     refetch
   } = useQuery({
     queryKey: ['users', currentPage, pageSize, status, searchTerm],
-    queryFn: () => {
+    queryFn: async () => {
+      // Hủy request trước đó nếu có
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      
+      // Tạo controller mới
+      abortControllerRef.current = new AbortController();
+      
       // Kiểm tra thời gian giữa các lần refresh
       const now = Date.now();
       if (now - lastRefreshTime.current < minRefreshInterval) {
         console.log(`Hạn chế tần suất refresh: ${minRefreshInterval - (now - lastRefreshTime.current)}ms còn lại`);
-        return new Promise(resolve => {
-          setTimeout(() => {
-            lastRefreshTime.current = Date.now();
-            resolve(fetchUsers({ page: currentPage, pageSize, status, searchTerm }));
-          }, minRefreshInterval);
-        });
+        await new Promise(resolve => 
+          setTimeout(resolve, minRefreshInterval - (now - lastRefreshTime.current))
+        );
       }
       
-      lastRefreshTime.current = now;
-      return fetchUsers({ page: currentPage, pageSize, status, searchTerm });
+      lastRefreshTime.current = Date.now();
+      return fetchUsers(
+        { page: currentPage, pageSize, status, searchTerm },
+        abortControllerRef.current.signal
+      );
     },
     retry: (failureCount, error) => {
-      // Thử lại tối đa 3 lần nếu là lỗi xác thực
-      if (isAuthError(error) && failureCount < 3) {
+      // Không retry nếu request bị hủy
+      if (error.message === "Request bị hủy") {
+        return false;
+      }
+      
+      // Thử lại tối đa 2 lần nếu là lỗi xác thực
+      if (isAuthError(error) && failureCount < 2) {
         console.log(`Thử lại lần ${failureCount + 1} sau lỗi xác thực`);
         return true;
       }
       return false;
     },
     staleTime: 30000, // Dữ liệu được coi là "tươi" trong 30 giây
+    gcTime: 60000, // Giữ dữ liệu trong cache 1 phút
     meta: {
       onError: (err: Error) => {
+        // Bỏ qua lỗi khi request bị hủy (component unmount hoặc params thay đổi)
+        if (err.message === "Request bị hủy") {
+          console.log("Request bị hủy, không hiển thị lỗi");
+          return;
+        }
+        
         console.error("Lỗi khi tải danh sách người dùng:", err);
         
         if (isMounted.current) {
@@ -240,35 +327,34 @@ export const useUserList = () => {
 
   // Effect để tự động thử làm mới token khi có lỗi
   useEffect(() => {
-    if (isError && !isRefreshingToken) {
+    if (isError && !isRefreshingToken && isMounted.current) {
       console.log("Phát hiện lỗi, kiểm tra nếu là lỗi xác thực...");
       
       if (isAuthError(error)) {
-        if (isMounted.current) {
-          setIsRefreshingToken(true);
-          
-          tokenManager.refreshToken()
-            .then(token => {
-              if (token && isMounted.current) {
-                console.log("Đã làm mới token thành công, đang tải lại dữ liệu...");
-                setTimeout(() => {
-                  if (isMounted.current) {
-                    refreshUsers();
-                  }
-                }, 500);
-              } else if (isMounted.current) {
-                console.log("Không thể làm mới token");
-                toast({
-                  title: "Lỗi xác thực",
-                  description: "Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.",
-                  variant: "destructive"
-                });
-              }
-            })
-            .finally(() => {
-              if (isMounted.current) setIsRefreshingToken(false);
-            });
-        }
+        setIsRefreshingToken(true);
+        
+        tokenManager.refreshToken()
+          .then(token => {
+            if (token && isMounted.current) {
+              console.log("Đã làm mới token thành công, đang tải lại dữ liệu...");
+              // Trì hoãn để tránh quá nhiều request
+              setTimeout(() => {
+                if (isMounted.current) {
+                  refreshUsers();
+                }
+              }, 1000);
+            } else if (isMounted.current) {
+              console.log("Không thể làm mới token");
+              toast({
+                title: "Lỗi xác thực",
+                description: "Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.",
+                variant: "destructive"
+              });
+            }
+          })
+          .finally(() => {
+            if (isMounted.current) setIsRefreshingToken(false);
+          });
       }
     }
   }, [isError, error, refreshUsers, toast]);
@@ -288,6 +374,13 @@ export const useUserList = () => {
     if (isMounted.current) {
       setCurrentPage(page);
     }
+  }, []);
+
+  // Xóa cache khi component unmount
+  useEffect(() => {
+    return () => {
+      usersCache = null;
+    };
   }, []);
 
   return {

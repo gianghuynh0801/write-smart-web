@@ -172,6 +172,11 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Lưu thông tin subscription trước để xử lý riêng
+    const oldSubscription = existingUser.subscription;
+    const newSubscription = userData.subscription;
+    const subscriptionChanged = oldSubscription !== newSubscription;
+
     // Cập nhật thông tin user
     const updatePromise = supabaseAdmin
       .from('users')
@@ -189,7 +194,7 @@ Deno.serve(async (req) => {
     
     const { data: updatedUser, error: updateError } = await withTimeout(
       updatePromise,
-      10000,
+      8000,
       'Cập nhật thông tin user'
     );
 
@@ -202,19 +207,19 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Xử lý thay đổi gói đăng ký nếu có
-    if (existingUser.subscription !== userData.subscription) {
+    // Xử lý thay đổi gói đăng ký trong background nếu có
+    if (subscriptionChanged) {
       try {
-        console.log('[update-user] Cập nhật gói đăng ký:', {
-          from: existingUser.subscription,
-          to: userData.subscription
+        console.log('[update-user] Phát hiện thay đổi gói đăng ký:', {
+          from: oldSubscription,
+          to: newSubscription
         });
         
         // Sử dụng EdgeRuntime.waitUntil để xử lý subscription trong background
         if (typeof EdgeRuntime !== 'undefined') {
           EdgeRuntime.waitUntil((async () => {
             try {
-              await updateUserSubscription(id, userData.subscription);
+              await updateUserSubscription(id, newSubscription);
               console.log('[update-user] Đã cập nhật gói đăng ký thành công trong background');
             } catch (err) {
               console.error('[update-user] Lỗi khi cập nhật gói đăng ký trong background:', err);
@@ -223,16 +228,20 @@ Deno.serve(async (req) => {
           
           console.log('[update-user] Đã gửi cập nhật gói đăng ký để xử lý trong background');
         } else {
-          // Fallback nếu không hỗ trợ waitUntil
-          await updateUserSubscription(id, userData.subscription);
+          // Không block response, trả về trước và xử lý sau
+          console.log('[update-user] EdgeRuntime.waitUntil không khả dụng, xử lý đồng bộ');
+          setTimeout(async () => {
+            try {
+              await updateUserSubscription(id, newSubscription);
+              console.log('[update-user] Đã cập nhật gói đăng ký thành công (async)');
+            } catch (err) {
+              console.error('[update-user] Lỗi khi cập nhật gói đăng ký (async):', err);
+            }
+          }, 0);
         }
       } catch (subProcessError) {
         console.error('[update-user] Lỗi khi khởi tạo xử lý gói đăng ký:', subProcessError);
-        return standardResponse(
-          null,
-          `Lỗi xử lý gói đăng ký: ${subProcessError instanceof Error ? subProcessError.message : String(subProcessError)}`,
-          500
-        );
+        // Không ảnh hưởng đến response chính, chỉ log lỗi
       }
     }
 
@@ -253,15 +262,22 @@ Deno.serve(async (req) => {
 // Hàm xử lý cập nhật gói đăng ký
 async function updateUserSubscription(userId: string, subscriptionName: string): Promise<void> {
   try {
+    const timeoutMs = 5000;
+
     // Tìm subscription id
-    const { data: subscriptionData, error: subError } = await supabaseAdmin
+    const subscriptionPromise = supabaseAdmin
       .from('subscriptions')
       .select('id')
       .eq('name', subscriptionName)
       .maybeSingle();
+      
+    const { data: subscriptionData, error: subError } = await withTimeout(
+      subscriptionPromise,
+      timeoutMs,
+      'Tìm gói đăng ký'
+    );
 
     if (subError) {
-      console.error('[update-user] Lỗi khi tìm gói đăng ký:', subError);
       throw new Error(`Lỗi khi tìm gói đăng ký: ${subError.message}`);
     }
 
@@ -274,7 +290,7 @@ async function updateUserSubscription(userId: string, subscriptionName: string):
     
     await withTimeout(
       deactivatePromise,
-      5000,
+      timeoutMs,
       'Hủy gói đăng ký cũ'
     );
 
@@ -297,7 +313,7 @@ async function updateUserSubscription(userId: string, subscriptionName: string):
       
       await withTimeout(
         insertPromise,
-        5000,
+        timeoutMs,
         'Tạo gói đăng ký mới'
       );
     }
