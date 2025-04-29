@@ -3,6 +3,7 @@ import { useEffect, useCallback, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { tokenManager } from "@/utils/tokenManager";
 import { useAdminUsersDebounce } from "@/hooks/admin/useAdminUsersDebounce";
+import { featureFlags } from "@/config/featureFlags";
 
 interface UseAdminUsersEffectsProps {
   refreshUsers: () => Promise<void>;
@@ -26,8 +27,13 @@ export const useAdminUsersEffects = ({
     };
   }, [clearRefreshTimeout]);
 
-  // Chỉ tải dữ liệu khi component được mount
+  // Chỉ tải dữ liệu khi component được mount nếu cờ enableAutoRefresh được bật
   useEffect(() => {
+    // Bỏ tự động load khi không bật cờ enableAutoRefresh
+    if (!featureFlags.enableAutoRefresh) {
+      return;
+    }
+    
     const loadData = async () => {
       try {
         console.log("[AdminUsers] Đang khởi tạo dữ liệu...");
@@ -52,7 +58,10 @@ export const useAdminUsersEffects = ({
       }
     };
     
-    loadData();
+    // Chỉ gọi loadData khi cờ enableAutoRefresh được bật
+    if (featureFlags.enableAutoRefresh) {
+      loadData();
+    }
   }, [debouncedRefreshUsers, refreshUsers, toast]);
 
   // Handler cập nhật sau khi user được lưu với thời gian delay dài hơn

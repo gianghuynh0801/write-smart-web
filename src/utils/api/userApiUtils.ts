@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { User } from "@/types/user";
 import { authService, AuthErrorType, AuthError, isAuthError } from "@/services/authService";
 import { tokenManager } from "@/utils/tokenManager";
+import { featureFlags } from "@/config/featureFlags";
 
 // Định nghĩa kiểu dữ liệu cho cache
 export interface UsersCache {
@@ -19,8 +20,8 @@ export interface UsersCache {
   };
 }
 
-// Tăng thời gian cache lên 5 phút
-export const cacheValidTime = 300000; // 5 phút
+// Sử dụng thời gian cache từ featureFlags
+export const cacheValidTime = featureFlags.cacheValidTimeMs || 300000; // Mặc định 5 phút
 export let usersCache: UsersCache | null = null;
 
 // Hàm fetchUsers sửa đổi để chỉ lấy dữ liệu cần thiết cho bảng
@@ -68,11 +69,11 @@ export const fetchUsers = async (params: {
       }
     });
     
-    // Tạo timeout promise
+    // Tạo timeout promise với thời gian dài hơn để tránh timeout quá nhanh
     const timeoutPromise = new Promise<never>((_, reject) => {
       const id = setTimeout(() => {
         reject(new Error('Timeout khi lấy danh sách người dùng'));
-      }, 15000); // 15 giây timeout để tránh đóng băng
+      }, 30000); // Tăng lên 30 giây để tránh timeout quá sớm
       
       // Xóa timeout nếu có abort signal
       if (abortSignal) {

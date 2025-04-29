@@ -1,17 +1,19 @@
 
 import { useState, useRef, useEffect } from "react";
 import { usersCache, clearUsersCache } from "@/utils/api/userApiUtils";
+import { featureFlags } from "@/config/featureFlags";
 
 export const useUserCache = () => {
   // Theo dõi thời gian refresh cuối cùng để tránh refresh quá nhanh
   const lastRefreshTime = useRef(0);
-  // Tăng khoảng thời gian tối thiểu giữa các lần refresh lên 5 giây
-  const minRefreshInterval = 5000; // 5 giây giữa các lần refresh
+  // Tăng khoảng thời gian tối thiểu giữa các lần refresh lên 10 giây
+  const minRefreshInterval = 10000; // 10 giây giữa các lần refresh
 
   // Xóa cache khi component unmount
   useEffect(() => {
     return () => {
-      clearUsersCache();
+      // Không xóa cache khi unmount nữa để giữ dữ liệu cho lần sau
+      // clearUsersCache();
     };
   }, []);
 

@@ -35,7 +35,10 @@ const UserTable = ({
   onResendVerification,
 }: UserTableProps) => {
   // Chỉ lấy dữ liệu ID để truyền vào các hook realtime nếu tính năng được bật
-  const userIds = useMemo(() => users.map(u => u.id), [users.map(u => u.id).join(',')]);
+  const userIds = useMemo(() => 
+    featureFlags.enableRealtimeUpdates ? users.map(u => u.id) : [], 
+    [users, featureFlags.enableRealtimeUpdates]
+  );
   
   // Sử dụng hook realtime để nhận các cập nhật từ server chỉ khi tính năng được bật
   const realtimeUserUpdates = featureFlags.enableRealtimeUpdates 

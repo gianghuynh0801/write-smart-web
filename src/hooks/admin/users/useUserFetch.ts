@@ -1,10 +1,11 @@
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchUsers } from "@/utils/api/userApiUtils";
 import { useToast } from "@/hooks/use-toast";
 import { isAuthError } from "@/services/authService";
 import { tokenManager } from "@/utils/tokenManager";
+import { featureFlags } from "@/config/featureFlags";
 
 export const useUserFetch = (
   currentPage: number,
@@ -17,7 +18,7 @@ export const useUserFetch = (
   const isMounted = useRef(true);
   const [isRefreshingToken, setIsRefreshingToken] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
-
+  
   // Đảm bảo biến isMounted được set đúng khi component mount/unmount
   useEffect(() => {
     isMounted.current = true;
@@ -55,21 +56,9 @@ export const useUserFetch = (
         abortControllerRef.current.signal
       );
     },
-    retry: (failureCount, error) => {
-      // Không retry nếu request bị hủy
-      if (error.message === "Request bị hủy") {
-        return false;
-      }
-      
-      // Thử lại tối đa 1 lần nếu là lỗi xác thực
-      if (isAuthError(error) && failureCount < 1) {
-        console.log(`Thử lại lần ${failureCount + 1} sau lỗi xác thực`);
-        return true;
-      }
-      return false;
-    },
-    staleTime: 60000, // Dữ liệu được coi là "tươi" trong 1 phút
-    gcTime: 300000, // Giữ dữ liệu trong cache 5 phút
+    retry: 0, // Không retry để giảm số lần gọi API
+    staleTime: featureFlags.cacheValidTimeMs, // Dữ liệu được coi là "tươi" trong thời gian cấu hình
+    gcTime: featureFlags.cacheValidTimeMs * 3, // Giữ dữ liệu trong cache lâu hơn
     meta: {
       onError: (err: Error) => {
         // Bỏ qua lỗi khi request bị hủy
@@ -92,8 +81,8 @@ export const useUserFetch = (
     }
   });
 
-  // Tạo một phiên bản refetch có kiểm soát
-  const refreshUsers = async () => {
+  // Tạo một phiên bản refetch có kiểm soát sử dụng useCallback để giảm số lần render
+  const refreshUsers = useCallback(async () => {
     try {
       // Kiểm tra giới hạn tần suất refresh
       await checkRefreshThrottle();
@@ -105,13 +94,12 @@ export const useUserFetch = (
       console.error("Lỗi khi làm mới dữ liệu:", err);
       return false;
     }
-  };
+  }, [refetch, checkRefreshThrottle]);
 
-  // Effect để tự động thử làm mới token khi có lỗi
+  // Effect để tự động thử làm mới token khi có lỗi - chỉ chạy khi thực sự có lỗi
   useEffect(() => {
     if (isError && !isRefreshingToken && isMounted.current) {
-      console.log("Phát hiện lỗi, kiểm tra nếu là lỗi xác thực...");
-      
+      // Nếu có lỗi và lỗi đó là lỗi xác thực
       if (isAuthError(error)) {
         setIsRefreshingToken(true);
         

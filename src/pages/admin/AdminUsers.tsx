@@ -6,6 +6,9 @@ import AdminUsersContent from "@/components/admin/users/AdminUsersContent";
 import AdminUsersDialogs from "@/components/admin/users/AdminUsersDialogs";
 import { useAdminUsersEffects } from "@/components/admin/users/hooks/useAdminUsersEffects";
 import { useUserDialogHandlers } from "@/components/admin/users/hooks/useUserDialogHandlers";
+import { Button } from "@/components/ui/button";
+import { RefreshCw } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const AdminUsers = () => {
   // Lấy tất cả state và handlers từ hook useUserManagement
@@ -42,6 +45,8 @@ const AdminUsers = () => {
     getRoleColor,
   } = useUserManagement();
 
+  const { toast } = useToast();
+
   // Handler cập nhật sau khi user được lưu 
   const handleUserSaved = useCallback(() => {
     console.log("[AdminUsers] Đã phát hiện người dùng được lưu, đang làm mới dữ liệu...");
@@ -68,6 +73,31 @@ const AdminUsers = () => {
     setAddCreditsDialogOpen,
     handleUserActionComplete
   });
+
+  // Thêm hàm để load dữ liệu ban đầu khi trang được mở
+  useEffect(() => {
+    console.log("[AdminUsers] Trang đã được mở, đang tải dữ liệu ban đầu...");
+    handleRefresh();
+  }, []);
+
+  // Thêm một hàm để refresh dữ liệu thủ công
+  const handleManualRefresh = useCallback(async () => {
+    try {
+      console.log("[AdminUsers] Đang làm mới dữ liệu thủ công...");
+      await refreshUsers();
+      toast({
+        title: "Thành công",
+        description: "Đã làm mới danh sách người dùng",
+      });
+    } catch (error) {
+      console.error("[AdminUsers] Lỗi khi làm mới dữ liệu thủ công:", error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể làm mới danh sách người dùng",
+        variant: "destructive"
+      });
+    }
+  }, [refreshUsers, toast]);
 
   // Tính số trang
   const totalPages = Math.ceil(totalUsers / pageSize);

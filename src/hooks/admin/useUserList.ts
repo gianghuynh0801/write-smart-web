@@ -4,6 +4,7 @@ import { useUserCache } from "./users/useUserCache";
 import { useUserFetch } from "./users/useUserFetch";
 import { useUserSearch } from "./users/useUserSearch";
 import { useUserPagination } from "./users/useUserPagination";
+import { featureFlags } from "@/config/featureFlags";
 
 export const useUserList = () => {
   const { checkRefreshThrottle, hasCachedData, getCachedParams } = useUserCache();
@@ -57,9 +58,9 @@ export const useUserList = () => {
     checkRefreshThrottle
   );
 
-  // Load dữ liệu khi component mount
+  // Loại bỏ auto-refresh khi component mount, chỉ load khi không có cache và cờ enableAutoRefresh được bật
   useEffect(() => {
-    if (!hasCachedData()) {
+    if (!hasCachedData() && featureFlags.enableAutoRefresh) {
       refreshUsers();
     }
   }, []);

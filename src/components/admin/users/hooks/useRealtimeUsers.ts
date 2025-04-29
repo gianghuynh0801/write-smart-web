@@ -16,8 +16,8 @@ export const useRealtimeUsers = (userIds: (string | number)[]) => {
   const updateTimeoutsRef = useRef<Record<string | number, NodeJS.Timeout>>({});
   const isMountedRef = useRef<boolean>(true);
   
-  // Nếu tính năng realtime bị tắt, trả về object rỗng
-  if (!featureFlags.enableRealtimeUpdates) {
+  // Nếu tính năng realtime bị tắt hoặc không có userIds, trả về object rỗng 
+  if (!featureFlags.enableRealtimeUpdates || userIds.length === 0) {
     return {};
   }
   
@@ -41,14 +41,12 @@ export const useRealtimeUsers = (userIds: (string | number)[]) => {
     }, 300);
   };
 
-  // Thiết lập và xử lý kênh realtime chung
+  // Thiết lập và xử lý kênh realtime chung chỉ khi tính năng được bật
   useEffect(() => {
-    if (!featureFlags.enableRealtimeUpdates) return; // Thoát nếu tính năng bị tắt
+    if (!featureFlags.enableRealtimeUpdates || userIds.length === 0) return; // Thoát sớm để tránh kết nối không cần thiết
     
     isMountedRef.current = true;
     
-    if (userIds.length === 0) return;
-
     // Giới hạn số lượng ID để tránh quá tải
     const limitedUserIds = userIds.slice(0, 50);
 
