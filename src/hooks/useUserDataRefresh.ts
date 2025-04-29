@@ -12,10 +12,13 @@ export const useUserDataRefresh = () => {
   const { user, updateUserDetails } = useAuth();
 
   const refreshUserData = useCallback(async () => {
-    if (!user?.id) return null;
+    if (!user?.id) {
+      console.log("useUserDataRefresh: Không có user ID, bỏ qua refresh");
+      return null;
+    }
 
     try {
-      console.log("Đang refresh dữ liệu người dùng cho:", user.id);
+      console.log("useUserDataRefresh: Đang refresh dữ liệu người dùng cho:", user.id);
 
       // Lấy thông tin chi tiết từ bảng users
       const { data: userData, error: userError } = await supabase
@@ -28,6 +31,8 @@ export const useUserDataRefresh = () => {
         console.error("Lỗi khi lấy thông tin người dùng:", userError);
         return null;
       }
+
+      console.log("useUserDataRefresh: Đã lấy thông tin cơ bản người dùng:", userData);
 
       // Lấy thông tin gói đăng ký hiện tại
       const { data: subData, error: subError } = await supabase
@@ -47,6 +52,8 @@ export const useUserDataRefresh = () => {
 
       if (subError && subError.code !== 'PGRST116') {
         console.error("Lỗi khi lấy thông tin gói đăng ký:", subError);
+      } else {
+        console.log("useUserDataRefresh: Đã lấy thông tin gói đăng ký:", subData);
       }
 
       // Kết hợp thông tin
@@ -62,6 +69,7 @@ export const useUserDataRefresh = () => {
       // Cập nhật context
       if (updateUserDetails) {
         updateUserDetails(userDetails);
+        console.log("useUserDataRefresh: Đã cập nhật context với dữ liệu mới");
       }
 
       return userDetails;

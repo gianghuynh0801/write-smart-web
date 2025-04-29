@@ -1,13 +1,58 @@
 
-import { Outlet } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Outlet, useNavigate } from "react-router-dom";
 import Sidebar from "@/components/dashboard/Sidebar";
 import { Link } from "react-router-dom";
 import { Home } from "lucide-react";
 import LanguageSwitcher from "@/components/common/LanguageSwitcher";
 import { useAuthRedirect } from "@/hooks/useAuthRedirect";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 const DashboardLayout = () => {
-  useAuthRedirect();
+  const { isChecking } = useAuthRedirect();
+  const [isLoading, setIsLoading] = useState(true);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Kiểm tra phiên đăng nhập một lần nữa khi component mount
+    const verifySession = async () => {
+      console.log("DashboardLayout: Kiểm tra phiên làm việc");
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          console.log("DashboardLayout: Không có phiên làm việc hợp lệ, chuyển hướng đến trang đăng nhập");
+          navigate('/login');
+          return;
+        }
+        
+        console.log("DashboardLayout: Phiên làm việc hợp lệ, user:", session.user.id);
+      } catch (error) {
+        console.error("DashboardLayout: Lỗi khi kiểm tra phiên làm việc:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    // Đợi isChecking từ useAuthRedirect thành false trước khi kiểm tra lại
+    if (!isChecking) {
+      verifySession();
+    }
+  }, [navigate, isChecking, user]);
+
+  // Hiển thị trạng thái loading khi đang kiểm tra xác thực
+  if (isChecking || isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="flex flex-col items-center">
+          <div className="w-12 h-12 border-4 border-t-4 border-gray-200 border-t-primary rounded-full animate-spin"></div>
+          <p className="mt-4 text-gray-600">Đang tải dữ liệu...</p>
+          <p className="text-sm text-gray-500">Vui lòng đợi trong giây lát</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

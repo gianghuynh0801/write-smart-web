@@ -18,6 +18,7 @@ const Login = () => {
   const [error, setError] = useState<string | null>(null);
   const [unconfirmedEmail, setUnconfirmedEmail] = useState<string>("");
   const [isEmailVerificationRequired, setIsEmailVerificationRequired] = useState<boolean>(true);
+  const [redirectInProgress, setRedirectInProgress] = useState<boolean>(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   const { fetchUserDetails } = useAuth();
@@ -43,8 +44,10 @@ const Login = () => {
   // Add check for existing session
   useEffect(() => {
     const checkSession = async () => {
+      console.log("Login: Kiểm tra phiên làm việc hiện tại");
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
+        console.log("Login: Phiên làm việc đã tồn tại, chuyển hướng đến dashboard");
         navigate('/dashboard');
       }
     };
@@ -81,10 +84,13 @@ const Login = () => {
   };
 
   const handleLogin = async (email: string, password: string) => {
+    if (redirectInProgress) return;
+    
     setError(null);
     setIsLoading(true);
     
     try {
+      console.log("Login: Đang xử lý đăng nhập với email:", email);
       const { data, error } = await supabase.auth.signInWithPassword({ 
         email, 
         password 
@@ -125,26 +131,37 @@ const Login = () => {
           description: "Đang chuyển hướng đến bảng điều khiển...",
         });
         
+        setRedirectInProgress(true);
         setTimeout(() => {
+          console.log("Login: Chuyển hướng đến dashboard sau 3 giây");
           navigate("/dashboard");
-        }, 1500);
+        }, 3000);
         return;
       }
       
       if (data.user) {
+        console.log("Login: Đăng nhập thành công với user:", data.user.id);
+        
         // Refresh các thông tin người dùng ngay sau khi đăng nhập
-        setTimeout(async () => {
+        try {
           await fetchUserDetails(data.user.id);
           await refreshUserData();
-          
-          // Chuyển hướng sau khi đã lấy đủ thông tin
-          navigate("/dashboard");
-        }, 0);
+          console.log("Login: Đã cập nhật thông tin người dùng thành công");
+        } catch (refreshError) {
+          console.error("Lỗi khi refresh dữ liệu người dùng:", refreshError);
+        }
         
         toast({
           title: "Đăng nhập thành công!",
           description: "Đang chuyển hướng đến bảng điều khiển...",
         });
+        
+        // Đặt cờ redirect và thêm thời gian chờ dài hơn
+        setRedirectInProgress(true);
+        setTimeout(() => {
+          console.log("Login: Chuyển hướng đến dashboard sau 3 giây");
+          navigate("/dashboard");
+        }, 3000);
       }
     } catch (error: any) {
       console.error("Login error:", error);
@@ -176,6 +193,27 @@ const Login = () => {
       setIsLoading(false);
     }
   };
+
+  // Sự kiện auth state change để chuyển hướng
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, currentSession) => {
+        console.log("Login: Auth state changed:", event);
+        
+        if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && currentSession && !redirectInProgress) {
+          console.log("Login: Phát hiện đăng nhập/token refreshed từ sự kiện auth, chuyển hướng đến dashboard");
+          setRedirectInProgress(true);
+          setTimeout(() => {
+            navigate("/dashboard");
+          }, 2000);
+        }
+      }
+    );
+    
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [navigate, redirectInProgress]);
 
   return (
     <div className="min-h-screen flex flex-col">
