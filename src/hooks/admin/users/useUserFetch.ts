@@ -31,6 +31,9 @@ export const useUserFetch = (
     };
   }, []);
 
+  // Tăng thời gian staleTime lên rất cao để tránh fetch tự động
+  const staleTime = featureFlags.cacheValidTimeMs * 2; // Tăng gấp đôi thời gian từ featureFlags
+  
   const {
     data,
     isLoading,
@@ -58,9 +61,9 @@ export const useUserFetch = (
         throw error;
       }
     },
-    retry: 1, // Giảm số lần retry xuống 1 lần
-    staleTime: featureFlags.cacheValidTimeMs, // Dữ liệu được coi là "tươi" trong thời gian cấu hình
-    gcTime: featureFlags.cacheValidTimeMs * 2, // Giữ dữ liệu trong cache lâu hơn
+    retry: 0, // Không tự động thử lại để tránh nhiều request
+    staleTime: staleTime, // Tăng thời gian stale lên rất cao
+    gcTime: staleTime * 2, // Giữ dữ liệu trong cache lâu hơn
     enabled: false, // Tắt tự động fetch khi mount để ngăn vòng lặp vô hạn
     meta: {
       onError: (err: Error) => {
@@ -84,14 +87,15 @@ export const useUserFetch = (
     }
   });
 
-  // Tạo một phiên bản refetch có kiểm soát sử dụng useCallback để giảm số lần render
+  // Tạo một phiên bản refetch có kiểm soát
   const refreshUsers = useCallback(async () => {
     try {
-      // Kiểm tra giới hạn tần suất refresh
+      // Kiểm tra giới hạn tần suất refresh - chỉ thực sự refresh khi cần
       const canRefresh = await checkRefreshThrottle();
       if (!canRefresh) {
         console.log("[useUserFetch] Đã từ chối yêu cầu refresh do hạn chế tần suất");
-        return false;
+        // Trả về true trong trường hợp này để không hiển thị lỗi
+        return true;
       }
       
       console.log("[useUserFetch] Bắt đầu làm mới danh sách người dùng");
@@ -103,31 +107,33 @@ export const useUserFetch = (
     }
   }, [refetch, checkRefreshThrottle]);
 
-  // Effect để tự động thử làm mới token khi có lỗi - chỉ chạy khi thực sự có lỗi
+  // Effect để thử làm mới token khi có lỗi - đã giảm thiểu số lần gọi
   useEffect(() => {
+    let refreshTimer: number;
     if (isError && !isRefreshingToken && isMounted.current) {
-      // Nếu có lỗi và lỗi đó là lỗi xác thực
+      // Chỉ làm mới token khi thực sự cần thiết
       if (isAuthError(error)) {
         setIsRefreshingToken(true);
         
-        tokenManager.refreshToken()
-          .then(token => {
-            if (token && isMounted.current) {
-              console.log("[useUserFetch] Đã làm mới token thành công, đang tải lại dữ liệu...");
-              // Trì hoãn để tránh quá nhiều request
-              setTimeout(() => {
-                if (isMounted.current) {
-                  refreshUsers();
-                }
-              }, 2000);
-            }
-          })
-          .finally(() => {
-            if (isMounted.current) setIsRefreshingToken(false);
-          });
+        // Sử dụng setTimeout để hoãn việc refresh token, tránh lặp liên tục
+        refreshTimer = window.setTimeout(() => {
+          tokenManager.refreshToken()
+            .then(token => {
+              if (token && isMounted.current) {
+                console.log("[useUserFetch] Đã làm mới token thành công");
+              }
+            })
+            .finally(() => {
+              if (isMounted.current) setIsRefreshingToken(false);
+            });
+        }, 5000); // Đợi 5 giây trước khi thử làm mới token
       }
     }
-  }, [isError, error, refreshUsers]);
+    
+    return () => {
+      clearTimeout(refreshTimer);
+    };
+  }, [isError, error]);
 
   return {
     data,

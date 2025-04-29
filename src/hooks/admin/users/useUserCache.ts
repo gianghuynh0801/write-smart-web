@@ -1,13 +1,18 @@
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { usersCache, clearUsersCache } from "@/utils/api/userApiUtils";
 import { featureFlags } from "@/config/featureFlags";
 
 export const useUserCache = () => {
   // Theo dõi thời gian refresh cuối cùng để tránh refresh quá nhanh
   const lastRefreshTime = useRef(0);
-  // Tăng khoảng thời gian tối thiểu giữa các lần refresh lên 15 giây
-  const minRefreshInterval = 15000; // 15 giây giữa các lần refresh
+  // Tăng khoảng thời gian tối thiểu giữa các lần refresh lên 30 giây
+  const minRefreshInterval = 30000; // 30 giây giữa các lần refresh
+
+  // Cache memoized để tránh tính toán lại
+  const cachedParams = useMemo(() => {
+    return usersCache?.params || null;
+  }, []);
 
   // Không xóa cache khi component unmount để giữ dữ liệu cho lần sau
   useEffect(() => {
@@ -29,8 +34,8 @@ export const useUserCache = () => {
   };
 
   return {
-    hasCachedData: () => usersCache !== null,
-    getCachedParams: () => usersCache?.params || null,
+    hasCachedData: () => !!usersCache,
+    getCachedParams: () => cachedParams,
     checkRefreshThrottle,
     lastRefreshTime,
     minRefreshInterval
