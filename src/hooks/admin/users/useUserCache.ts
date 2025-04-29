@@ -6,26 +6,25 @@ import { featureFlags } from "@/config/featureFlags";
 export const useUserCache = () => {
   // Theo dõi thời gian refresh cuối cùng để tránh refresh quá nhanh
   const lastRefreshTime = useRef(0);
-  // Tăng khoảng thời gian tối thiểu giữa các lần refresh lên 10 giây
-  const minRefreshInterval = 10000; // 10 giây giữa các lần refresh
+  // Tăng khoảng thời gian tối thiểu giữa các lần refresh lên 15 giây
+  const minRefreshInterval = 15000; // 15 giây giữa các lần refresh
 
-  // Xóa cache khi component unmount
+  // Không xóa cache khi component unmount để giữ dữ liệu cho lần sau
   useEffect(() => {
     return () => {
-      // Không xóa cache khi unmount nữa để giữ dữ liệu cho lần sau
-      // clearUsersCache();
+      console.log("[useUserCache] Component unmount, giữ cache");
     };
   }, []);
 
   const checkRefreshThrottle = async () => {
     const now = Date.now();
     if (now - lastRefreshTime.current < minRefreshInterval) {
-      console.log(`Hạn chế tần suất refresh: ${minRefreshInterval - (now - lastRefreshTime.current)}ms còn lại`);
-      await new Promise(resolve => 
-        setTimeout(resolve, minRefreshInterval - (now - lastRefreshTime.current))
-      );
+      console.log(`[useUserCache] Hạn chế tần suất refresh: ${Math.round((minRefreshInterval - (now - lastRefreshTime.current)) / 1000)}s còn lại`);
+      // Trả về false nếu chưa đủ thời gian để refresh
+      return false;
     }
     lastRefreshTime.current = Date.now();
+    console.log(`[useUserCache] Cho phép refresh lúc ${new Date(lastRefreshTime.current).toLocaleTimeString()}`);
     return true;
   };
 

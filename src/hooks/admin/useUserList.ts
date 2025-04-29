@@ -58,12 +58,8 @@ export const useUserList = () => {
     checkRefreshThrottle
   );
 
-  // Loại bỏ auto-refresh khi component mount, chỉ load khi không có cache và cờ enableAutoRefresh được bật
-  useEffect(() => {
-    if (!hasCachedData() && featureFlags.enableAutoRefresh) {
-      refreshUsers();
-    }
-  }, []);
+  // Hoàn toàn loại bỏ auto-refresh để ngăn vòng lặp vô hạn
+  // KHÔNG có useEffect nào gọi refreshUsers() khi component mount
 
   return {
     users: (data?.users ?? []),

@@ -1,5 +1,4 @@
 
-import { useEffect } from "react";
 import { useUserList } from "./admin/useUserList";
 import { useUserActions } from "./admin/useUserActions";
 import { useUserStyles } from "./admin/useUserStyles";
@@ -26,7 +25,7 @@ export const useUserManagement = () => {
     try {
       await rawRefreshUsers();
     } catch (error) {
-      console.error("Lỗi khi làm mới danh sách người dùng:", error);
+      console.error("[useUserManagement] Lỗi khi làm mới danh sách người dùng:", error);
     }
   };
 
@@ -51,9 +50,7 @@ export const useUserManagement = () => {
 
   const { getRoleColor } = useUserStyles();
 
-  useEffect(() => {
-    refreshUsers();
-  }, []);
+  // Loại bỏ useEffect tự động gọi refreshUsers() khi component mount
 
   return {
     // User list state and handlers

@@ -27,57 +27,23 @@ export const useAdminUsersEffects = ({
     };
   }, [clearRefreshTimeout]);
 
-  // Chỉ tải dữ liệu khi component được mount nếu cờ enableAutoRefresh được bật
-  useEffect(() => {
-    // Bỏ tự động load khi không bật cờ enableAutoRefresh
-    if (!featureFlags.enableAutoRefresh) {
-      return;
-    }
-    
-    const loadData = async () => {
-      try {
-        console.log("[AdminUsers] Đang khởi tạo dữ liệu...");
-        // Đảm bảo có token admin hợp lệ trước khi tải dữ liệu
-        const hasToken = await tokenManager.getToken();
-        
-        if (hasToken) {
-          if (isMountedRef.current) {
-            debouncedRefreshUsers(refreshUsers, false, isMountedRef);
-          }
-        } else if (isMountedRef.current) {
-          toast({
-            title: "Lỗi phiên đăng nhập",
-            description: "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.",
-            variant: "destructive"
-          });
-        }
-      } catch (error) {
-        if (isMountedRef.current) {
-          console.error("[AdminUsers] Lỗi khi tải dữ liệu ban đầu:", error);
-        }
-      }
-    };
-    
-    // Chỉ gọi loadData khi cờ enableAutoRefresh được bật
-    if (featureFlags.enableAutoRefresh) {
-      loadData();
-    }
-  }, [debouncedRefreshUsers, refreshUsers, toast]);
+  // Đã loại bỏ useEffect tự động tải dữ liệu khi component mount
 
   // Handler cập nhật sau khi user được lưu với thời gian delay dài hơn
   const handleUserActionComplete = useCallback(() => {
-    console.log("[AdminUsers] Hoàn thành hành động người dùng, đang làm mới dữ liệu sau 2000ms...");
+    console.log("[AdminUsers] Hoàn thành hành động người dùng, đang làm mới dữ liệu sau 3000ms...");
     setTimeout(() => {
       if (isMountedRef.current) {
         debouncedRefreshUsers(refreshUsers, true, isMountedRef);
       }
-    }, 2000);
+    }, 3000);
   }, [debouncedRefreshUsers, refreshUsers]);
 
   // Sử dụng biến cờ để đánh dấu đang refresh
   const isDataRefreshing = getIsDataRefreshing();
 
   const handleRefresh = useCallback(() => {
+    console.log("[AdminUsers] Yêu cầu refresh thủ công");
     debouncedRefreshUsers(refreshUsers, true, isMountedRef);
   }, [debouncedRefreshUsers, refreshUsers]);
 

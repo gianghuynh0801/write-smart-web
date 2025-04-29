@@ -34,8 +34,11 @@ const UserTable = ({
   onDeleteUser,
   onResendVerification,
 }: UserTableProps) => {
-  // Chỉ lấy danh sách ID thay vì toàn bộ đối tượng user để tránh re-render không cần thiết
-  const userIds = useMemo(() => users.map(u => u.id), [users.map(u => u.id).join(',')]);
+  // Tối ưu useMemo để tránh re-render không cần thiết
+  const userIds = useMemo(() => {
+    // Chỉ tạo mảng ID khi tính năng realtime được bật
+    return featureFlags.enableRealtimeUpdates ? users.map(u => u.id) : [];
+  }, [users, featureFlags.enableRealtimeUpdates]);
   
   // Chỉ sử dụng realtime updates khi tính năng được bật
   const realtimeUserUpdates = featureFlags.enableRealtimeUpdates 

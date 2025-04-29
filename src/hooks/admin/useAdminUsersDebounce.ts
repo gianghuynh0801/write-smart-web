@@ -26,7 +26,7 @@ export const useAdminUsersDebounce = () => {
     
     isDataRefreshingRef.current = true;
     
-    // Tạo timeout mới với thời gian dài hơn - tăng lên 3 giây
+    // Tạo timeout mới với thời gian dài hơn - tăng lên 5 giây
     const timeoutId = setTimeout(async () => {
       try {
         console.log("[AdminUsers] Đang làm mới dữ liệu...");
@@ -46,7 +46,7 @@ export const useAdminUsersDebounce = () => {
           isDataRefreshingRef.current = false;
         }
       }
-    }, 3000); // 3000ms để giảm số lượng request
+    }, 5000); // 5000ms để giảm số lượng request
     
     refreshTimeoutRef.current = timeoutId;
   }, [toast]);

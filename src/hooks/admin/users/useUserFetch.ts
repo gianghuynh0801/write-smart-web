@@ -48,26 +48,29 @@ export const useUserFetch = (
       // Tạo controller mới
       abortControllerRef.current = new AbortController();
       
-      // Kiểm tra giới hạn tần suất refresh
-      await checkRefreshThrottle();
-      
-      return fetchUsers(
-        { page: currentPage, pageSize, status, searchTerm },
-        abortControllerRef.current.signal
-      );
+      try {
+        return await fetchUsers(
+          { page: currentPage, pageSize, status, searchTerm },
+          abortControllerRef.current.signal
+        );
+      } catch (error) {
+        console.error("[useUserFetch] Lỗi khi fetch dữ liệu:", error);
+        throw error;
+      }
     },
-    retry: 0, // Không retry để giảm số lần gọi API
+    retry: 1, // Giảm số lần retry xuống 1 lần
     staleTime: featureFlags.cacheValidTimeMs, // Dữ liệu được coi là "tươi" trong thời gian cấu hình
-    gcTime: featureFlags.cacheValidTimeMs * 3, // Giữ dữ liệu trong cache lâu hơn
+    gcTime: featureFlags.cacheValidTimeMs * 2, // Giữ dữ liệu trong cache lâu hơn
+    enabled: false, // Tắt tự động fetch khi mount để ngăn vòng lặp vô hạn
     meta: {
       onError: (err: Error) => {
         // Bỏ qua lỗi khi request bị hủy
         if (err.message === "Request bị hủy") {
-          console.log("Request bị hủy, không hiển thị lỗi");
+          console.log("[useUserFetch] Request bị hủy, không hiển thị lỗi");
           return;
         }
         
-        console.error("Lỗi khi tải danh sách người dùng:", err);
+        console.error("[useUserFetch] Lỗi khi tải danh sách người dùng:", err);
         
         if (isMounted.current) {
           // Hiển thị thông báo lỗi
@@ -85,13 +88,17 @@ export const useUserFetch = (
   const refreshUsers = useCallback(async () => {
     try {
       // Kiểm tra giới hạn tần suất refresh
-      await checkRefreshThrottle();
+      const canRefresh = await checkRefreshThrottle();
+      if (!canRefresh) {
+        console.log("[useUserFetch] Đã từ chối yêu cầu refresh do hạn chế tần suất");
+        return false;
+      }
       
-      console.log("Bắt đầu làm mới danh sách người dùng");
+      console.log("[useUserFetch] Bắt đầu làm mới danh sách người dùng");
       await refetch();
       return true;
     } catch (err) {
-      console.error("Lỗi khi làm mới dữ liệu:", err);
+      console.error("[useUserFetch] Lỗi khi làm mới dữ liệu:", err);
       return false;
     }
   }, [refetch, checkRefreshThrottle]);
@@ -106,7 +113,7 @@ export const useUserFetch = (
         tokenManager.refreshToken()
           .then(token => {
             if (token && isMounted.current) {
-              console.log("Đã làm mới token thành công, đang tải lại dữ liệu...");
+              console.log("[useUserFetch] Đã làm mới token thành công, đang tải lại dữ liệu...");
               // Trì hoãn để tránh quá nhiều request
               setTimeout(() => {
                 if (isMounted.current) {

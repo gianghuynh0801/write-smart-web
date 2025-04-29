@@ -74,13 +74,13 @@ const AdminUsers = () => {
     handleUserActionComplete
   });
 
-  // Thêm hàm để load dữ liệu ban đầu khi trang được mở
+  // Thêm hàm để load dữ liệu ban đầu khi trang được mở - chỉ gọi một lần khi component mount
   useEffect(() => {
-    console.log("[AdminUsers] Trang đã được mở, đang tải dữ liệu ban đầu...");
-    handleRefresh();
+    console.log("[AdminUsers] Trang đã được mở, cần làm mới dữ liệu thủ công");
+    // KHÔNG tự động tải dữ liệu
   }, []);
 
-  // Thêm một hàm để refresh dữ liệu thủ công
+  // Thêm một hàm để refresh dữ liệu thủ công với kiểm soát throttle
   const handleManualRefresh = useCallback(async () => {
     try {
       console.log("[AdminUsers] Đang làm mới dữ liệu thủ công...");
@@ -119,7 +119,7 @@ const AdminUsers = () => {
         pageSize={pageSize}
         totalPages={totalPages}
         isDataRefreshing={isDataRefreshing}
-        handleRefresh={handleRefresh}
+        handleRefresh={handleManualRefresh}
         handleSearch={handleSearch}
         handleStatusChange={handleStatusChange}
         handlePageChange={handlePageChange}
