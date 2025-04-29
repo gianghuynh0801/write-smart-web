@@ -1,6 +1,6 @@
 
 import { format, parseISO, isValid } from "date-fns";
-import { vi } from "date-fns/locale";
+import { vi } from "date-fns/locale/vi";
 
 export const formatDate = (dateString?: string): string => {
   if (!dateString) return "N/A";
