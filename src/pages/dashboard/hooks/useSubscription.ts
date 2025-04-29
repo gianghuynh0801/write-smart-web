@@ -1,9 +1,8 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchSubscriptionPlans, fetchUserSubscription, updateUserSubscription, cancelUserSubscription } from "@/api/subscription";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/auth";
 import { useUserDataRefresh } from "@/hooks/useUserDataRefresh";
 
 export const useSubscription = () => {

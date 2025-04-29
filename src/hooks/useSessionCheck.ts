@@ -1,8 +1,9 @@
+
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { setItem, LOCAL_STORAGE_KEYS } from "@/utils/localStorageService";
-import { useAuth } from "@/contexts/auth";
+import { useAuth } from "@/contexts/auth"; // Sửa import path
 
 export function useSessionCheck() {
   const navigate = useNavigate();
