@@ -6,9 +6,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { Session, User } from "@supabase/supabase-js";
 import { setItem, getItem, LOCAL_STORAGE_KEYS } from "@/utils/localStorageService";
 
+interface UserDetails {
+  credits?: number;
+  subscription?: string;
+  email_verified?: boolean;
+  subscription_end_date?: string;
+  subscription_status?: string;
+  [key: string]: any;
+}
+
 interface AuthState {
   session: Session | null;
   user: User | null;
+  userDetails: UserDetails | null;
   isAdmin: boolean;
   isLoading: boolean;
   isChecking: boolean;
@@ -20,11 +30,14 @@ interface AuthContextType extends AuthState {
   logout: () => Promise<void>;
   refreshSession: () => Promise<boolean>;
   checkAdminStatus: (userId?: string) => Promise<boolean>;
+  updateUserDetails: (details: UserDetails) => void;
+  fetchUserDetails: (userId?: string) => Promise<UserDetails | null>;
 }
 
 const initialAuthState: AuthState = {
   session: null,
   user: null,
+  userDetails: null,
   isAdmin: false,
   isLoading: true,
   isChecking: true,
@@ -36,7 +49,9 @@ const AuthContext = createContext<AuthContextType>({
   login: async () => {},
   logout: async () => {},
   refreshSession: async () => false,
-  checkAdminStatus: async () => false
+  checkAdminStatus: async () => false,
+  updateUserDetails: () => {},
+  fetchUserDetails: async () => null
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -47,6 +62,74 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const navigate = useNavigate();
   const [adminCheckCache, setAdminCheckCache] = useState<Record<string, {result: boolean, timestamp: number}>>({});
   
+  // Hàm cập nhật thông tin chi tiết người dùng
+  const updateUserDetails = useCallback((details: UserDetails) => {
+    setState(prev => ({
+      ...prev,
+      userDetails: {
+        ...prev.userDetails,
+        ...details
+      }
+    }));
+  }, []);
+
+  // Hàm lấy thông tin chi tiết người dùng từ database
+  const fetchUserDetails = useCallback(async (userId?: string): Promise<UserDetails | null> => {
+    try {
+      const targetUserId = userId || state.user?.id;
+      if (!targetUserId) return null;
+
+      console.log("Đang lấy thông tin chi tiết người dùng:", targetUserId);
+
+      // Lấy thông tin từ bảng users
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('credits, email_verified, subscription')
+        .eq('id', targetUserId)
+        .single();
+
+      if (userError) {
+        console.error("Lỗi khi lấy thông tin người dùng:", userError);
+        return null;
+      }
+
+      // Lấy thông tin gói đăng ký hiện tại
+      const { data: subData, error: subError } = await supabase
+        .from('user_subscriptions')
+        .select(`
+          subscription_id,
+          end_date,
+          status,
+          subscriptions (
+            name,
+            features
+          )
+        `)
+        .eq('user_id', targetUserId)
+        .eq('status', 'active')
+        .maybeSingle();
+
+      if (subError && subError.code !== 'PGRST116') {
+        console.error("Lỗi khi lấy thông tin gói đăng ký:", subError);
+      }
+
+      // Kết hợp thông tin
+      const userDetails = {
+        ...userData,
+        subscription: subData?.subscriptions?.name || userData?.subscription || "Không có",
+        subscription_end_date: subData?.end_date,
+        subscription_status: subData?.status
+      };
+
+      updateUserDetails(userDetails);
+      console.log("Đã lấy thông tin chi tiết người dùng:", userDetails);
+      return userDetails;
+    } catch (error) {
+      console.error("Lỗi khi lấy thông tin chi tiết người dùng:", error);
+      return null;
+    }
+  }, [state.user?.id, updateUserDetails]);
+
   // Hàm kiểm tra quyền admin với cache để tránh gọi API liên tục
   const checkAdminStatus = useCallback(async (userId?: string) => {
     try {
@@ -186,11 +269,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               setState({
                 session: currentSession,
                 user: currentSession.user,
+                userDetails: null, // Sẽ được cập nhật bởi fetchUserDetails
                 isAdmin,
                 isLoading: false,
                 isChecking: false,
                 error: null
               });
+
+              // Lấy thông tin chi tiết người dùng
+              setTimeout(() => {
+                fetchUserDetails(currentSession.user.id);
+              }, 0);
             } else if (event === 'TOKEN_REFRESHED' && currentSession) {
               console.log("Token đã được làm mới");
               setItem(LOCAL_STORAGE_KEYS.SESSION_TOKEN, currentSession.access_token);
@@ -206,11 +295,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 isChecking: false,
                 error: null
               }));
+
+              // Lấy thông tin chi tiết người dùng
+              setTimeout(() => {
+                fetchUserDetails(currentSession.user.id);
+              }, 0);
             } else if (event === 'SIGNED_OUT') {
               console.log("Người dùng đã đăng xuất");
               setState({
                 session: null,
                 user: null,
+                userDetails: null,
                 isAdmin: false,
                 isLoading: false,
                 isChecking: false,
@@ -246,11 +341,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setState({
               session: data.session,
               user: data.session.user,
+              userDetails: null, // Sẽ được cập nhật bởi fetchUserDetails
               isAdmin,
               isLoading: false,
               isChecking: false,
               error: null
             });
+
+            // Lấy thông tin chi tiết người dùng
+            setTimeout(() => {
+              fetchUserDetails(data.session.user.id);
+            }, 0);
           }
         } else {
           console.log("Không tìm thấy session");
@@ -280,7 +381,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       isMounted = false;
     };
-  }, [checkAdminStatus]);
+  }, [checkAdminStatus, fetchUserDetails]);
   
   const login = async (email: string, password: string) => {
     try {
@@ -308,11 +409,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setState({
           session: data.session,
           user: data.session.user,
+          userDetails: null, // Sẽ được cập nhật bởi fetchUserDetails
           isAdmin,
           isLoading: false,
           isChecking: false,
           error: null
         });
+
+        // Lấy thông tin chi tiết người dùng sau khi đăng nhập thành công
+        setTimeout(async () => {
+          await fetchUserDetails(data.session.user.id);
+        }, 0);
         
         toast({
           title: "Đăng nhập thành công",
@@ -356,6 +463,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setState({
         session: null,
         user: null,
+        userDetails: null,
         isAdmin: false,
         isLoading: false,
         isChecking: false,
@@ -389,7 +497,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     login,
     logout,
     refreshSession,
-    checkAdminStatus
+    checkAdminStatus,
+    updateUserDetails,
+    fetchUserDetails
   };
   
   return (

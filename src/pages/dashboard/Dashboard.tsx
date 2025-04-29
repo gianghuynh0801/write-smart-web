@@ -5,9 +5,22 @@ import { Button } from "@/components/ui/button";
 import { Link as RouterLink } from "react-router-dom";
 import { useDashboardStats } from "./hooks/useDashboardStats";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useEffect } from "react";
+import { useUserDataRefresh } from "@/hooks/useUserDataRefresh";
 
 const Dashboard = () => {
   const { stats, isLoading } = useDashboardStats();
+  const { refreshUserData } = useUserDataRefresh();
+  
+  // Refresh dữ liệu người dùng khi trang dashboard được tải
+  useEffect(() => {
+    const initData = async () => {
+      console.log("Dashboard mounted, refreshing user data...");
+      await refreshUserData();
+    };
+    
+    initData();
+  }, [refreshUserData]);
 
   const renderStats = () => {
     if (isLoading) {

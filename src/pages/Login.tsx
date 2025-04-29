@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -9,6 +10,8 @@ import LoginHeader from "@/components/auth/LoginHeader";
 import LoginContainer from "@/components/auth/LoginContainer";
 import AuthLinks from "@/components/auth/AuthLinks";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
+import { useUserDataRefresh } from "@/hooks/useUserDataRefresh";
 
 const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -17,6 +20,8 @@ const Login = () => {
   const [isEmailVerificationRequired, setIsEmailVerificationRequired] = useState<boolean>(true);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { fetchUserDetails } = useAuth();
+  const { refreshUserData } = useUserDataRefresh();
 
   // Fetch email verification system configuration on component mount
   useEffect(() => {
@@ -98,6 +103,23 @@ const Login = () => {
         // Alternative approach: If admin has disabled email verification,
         // we can ignore this error and continue with login
         setUnconfirmedEmail(email);
+        
+        // Đảm bảo lấy thông tin chi tiết người dùng sau khi đăng nhập thành công
+        try {
+          const { data: userData } = await supabase
+            .from('users')
+            .select('id')
+            .eq('email', email)
+            .single();
+            
+          if (userData) {
+            await fetchUserDetails(userData.id);
+            await refreshUserData();
+          }
+        } catch (userDataError) {
+          console.error("Không thể lấy thông tin người dùng:", userDataError);
+        }
+        
         toast({
           title: "Đăng nhập thành công!",
           description: "Đang chuyển hướng đến bảng điều khiển...",
@@ -110,14 +132,19 @@ const Login = () => {
       }
       
       if (data.user) {
+        // Refresh các thông tin người dùng ngay sau khi đăng nhập
+        setTimeout(async () => {
+          await fetchUserDetails(data.user.id);
+          await refreshUserData();
+          
+          // Chuyển hướng sau khi đã lấy đủ thông tin
+          navigate("/dashboard");
+        }, 0);
+        
         toast({
           title: "Đăng nhập thành công!",
           description: "Đang chuyển hướng đến bảng điều khiển...",
         });
-        
-        setTimeout(() => {
-          navigate("/dashboard");
-        }, 1500);
       }
     } catch (error: any) {
       console.error("Login error:", error);

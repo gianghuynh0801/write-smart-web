@@ -2,56 +2,41 @@
 import { useEffect, useState } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { Wallet } from "lucide-react";
+import { useAuth } from '@/contexts/AuthContext';
+import { useUserDataRefresh } from '@/hooks/useUserDataRefresh';
 
 export const UserCreditBalance = () => {
-  const [credits, setCredits] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { user, userDetails } = useAuth();
+  const { refreshUserData } = useUserDataRefresh();
 
   useEffect(() => {
-    const fetchUserAndCredits = async () => {
-      try {
-        setIsLoading(true);
-        // Lấy thông tin người dùng hiện tại
-        const authResponse = await supabase.auth.getUser();
-        const user = authResponse.data.user;
-        
-        if (!user) {
-          console.log("Người dùng chưa đăng nhập");
-          setIsLoading(false);
-          return;
-        }
-        
-        // Lấy số tín dụng của người dùng
-        const { data, error } = await supabase
-          .from('users')
-          .select('credits')
-          .eq('id', user.id)
-          .single();
-
-        if (error) {
-          console.error("Lỗi khi lấy thông tin tín dụng:", error);
-          setIsLoading(false);
-          return;
-        }
-        
-        if (data) {
-          setCredits(data.credits);
-          console.log("Đã lấy số dư tín dụng:", data.credits);
-        }
+    const loadUserCredits = async () => {
+      if (!user) {
         setIsLoading(false);
-      } catch (err) {
-        console.error("Lỗi khi kiểm tra người dùng:", err);
+        return;
+      }
+
+      setIsLoading(true);
+      
+      // Nếu userDetails đã có credits thì sử dụng luôn
+      if (userDetails?.credits !== undefined) {
+        setIsLoading(false);
+        return;
+      }
+      
+      try {
+        await refreshUserData();
+      } finally {
         setIsLoading(false);
       }
     };
 
-    fetchUserAndCredits();
-
+    loadUserCredits();
+    
     // Đăng ký theo dõi thay đổi realtime cho tín dụng
     const setupRealtimeSubscription = async () => {
       try {
-        // Lấy userId từ session hiện tại
-        const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
         
         console.log("Thiết lập theo dõi realtime cho user:", user.id);
@@ -66,9 +51,10 @@ export const UserCreditBalance = () => {
               table: 'users',
               filter: `id=eq.${user.id}`
             },
-            (payload) => {
+            async (payload) => {
               console.log("Nhận thông tin tín dụng mới:", payload.new.credits);
-              setCredits(payload.new.credits);
+              // Refresh toàn bộ dữ liệu người dùng thay vì chỉ cập nhật credits
+              await refreshUserData();
             }
           )
           .subscribe((status) => {
@@ -84,11 +70,17 @@ export const UserCreditBalance = () => {
       }
     };
 
-    setupRealtimeSubscription();
-    
-  }, []);
+    const unsubscribe = setupRealtimeSubscription();
+    return () => {
+      if (unsubscribe && typeof unsubscribe === 'function') {
+        unsubscribe();
+      }
+    };
+  }, [user, userDetails, refreshUserData]);
 
-  if (credits === null && isLoading) {
+  if (!user) return null;
+
+  if (isLoading) {
     return (
       <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-md">
         <Wallet className="w-4 h-4 text-primary animate-pulse" />
@@ -97,7 +89,8 @@ export const UserCreditBalance = () => {
     );
   }
 
-  if (credits === null) return null;
+  // Hiển thị số tín dụng từ userDetails hoặc 0 nếu không có
+  const credits = userDetails?.credits !== undefined ? userDetails.credits : 0;
 
   return (
     <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-md">

@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useUserDataRefresh } from "@/hooks/useUserDataRefresh";
 
 interface DashboardStats {
   articleCount: number;
@@ -16,13 +18,16 @@ export const useDashboardStats = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const { user, userDetails } = useAuth();
+  const { refreshUserData } = useUserDataRefresh();
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        setIsLoading(true);
+        
+        // Nếu người dùng chưa đăng nhập, hiển thị dữ liệu mặc định
         if (!user) {
-          // Provide default stats when user is not found
           setStats({
             articleCount: 0,
             credits: 0,
@@ -31,7 +36,13 @@ export const useDashboardStats = () => {
               daysLeft: 0
             }
           });
+          setIsLoading(false);
           return;
+        }
+
+        // Đảm bảo dữ liệu người dùng được cập nhật
+        if (!userDetails?.credits) {
+          await refreshUserData();
         }
 
         // Lấy số lượng bài viết
@@ -42,17 +53,6 @@ export const useDashboardStats = () => {
 
         if (articleError) {
           console.error('Error fetching articles:', articleError);
-        }
-
-        // Lấy thông tin người dùng (credits)
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('credits')
-          .eq('id', user.id)
-          .maybeSingle();
-
-        if (userError) {
-          console.error('Error fetching user data:', userError);
         }
 
         // Lấy thông tin gói đăng ký
@@ -79,13 +79,16 @@ export const useDashboardStats = () => {
           Math.max(0, Math.ceil((endDate.getTime() - new Date().getTime()) / (1000 * 3600 * 24))) : 
           0;
 
-        const subscriptionName = subscriptionData?.subscriptions?.name;
+        // Sử dụng thông tin từ subscriptionData hoặc từ userDetails
+        const subscriptionName = subscriptionData?.subscriptions?.name || 
+                              userDetails?.subscription || 
+                              'Không có';
         
         setStats({
           articleCount: articleCount || 0,
-          credits: userData?.credits || 0,
+          credits: userDetails?.credits || 0,
           subscription: {
-            name: subscriptionName || 'Không có',
+            name: subscriptionName,
             daysLeft: daysLeft
           }
         });
@@ -95,9 +98,9 @@ export const useDashboardStats = () => {
         // Set default stats even when there's an error
         setStats({
           articleCount: 0,
-          credits: 0,
+          credits: userDetails?.credits || 0,
           subscription: {
-            name: 'Không có',
+            name: userDetails?.subscription || 'Không có',
             daysLeft: 0
           }
         });
@@ -113,7 +116,7 @@ export const useDashboardStats = () => {
     };
 
     fetchStats();
-  }, [toast]);
+  }, [toast, user, userDetails, refreshUserData]);
 
   return { stats, isLoading };
 };
