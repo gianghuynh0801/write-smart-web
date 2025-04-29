@@ -6,9 +6,8 @@ import LoginHeader from "@/components/auth/LoginHeader";
 import LoginContainer from "@/components/auth/LoginContainer";
 import AuthLinks from "@/components/auth/AuthLinks";
 import ResendVerificationButton from "@/components/auth/ResendVerificationButton";
-import { useLogin } from "@/hooks/useLogin";
-import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
+import { useLogin } from "@/hooks/auth/useLogin";
+import { useAuthListener } from "@/hooks/auth/useAuthListener";
 
 const LoginPageContent: React.FC = () => {
   const {
@@ -22,8 +21,6 @@ const LoginPageContent: React.FC = () => {
     handleLogin,
     setRedirectInProgress
   } = useLogin();
-  
-  const navigate = useNavigate();
 
   // Fetch email verification system configuration on component mount
   useEffect(() => {
@@ -34,29 +31,6 @@ const LoginPageContent: React.FC = () => {
   useEffect(() => {
     checkSession();
   }, []);
-  
-  // Sự kiện auth state change để chuyển hướng
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, currentSession) => {
-        console.log("Login: Auth state changed:", event);
-        
-        if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && currentSession && !redirectInProgress) {
-          console.log("Login: Phát hiện đăng nhập/token refreshed từ sự kiện auth, chuyển hướng đến dashboard");
-          setRedirectInProgress(true);
-          
-          // Force chuyển hướng bằng window.location để đảm bảo refresh toàn bộ ứng dụng
-          setTimeout(() => {
-            window.location.href = "/dashboard";
-          }, 2000);
-        }
-      }
-    );
-    
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [navigate, redirectInProgress]);
 
   return (
     <LoginContainer>
