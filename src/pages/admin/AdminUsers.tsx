@@ -100,7 +100,7 @@ const AdminUsers = () => {
           setIsDataRefreshing(false);
         }
       }
-    }, 1000); // Tăng lên 1000ms để giảm số lượng request
+    }, 2000); // Tăng lên 2000ms để giảm số lượng request
     
     setRefreshTimeout(timeoutId);
   }, [refreshUsers, refreshTimeout, toast, isDataRefreshing]);
@@ -142,23 +142,23 @@ const AdminUsers = () => {
 
   // Handler cập nhật sau khi user được lưu với thời gian delay dài hơn
   const handleUserSaved = useCallback(() => {
-    console.log("[AdminUsers] Đã phát hiện người dùng được lưu, đang làm mới dữ liệu sau 1500ms...");
+    console.log("[AdminUsers] Đã phát hiện người dùng được lưu, đang làm mới dữ liệu sau 2500ms...");
     // Delay refresh dài hơn để đảm bảo dữ liệu đã được cập nhật trên server
     setTimeout(() => {
       if (isMounted.current) {
         debouncedRefreshUsers(true);
       }
-    }, 1500);
+    }, 2500);
   }, [debouncedRefreshUsers]);
 
   // Handler sau khi xóa hoặc cập nhật credits
   const handleUserActionComplete = useCallback(() => {
-    console.log("[AdminUsers] Hoàn thành hành động người dùng, đang làm mới dữ liệu sau 1200ms...");
+    console.log("[AdminUsers] Hoàn thành hành động người dùng, đang làm mới dữ liệu sau 2000ms...");
     setTimeout(() => {
       if (isMounted.current) {
         debouncedRefreshUsers(true);
       }
-    }, 1200);
+    }, 2000);
   }, [debouncedRefreshUsers]);
 
   // Xử lý xóa người dùng

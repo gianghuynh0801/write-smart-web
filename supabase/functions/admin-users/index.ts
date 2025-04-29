@@ -154,8 +154,12 @@ Deno.serve(async (req) => {
 
     console.log("Xác nhận quyền admin thành công");
 
-    // Lấy tham số từ request
-    const { searchTerm = '', status = 'all', page = 1, pageSize = 5, minimal = false } = await req.json();
+    // Lấy tham số từ request và đặt giá trị mặc định
+    let { searchTerm = '', status = 'all', page = 1, pageSize = 5, minimal = false } = await req.json();
+    
+    // Đảm bảo giá trị hợp lệ và giới hạn kích thước trang để tránh quá tải
+    page = Math.max(1, Number(page));
+    pageSize = Math.min(20, Math.max(1, Number(pageSize)));
     
     // Lấy danh sách người dùng với cờ minimal để kiểm soát dữ liệu trả về
     const { users, total } = await getUsers(page, pageSize, status, searchTerm, minimal);

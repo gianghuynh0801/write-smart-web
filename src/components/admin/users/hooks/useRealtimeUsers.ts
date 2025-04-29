@@ -22,7 +22,7 @@ export const useRealtimeUsers = (userIds: (string | number)[]) => {
       clearTimeout(updateTimeoutsRef.current[userId]);
     }
     
-    // Tạo timeout mới để cập nhật sau 100ms
+    // Tạo timeout mới để cập nhật sau 300ms để giảm số lượng cập nhật
     updateTimeoutsRef.current[userId] = setTimeout(() => {
       if (!isMountedRef.current) return;
       
@@ -32,7 +32,7 @@ export const useRealtimeUsers = (userIds: (string | number)[]) => {
       }));
       
       delete updateTimeoutsRef.current[userId];
-    }, 100);
+    }, 300);
   };
 
   // Thiết lập và xử lý kênh realtime chung
@@ -41,13 +41,21 @@ export const useRealtimeUsers = (userIds: (string | number)[]) => {
     
     if (userIds.length === 0) return;
 
+    // Giới hạn số lượng ID để tránh quá tải
+    const limitedUserIds = userIds.slice(0, 50);
+
     // Cập nhật danh sách userIds trong singleton
-    channelSingleton.userIds = Array.from(new Set([...channelSingleton.userIds, ...userIds]));
+    channelSingleton.userIds = Array.from(new Set([...channelSingleton.userIds, ...limitedUserIds]));
     channelSingleton.subscriberCount++;
     
     // Nếu chưa có kênh, tạo kênh mới
     if (!channelSingleton.channel) {
       console.log("[useRealtimeUsers] Tạo kênh realtime mới cho credits");
+      
+      // Tạo filter string với số lượng ID giới hạn
+      const idFilter = channelSingleton.userIds.length > 0 
+        ? `id=in.(${channelSingleton.userIds.slice(0, 50).join(',')})` 
+        : "";
       
       const channel = supabase
         .channel('shared-user-credits-channel')
@@ -57,7 +65,7 @@ export const useRealtimeUsers = (userIds: (string | number)[]) => {
             event: 'UPDATE',
             schema: 'public',
             table: 'users',
-            filter: `id=in.(${channelSingleton.userIds.join(',')})`
+            filter: idFilter
           },
           (payload) => {
             const newData = payload.new as { id: string | number; credits?: number; status?: string; role?: string };

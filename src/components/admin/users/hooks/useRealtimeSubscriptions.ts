@@ -14,14 +14,18 @@ const channelSingleton = {
 const subscriptionCache: Record<number, { name: string; timestamp: number }> = {};
 const CACHE_TTL = 1000 * 60 * 5; // 5 phút
 
+type RealtimeUserUpdate = {
+  subscription?: string;
+};
+
 export const useRealtimeSubscriptions = (userIds: (string | number)[]) => {
-  const [realtimeUsers, setRealtimeUsers] = useState<Record<string | number, User>>({});
+  const [realtimeUsers, setRealtimeUsers] = useState<Record<string | number, RealtimeUserUpdate>>({});
   const updateTimeoutsRef = useRef<Record<string | number, NodeJS.Timeout>>({});
-  const pendingUpdatesRef = useRef<Set<string>>(new Set());
+  const pendingUpdatesRef = useRef<Set<string>>(new Set<string>());
   const isMountedRef = useRef<boolean>(true);
 
   // Debounced update function
-  const debouncedUpdateUser = (userId: string | number, data: Partial<User>) => {
+  const debouncedUpdateUser = (userId: string | number, data: RealtimeUserUpdate) => {
     if (!isMountedRef.current) return;
 
     // Xóa timeout cũ nếu có
@@ -35,7 +39,7 @@ export const useRealtimeSubscriptions = (userIds: (string | number)[]) => {
       
       setRealtimeUsers(prev => ({
         ...prev,
-        [userId]: { ...(prev[userId] || {}), ...data } as User
+        [userId]: { ...(prev[userId] || {}), ...data }
       }));
       
       delete updateTimeoutsRef.current[userId];

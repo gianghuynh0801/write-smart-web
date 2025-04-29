@@ -38,21 +38,9 @@ interface UsersCache {
   };
 }
 
-const cacheValidTime = 30000; // 30 giây
+// Tăng thời gian cache lên 5 phút
+const cacheValidTime = 300000; // 5 phút
 let usersCache: UsersCache | null = null;
-
-// Định nghĩa kiểu dữ liệu tối thiểu cho table users
-type MinimalUser = {
-  id: string | number;
-  name: string;
-  email: string;
-  credits: number;
-  subscription: string;
-  status: "active" | "inactive";
-  registeredAt: string;
-  role: "user" | "admin" | "editor";
-  email_verified?: boolean;
-};
 
 // Hàm fetchUsers sửa đổi để chỉ lấy dữ liệu cần thiết cho bảng
 const fetchUsers = async (params: {
@@ -103,7 +91,7 @@ const fetchUsers = async (params: {
     const timeoutPromise = new Promise<never>((_, reject) => {
       const id = setTimeout(() => {
         reject(new Error('Timeout khi lấy danh sách người dùng'));
-      }, 12000); // 12 giây timeout
+      }, 15000); // 15 giây timeout để tránh đóng băng
       
       // Xóa timeout nếu có abort signal
       if (abortSignal) {
@@ -203,7 +191,8 @@ export const useUserList = () => {
   const isMounted = useRef(true);
   // Theo dõi thời gian refresh cuối cùng để tránh refresh quá nhanh
   const lastRefreshTime = useRef(0);
-  const minRefreshInterval = 3000; // 3 giây giữa các lần refresh
+  // Tăng khoảng thời gian tối thiểu giữa các lần refresh lên 5 giây
+  const minRefreshInterval = 5000; // 5 giây giữa các lần refresh
   // Theo dõi request hiện tại
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -225,7 +214,7 @@ export const useUserList = () => {
         setSearchTerm(value);
         setCurrentPage(1);
       }
-    }, 800), // 800ms để giảm số lượng request
+    }, 1000), // 1 giây để giảm số lượng request
     []
   );
 
@@ -274,8 +263,8 @@ export const useUserList = () => {
       }
       return false;
     },
-    staleTime: 30000, // Dữ liệu được coi là "tươi" trong 30 giây
-    gcTime: 60000, // Giữ dữ liệu trong cache 1 phút
+    staleTime: 60000, // Dữ liệu được coi là "tươi" trong 1 phút
+    gcTime: 300000, // Giữ dữ liệu trong cache 5 phút
     meta: {
       onError: (err: Error) => {
         // Bỏ qua lỗi khi request bị hủy
@@ -336,7 +325,7 @@ export const useUserList = () => {
                 if (isMounted.current) {
                   refreshUsers();
                 }
-              }, 1000);
+              }, 2000);
             }
           })
           .finally(() => {
