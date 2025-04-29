@@ -35,6 +35,8 @@ export const UserCreditBalance = () => {
     loadUserCredits();
     
     // Đăng ký theo dõi thay đổi realtime cho tín dụng
+    let cleanupFunction: (() => void) | undefined;
+    
     const setupRealtimeSubscription = async () => {
       try {
         if (!user) return;
@@ -67,13 +69,19 @@ export const UserCreditBalance = () => {
         };
       } catch (error) {
         console.error("Lỗi khi thiết lập kết nối realtime:", error);
+        return undefined;
       }
     };
 
-    const unsubscribe = setupRealtimeSubscription();
+    // Thiết lập subscription và lưu hàm cleanup
+    setupRealtimeSubscription().then(cleanup => {
+      cleanupFunction = cleanup;
+    });
+    
+    // Khi component unmount, gọi hàm cleanup nếu có
     return () => {
-      if (unsubscribe && typeof unsubscribe === 'function') {
-        unsubscribe();
+      if (cleanupFunction) {
+        cleanupFunction();
       }
     };
   }, [user, userDetails, refreshUserData]);
