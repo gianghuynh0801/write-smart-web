@@ -7,7 +7,6 @@ import LoginContainer from "@/components/auth/LoginContainer";
 import AuthLinks from "@/components/auth/AuthLinks";
 import ResendVerificationButton from "@/components/auth/ResendVerificationButton";
 import { useLogin } from "@/hooks/auth/useLogin";
-import { useAuthListener } from "@/hooks/auth/useAuthListener";
 
 const LoginPageContent: React.FC = () => {
   const {
@@ -25,12 +24,12 @@ const LoginPageContent: React.FC = () => {
   // Fetch email verification system configuration on component mount
   useEffect(() => {
     fetchEmailVerificationConfig();
-  }, []);
+  }, [fetchEmailVerificationConfig]);
 
   // Add check for existing session
   useEffect(() => {
     checkSession();
-  }, []);
+  }, [checkSession]);
 
   return (
     <LoginContainer>

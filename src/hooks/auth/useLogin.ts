@@ -3,13 +3,10 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useEmailVerification } from "./useEmailVerification";
 import { useLoginSubmit } from "./useLoginSubmit";
+import { useSessionCheck } from "./useSessionCheck";
 import { useAuthListener } from "./useAuthListener";
-import { supabase } from "@/integrations/supabase/client";
 
 export function useLogin() {
-  const [redirectInProgress, setRedirectInProgress] = useState<boolean>(false);
-  const navigate = useNavigate();
-
   const { 
     unconfirmedEmail, 
     setUnconfirmedEmail,
@@ -23,27 +20,27 @@ export function useLogin() {
 
   const { 
     isLoading: loginLoading, 
-    error, 
+    error,
+    redirectInProgress: loginRedirectInProgress,
+    setRedirectInProgress: setLoginRedirectInProgress,
     handleLogin: submitLogin 
   } = useLoginSubmit();
 
+  const {
+    redirectInProgress: sessionRedirectInProgress,
+    setRedirectInProgress: setSessionRedirectInProgress,
+    checkSession
+  } = useSessionCheck();
+
+  // Kết hợp trạng thái redirectInProgress từ các hook con
+  const redirectInProgress = loginRedirectInProgress || sessionRedirectInProgress;
+  const setRedirectInProgress = (value: boolean) => {
+    setLoginRedirectInProgress(value);
+    setSessionRedirectInProgress(value);
+  };
+
   // Kết hợp trạng thái loading từ các hook con
   const isLoading = emailVerificationLoading || loginLoading;
-
-  // Kiểm tra phiên làm việc hiện tại
-  const checkSession = async () => {
-    console.log("Login: Kiểm tra phiên làm việc hiện tại");
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
-      console.log("Login: Phiên làm việc đã tồn tại, chuyển hướng đến dashboard");
-      setRedirectInProgress(true);
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 500);
-      return true;
-    }
-    return false;
-  };
 
   // Xử lý đăng nhập - gọi đến xử lý con trong useLoginSubmit
   const handleLogin = async (email: string, password: string) => {

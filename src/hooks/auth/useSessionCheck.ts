@@ -1,9 +1,11 @@
 
 import { useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
 export function useSessionCheck() {
   const [redirectInProgress, setRedirectInProgress] = useState<boolean>(false);
+  const navigate = useNavigate();
 
   // Kiểm tra phiên làm việc hiện tại
   const checkSession = useCallback(async () => {
@@ -18,7 +20,7 @@ export function useSessionCheck() {
       return true;
     }
     return false;
-  }, []);
+  }, [navigate]);
 
   return {
     redirectInProgress,

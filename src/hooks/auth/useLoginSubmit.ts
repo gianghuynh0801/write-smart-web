@@ -10,6 +10,7 @@ import { LOCAL_STORAGE_KEYS, setItem } from "@/utils/localStorageService";
 export function useLoginSubmit() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [redirectInProgress, setRedirectInProgress] = useState<boolean>(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   const { fetchUserDetails } = useAuth();
@@ -139,6 +140,8 @@ export function useLoginSubmit() {
   return {
     isLoading,
     error,
-    handleLogin
+    handleLogin,
+    redirectInProgress,
+    setRedirectInProgress
   };
 }
