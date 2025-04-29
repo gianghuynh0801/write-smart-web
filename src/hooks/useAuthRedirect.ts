@@ -8,6 +8,8 @@ export function useAuthRedirect(redirectTo: string = '/login') {
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
+
     const checkAuth = async () => {
       try {
         console.log("useAuthRedirect: Kiểm tra trạng thái xác thực");
@@ -23,14 +25,16 @@ export function useAuthRedirect(redirectTo: string = '/login') {
         console.error("useAuthRedirect: Lỗi khi kiểm tra xác thực:", error);
         navigate(redirectTo);
       } finally {
-        setIsChecking(false);
+        if (isMounted) {
+          setIsChecking(false);
+        }
       }
     };
 
-    // Thêm delay nhỏ để đảm bảo phiên làm việc đã được cập nhật đầy đủ
+    // Thêm delay lớn hơn để đảm bảo phiên làm việc đã được cập nhật đầy đủ
     const initialCheckTimeout = setTimeout(() => {
       checkAuth();
-    }, 500);
+    }, 1000);
 
     // Theo dõi thay đổi trạng thái xác thực
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -38,13 +42,16 @@ export function useAuthRedirect(redirectTo: string = '/login') {
       
       if (event === 'SIGNED_OUT' || !session) {
         console.log("useAuthRedirect: Người dùng đã đăng xuất hoặc phiên không tồn tại");
-        navigate(redirectTo);
+        if (isMounted) {
+          navigate(redirectTo);
+        }
       } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         console.log("useAuthRedirect: Người dùng đã đăng nhập hoặc token được làm mới");
       }
     });
 
     return () => {
+      isMounted = false;
       clearTimeout(initialCheckTimeout);
       subscription.unsubscribe();
     };

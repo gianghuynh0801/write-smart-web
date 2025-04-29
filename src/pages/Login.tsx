@@ -48,7 +48,10 @@ const Login = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         console.log("Login: Phiên làm việc đã tồn tại, chuyển hướng đến dashboard");
-        navigate('/dashboard');
+        setRedirectInProgress(true);
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 500);
       }
     };
     
@@ -158,9 +161,14 @@ const Login = () => {
         
         // Đặt cờ redirect và thêm thời gian chờ dài hơn
         setRedirectInProgress(true);
+        
+        // Thêm thời gian chờ vào local storage để đánh dấu đang chuyển hướng
+        localStorage.setItem('redirect_timestamp', Date.now().toString());
+        localStorage.setItem('redirect_target', '/dashboard');
+        
         setTimeout(() => {
-          console.log("Login: Chuyển hướng đến dashboard sau 3 giây");
-          navigate("/dashboard");
+          console.log("Login: Thực hiện chuyển hướng đến dashboard ngay bây giờ");
+          navigate("/dashboard", { replace: true });
         }, 3000);
       }
     } catch (error: any) {
@@ -203,8 +211,10 @@ const Login = () => {
         if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && currentSession && !redirectInProgress) {
           console.log("Login: Phát hiện đăng nhập/token refreshed từ sự kiện auth, chuyển hướng đến dashboard");
           setRedirectInProgress(true);
+          
+          // Force chuyển hướng bằng window.location để đảm bảo refresh toàn bộ ứng dụng
           setTimeout(() => {
-            navigate("/dashboard");
+            window.location.href = "/dashboard";
           }, 2000);
         }
       }
