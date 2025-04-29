@@ -15,11 +15,20 @@ export const useUserManagement = () => {
     status,
     currentPage,
     pageSize,
-    refreshUsers,
+    refreshUsers: rawRefreshUsers,
     handleSearch,
     handleStatusChange,
     handlePageChange,
   } = useUserList();
+
+  // Bọc refreshUsers để đảm bảo tương thích kiểu dữ liệu
+  const refreshUsers = async () => {
+    try {
+      await rawRefreshUsers();
+    } catch (error) {
+      console.error("Lỗi khi làm mới danh sách người dùng:", error);
+    }
+  };
 
   const {
     isCreditUpdating,
@@ -44,7 +53,7 @@ export const useUserManagement = () => {
 
   useEffect(() => {
     refreshUsers();
-  }, [refreshUsers]);
+  }, []);
 
   return {
     // User list state and handlers
