@@ -25,6 +25,11 @@ export const LoginForm = ({ onSubmit, isLoading }: LoginFormProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (isLoading || formSubmitted) {
+      return; // Ngăn submit nhiều lần
+    }
+    
     setFormSubmitted(true);
     
     try {
@@ -32,7 +37,10 @@ export const LoginForm = ({ onSubmit, isLoading }: LoginFormProps) => {
     } catch (error) {
       console.error("Lỗi khi xử lý form:", error);
     } finally {
-      setFormSubmitted(false);
+      setTimeout(() => {
+        // Đặt lại trạng thái sau một khoảng thời gian để đảm bảo mọi thứ đã hoàn thành
+        setFormSubmitted(false);
+      }, 3000);
     }
   };
 
@@ -66,6 +74,7 @@ export const LoginForm = ({ onSubmit, isLoading }: LoginFormProps) => {
             onChange={handleChange}
             placeholder="Nhập tên đăng nhập hoặc email"
             required
+            disabled={isLoading || formSubmitted}
           />
         </div>
         
@@ -83,12 +92,14 @@ export const LoginForm = ({ onSubmit, isLoading }: LoginFormProps) => {
               placeholder="••••••••"
               required
               className="pr-10"
+              disabled={isLoading || formSubmitted}
             />
             <button
               type="button"
               onClick={togglePasswordVisibility}
               className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
               tabIndex={-1}
+              disabled={isLoading || formSubmitted}
             >
               {showPassword ? (
                 <EyeOff className="h-4 w-4" />
@@ -104,7 +115,12 @@ export const LoginForm = ({ onSubmit, isLoading }: LoginFormProps) => {
           className="w-full" 
           disabled={isLoading || formSubmitted}
         >
-          {isLoading || formSubmitted ? "Đang đăng nhập..." : "Đăng nhập"}
+          {(isLoading || formSubmitted) ? (
+            <span className="flex items-center">
+              <span className="mr-2 h-4 w-4 border-2 border-t-transparent border-white rounded-full animate-spin"></span>
+              Đang đăng nhập...
+            </span>
+          ) : "Đăng nhập"}
         </Button>
         
         <Button 
@@ -112,6 +128,7 @@ export const LoginForm = ({ onSubmit, isLoading }: LoginFormProps) => {
           variant="outline" 
           className="w-full mt-2" 
           onClick={fillDefaultCredentials}
+          disabled={isLoading || formSubmitted}
         >
           Dùng tài khoản mặc định
         </Button>

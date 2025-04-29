@@ -17,6 +17,7 @@ export function useAuthSession() {
   });
   
   const [adminCheckCache, setAdminCheckCache] = useState<Record<string, {result: boolean, timestamp: number}>>({});
+  const [refreshingSession, setRefreshingSession] = useState(false);
   
   // Hàm cập nhật thông tin chi tiết người dùng
   const updateUserDetails = useCallback((details: UserDetails) => {
@@ -37,20 +38,30 @@ export function useAuthSession() {
 
       console.log("Đang lấy thông tin chi tiết người dùng:", targetUserId);
 
-      // Lấy thông tin từ bảng users
-      const { data: userData, error: userError } = await supabase
+      // Thêm timeout để tránh treo vô hạn
+      const getUserPromise = supabase
         .from('users')
         .select('credits, email_verified, subscription')
         .eq('id', targetUserId)
         .single();
+        
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("Timeout khi lấy thông tin người dùng")), 5000)
+      );
+      
+      // Sử dụng Promise.race để áp dụng timeout cho yêu cầu API
+      const { data: userData, error: userError } = await Promise.race([
+        getUserPromise,
+        timeoutPromise
+      ]) as any;
 
       if (userError) {
         console.error("Lỗi khi lấy thông tin người dùng:", userError);
         return null;
       }
 
-      // Lấy thông tin gói đăng ký hiện tại
-      const { data: subData, error: subError } = await supabase
+      // Lấy thông tin gói đăng ký hiện tại với timeout
+      const getSubPromise = supabase
         .from('user_subscriptions')
         .select(`
           subscription_id,
@@ -64,6 +75,16 @@ export function useAuthSession() {
         .eq('user_id', targetUserId)
         .eq('status', 'active')
         .maybeSingle();
+        
+      const subTimeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("Timeout khi lấy thông tin gói đăng ký")), 5000)
+      );
+      
+      // Sử dụng Promise.race để áp dụng timeout cho yêu cầu API
+      const { data: subData, error: subError } = await Promise.race([
+        getSubPromise,
+        subTimeoutPromise
+      ]) as any;
 
       if (subError && subError.code !== 'PGRST116') {
         console.error("Lỗi khi lấy thông tin gói đăng ký:", subError);
@@ -102,9 +123,18 @@ export function useAuthSession() {
 
       console.log("Kiểm tra quyền admin cho user:", targetUserId);
       
-      // Thử 1: Kiểm tra từ RPC function is_admin
+      // Thêm timeout để tránh treo vô hạn
+      const rpcPromise = supabase.rpc('is_admin', { uid: targetUserId });
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("Timeout khi kiểm tra quyền admin")), 5000)
+      );
+      
       try {
-        const { data: isAdmin, error: rpcError } = await supabase.rpc('is_admin', { uid: targetUserId });
+        // Sử dụng Promise.race để áp dụng timeout cho yêu cầu API
+        const { data: isAdmin, error: rpcError } = await Promise.race([
+          rpcPromise,
+          timeoutPromise
+        ]) as any;
         
         if (!rpcError && isAdmin === true) {
           console.log("Xác định quyền admin qua RPC function:", isAdmin);
@@ -118,14 +148,24 @@ export function useAuthSession() {
         console.log("Lỗi khi gọi RPC is_admin:", err);
       }
       
-      // Thử 2: Kiểm tra từ bảng user_roles
+      // Fallback: kiểm tra từ database nếu RPC không thành công
       try {
-        const { data: roleData, error: roleError } = await supabase
+        const rolePromise = supabase
           .from('user_roles')
           .select('*')
           .eq('user_id', targetUserId)
           .eq('role', 'admin')
           .maybeSingle();
+          
+        const roleTimeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error("Timeout khi kiểm tra bảng user_roles")), 5000)
+        );
+        
+        // Sử dụng Promise.race để áp dụng timeout cho yêu cầu API
+        const { data: roleData, error: roleError } = await Promise.race([
+          rolePromise,
+          roleTimeoutPromise
+        ]) as any;
         
         if (!roleError && roleData) {
           console.log("Xác định quyền admin qua user_roles:", roleData);
@@ -137,26 +177,6 @@ export function useAuthSession() {
         }
       } catch (err) {
         console.log("Lỗi khi kiểm tra bảng user_roles:", err);
-      }
-      
-      // Thử 3: Kiểm tra từ trường role trong bảng users
-      try {
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('role')
-          .eq('id', targetUserId)
-          .maybeSingle();
-        
-        if (!userError && userData?.role === 'admin') {
-          console.log("Xác định quyền admin qua trường role:", userData);
-          setAdminCheckCache(prev => ({
-            ...prev,
-            [targetUserId]: { result: true, timestamp: now }
-          }));
-          return true;
-        }
-      } catch (err) {
-        console.log("Lỗi khi kiểm tra bảng users:", err);
       }
       
       // Không tìm thấy quyền admin
@@ -172,16 +192,33 @@ export function useAuthSession() {
   }, [state.user, adminCheckCache]);
 
   const refreshSession = useCallback(async (): Promise<boolean> => {
+    if (refreshingSession) {
+      console.log("Đã có yêu cầu làm mới session, bỏ qua yêu cầu mới");
+      return false;
+    }
+    
     try {
+      setRefreshingSession(true);
       console.log("Đang làm mới session...");
-      const { data, error } = await supabase.auth.refreshSession();
+      
+      // Thêm timeout để tránh treo vô hạn
+      const refreshPromise = supabase.auth.refreshSession();
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("Timeout khi làm mới session")), 8000)
+      );
+      
+      // Sử dụng Promise.race để áp dụng timeout cho yêu cầu API
+      const { data, error } = await Promise.race([
+        refreshPromise,
+        timeoutPromise
+      ]) as any;
       
       if (error) {
         console.error("Lỗi khi làm mới session:", error);
         return false;
       }
       
-      if (data.session) {
+      if (data?.session) {
         console.log("Session đã được làm mới thành công");
         setItem(LOCAL_STORAGE_KEYS.SESSION_TOKEN, data.session.access_token);
         
@@ -199,16 +236,32 @@ export function useAuthSession() {
     } catch (error) {
       console.error("Lỗi không xác định khi làm mới session:", error);
       return false;
+    } finally {
+      setRefreshingSession(false);
     }
-  }, []);
+  }, [refreshingSession]);
   
   // Khởi tạo phiên làm việc và theo dõi sự thay đổi trạng thái xác thực
   useEffect(() => {
     let isMounted = true;
+    let authStateTimeout: number;
     
     const initializeAuth = async () => {
       try {
         console.log("Khởi tạo AuthContext...");
+        
+        // Thiết lập timeout dự phòng để đảm bảo không bị kẹt vô thời hạn
+        authStateTimeout = window.setTimeout(() => {
+          if (isMounted) {
+            console.log("[AuthContext] Timeout khi khởi tạo auth");
+            setState(prev => ({
+              ...prev,
+              isLoading: false,
+              isChecking: false,
+              error: "Timeout khi khởi tạo phiên làm việc"
+            }));
+          }
+        }, 10000); // Timeout sau 10 giây
         
         // Trước tiên, thiết lập lắng nghe sự kiện thay đổi trạng thái xác thực
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -221,41 +274,47 @@ export function useAuthSession() {
               console.log("Người dùng đã đăng nhập, lưu token");
               setItem(LOCAL_STORAGE_KEYS.SESSION_TOKEN, currentSession.access_token);
               
-              const isAdmin = await checkAdminStatus(currentSession.user.id);
-              
-              setState({
-                session: currentSession,
-                user: currentSession.user,
-                userDetails: null, // Sẽ được cập nhật bởi fetchUserDetails
-                isAdmin,
-                isLoading: false,
-                isChecking: false,
-                error: null
-              });
-
-              // Lấy thông tin chi tiết người dùng
-              setTimeout(() => {
-                fetchUserDetails(currentSession.user.id);
+              // Sử dụng setTimeout để tránh vòng lặp với getSession
+              setTimeout(async () => {
+                const isAdmin = await checkAdminStatus(currentSession.user.id);
+                
+                if (isMounted) {
+                  setState({
+                    session: currentSession,
+                    user: currentSession.user,
+                    userDetails: null, // Sẽ được cập nhật bởi fetchUserDetails
+                    isAdmin,
+                    isLoading: false,
+                    isChecking: false,
+                    error: null
+                  });
+                  
+                  // Lấy thông tin chi tiết người dùng
+                  fetchUserDetails(currentSession.user.id);
+                }
               }, 0);
             } else if (event === 'TOKEN_REFRESHED' && currentSession) {
               console.log("Token đã được làm mới");
               setItem(LOCAL_STORAGE_KEYS.SESSION_TOKEN, currentSession.access_token);
               
-              const isAdmin = await checkAdminStatus(currentSession.user.id);
-              
-              setState(prev => ({
-                ...prev,
-                session: currentSession,
-                user: currentSession.user,
-                isAdmin,
-                isLoading: false,
-                isChecking: false,
-                error: null
-              }));
-
-              // Lấy thông tin chi tiết người dùng
-              setTimeout(() => {
-                fetchUserDetails(currentSession.user.id);
+              // Sử dụng setTimeout để tránh vòng lặp với getSession
+              setTimeout(async () => {
+                const isAdmin = await checkAdminStatus(currentSession.user.id);
+                
+                if (isMounted) {
+                  setState(prev => ({
+                    ...prev,
+                    session: currentSession,
+                    user: currentSession.user,
+                    isAdmin,
+                    isLoading: false,
+                    isChecking: false,
+                    error: null
+                  }));
+                  
+                  // Lấy thông tin chi tiết người dùng
+                  fetchUserDetails(currentSession.user.id);
+                }
               }, 0);
             } else if (event === 'SIGNED_OUT') {
               console.log("Người dùng đã đăng xuất");
@@ -273,53 +332,79 @@ export function useAuthSession() {
         );
         
         // Sau đó, kiểm tra session hiện tại
-        const { data, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error("Lỗi khi lấy session:", error);
-          if (isMounted) {
-            setState(prev => ({
-              ...prev,
-              isLoading: false,
-              isChecking: false,
-              error: error.message
-            }));
+        try {
+          // Thêm timeout để tránh treo vô hạn
+          const sessionPromise = supabase.auth.getSession();
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error("Timeout khi lấy phiên làm việc hiện tại")), 5000)
+          );
+          
+          // Sử dụng Promise.race để áp dụng timeout cho yêu cầu API
+          const { data, error } = await Promise.race([
+            sessionPromise,
+            timeoutPromise
+          ]) as any;
+          
+          if (error) {
+            console.error("Lỗi khi lấy session:", error);
+            if (isMounted) {
+              setState(prev => ({
+                ...prev,
+                isLoading: false,
+                isChecking: false,
+                error: error.message
+              }));
+            }
+            return;
           }
-          return;
-        }
-        
-        if (data.session) {
-          console.log("Đã tìm thấy session, user ID:", data.session.user.id);
-          setItem(LOCAL_STORAGE_KEYS.SESSION_TOKEN, data.session.access_token);
           
-          const isAdmin = await checkAdminStatus(data.session.user.id);
-          
-          if (isMounted) {
-            setState({
-              session: data.session,
-              user: data.session.user,
-              userDetails: null, // Sẽ được cập nhật bởi fetchUserDetails
-              isAdmin,
-              isLoading: false,
-              isChecking: false,
-              error: null
-            });
+          if (data?.session) {
+            console.log("Đã tìm thấy session, user ID:", data.session.user.id);
+            setItem(LOCAL_STORAGE_KEYS.SESSION_TOKEN, data.session.access_token);
+            
+            const isAdmin = await checkAdminStatus(data.session.user.id);
+            
+            if (isMounted) {
+              setState({
+                session: data.session,
+                user: data.session.user,
+                userDetails: null, // Sẽ được cập nhật bởi fetchUserDetails
+                isAdmin,
+                isLoading: false,
+                isChecking: false,
+                error: null
+              });
 
-            // Lấy thông tin chi tiết người dùng
-            setTimeout(() => {
-              fetchUserDetails(data.session.user.id);
-            }, 0);
+              // Lấy thông tin chi tiết người dùng
+              setTimeout(() => {
+                if (isMounted) {
+                  fetchUserDetails(data.session.user.id);
+                }
+              }, 0);
+            }
+          } else {
+            console.log("Không tìm thấy session");
+            if (isMounted) {
+              setState(prev => ({
+                ...prev,
+                isLoading: false,
+                isChecking: false
+              }));
+            }
           }
-        } else {
-          console.log("Không tìm thấy session");
+        } catch (error) {
+          console.error("Lỗi khi khởi tạo auth:", error);
           if (isMounted) {
             setState(prev => ({
               ...prev,
               isLoading: false,
-              isChecking: false
+              isChecking: false,
+              error: error instanceof Error ? error.message : "Lỗi không xác định"
             }));
           }
         }
+        
+        clearTimeout(authStateTimeout);
       } catch (error) {
         console.error("Lỗi khi khởi tạo auth:", error);
         if (isMounted) {
@@ -337,6 +422,7 @@ export function useAuthSession() {
     
     return () => {
       isMounted = false;
+      clearTimeout(authStateTimeout);
     };
   }, [checkAdminStatus, fetchUserDetails]);
 
