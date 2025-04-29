@@ -7,6 +7,7 @@ import { UserTableRow } from "./users/components/UserTableRow";
 import { UserTableLoading } from "./users/components/UserTableLoading";
 import { UserTableError } from "./users/components/UserTableError";
 import { useMemo } from "react";
+import { featureFlags } from "@/config/featureFlags";
 
 type UserTableProps = {
   users: User[];
@@ -33,15 +34,25 @@ const UserTable = ({
   onDeleteUser,
   onResendVerification,
 }: UserTableProps) => {
-  // Chỉ lấy dữ liệu ID để truyền vào các hook realtime
+  // Chỉ lấy dữ liệu ID để truyền vào các hook realtime nếu tính năng được bật
   const userIds = useMemo(() => users.map(u => u.id), [users.map(u => u.id).join(',')]);
   
-  // Sử dụng hook realtime để nhận các cập nhật từ server
-  const realtimeUserUpdates = useRealtimeUsers(userIds);
-  const realtimeSubscriptionUpdates = useRealtimeSubscriptions(userIds);
+  // Sử dụng hook realtime để nhận các cập nhật từ server chỉ khi tính năng được bật
+  const realtimeUserUpdates = featureFlags.enableRealtimeUpdates 
+    ? useRealtimeUsers(userIds) 
+    : {};
+  
+  const realtimeSubscriptionUpdates = featureFlags.enableRealtimeUpdates 
+    ? useRealtimeSubscriptions(userIds) 
+    : {};
 
   // Tính toán danh sách user có tích hợp dữ liệu realtime
   const displayUsers = useMemo(() => {
+    // Nếu tính năng realtime bị tắt, trả về danh sách users gốc
+    if (!featureFlags.enableRealtimeUpdates) {
+      return users;
+    }
+    
     return users.map(user => {
       // Chỉ cập nhật các trường cụ thể từ realtime thay vì toàn bộ object
       const realtimeUser = { ...user };
@@ -61,7 +72,7 @@ const UserTable = ({
       
       return realtimeUser;
     });
-  }, [users, realtimeUserUpdates, realtimeSubscriptionUpdates]);
+  }, [users, realtimeUserUpdates, realtimeSubscriptionUpdates, featureFlags.enableRealtimeUpdates]);
 
   return (
     <div className="rounded-md border">

@@ -2,6 +2,7 @@
 import { useEffect, useState, useRef } from "react";
 import { User } from "@/types/user";
 import { supabase } from "@/integrations/supabase/client";
+import { featureFlags } from "@/config/featureFlags";
 
 // Singleton để lưu trữ kênh realtime được chia sẻ giữa các component
 const channelSingleton = {
@@ -23,6 +24,11 @@ export const useRealtimeSubscriptions = (userIds: (string | number)[]) => {
   const updateTimeoutsRef = useRef<Record<string | number, NodeJS.Timeout>>({});
   const pendingUpdatesRef = useRef<Set<string>>(new Set<string>());
   const isMountedRef = useRef<boolean>(true);
+
+  // Nếu tính năng realtime bị tắt, trả về object rỗng
+  if (!featureFlags.enableRealtimeUpdates) {
+    return {};
+  }
 
   // Debounced update function
   const debouncedUpdateUser = (userId: string | number, data: RealtimeUserUpdate) => {
@@ -129,6 +135,8 @@ export const useRealtimeSubscriptions = (userIds: (string | number)[]) => {
 
   // Thiết lập và xử lý kênh realtime chung
   useEffect(() => {
+    if (!featureFlags.enableRealtimeUpdates) return; // Thoát nếu tính năng bị tắt
+    
     isMountedRef.current = true;
     
     if (userIds.length === 0) return;
