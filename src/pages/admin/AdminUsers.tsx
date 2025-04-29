@@ -65,8 +65,8 @@ const AdminUsers = () => {
     };
   }, [refreshTimeout]);
 
-  // Tạo phiên bản debounced của hàm refreshUsers
-  const debouncedRefreshUsers = useCallback((showToast = false, delay = 500) => {
+  // Tạo phiên bản debounced của hàm refreshUsers với thời gian dài hơn
+  const debouncedRefreshUsers = useCallback((showToast = false) => {
     // Hủy timeout hiện tại nếu có
     if (refreshTimeout) {
       clearTimeout(refreshTimeout);
@@ -80,7 +80,7 @@ const AdminUsers = () => {
     
     setIsDataRefreshing(true);
     
-    // Tạo timeout mới
+    // Tạo timeout mới với thời gian dài hơn
     const timeoutId = setTimeout(async () => {
       try {
         console.log("[AdminUsers] Đang làm mới dữ liệu...");
@@ -95,19 +95,12 @@ const AdminUsers = () => {
         }
       } catch (error) {
         console.error("[AdminUsers] Lỗi khi làm mới dữ liệu:", error);
-        if (isMounted.current) {
-          toast({
-            title: "Lỗi làm mới dữ liệu",
-            description: "Không thể làm mới danh sách người dùng. Vui lòng thử lại sau.",
-            variant: "destructive"
-          });
-        }
       } finally {
         if (isMounted.current) {
           setIsDataRefreshing(false);
         }
       }
-    }, delay);
+    }, 1000); // Tăng lên 1000ms để giảm số lượng request
     
     setRefreshTimeout(timeoutId);
   }, [refreshUsers, refreshTimeout, toast, isDataRefreshing]);
@@ -122,25 +115,18 @@ const AdminUsers = () => {
         
         if (hasToken) {
           if (isMounted.current) {
-            debouncedRefreshUsers(false, 100);
+            debouncedRefreshUsers(false);
           }
-        } else {
-          if (isMounted.current) {
-            toast({
-              title: "Lỗi phiên đăng nhập",
-              description: "Phiên đăng nhập không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.",
-              variant: "destructive"
-            });
-          }
+        } else if (isMounted.current) {
+          toast({
+            title: "Lỗi phiên đăng nhập",
+            description: "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.",
+            variant: "destructive"
+          });
         }
       } catch (error) {
         if (isMounted.current) {
           console.error("[AdminUsers] Lỗi khi tải dữ liệu ban đầu:", error);
-          toast({
-            title: "Lỗi tải dữ liệu",
-            description: "Không thể tải dữ liệu người dùng. Vui lòng thử lại sau.",
-            variant: "destructive"
-          });
         }
       }
     };
@@ -151,20 +137,28 @@ const AdminUsers = () => {
   const totalPages = Math.ceil(totalUsers / pageSize);
 
   const handleRefresh = () => {
-    debouncedRefreshUsers(true, 300);
+    debouncedRefreshUsers(true);
   };
 
-  // Handler cập nhật sau khi user được lưu
+  // Handler cập nhật sau khi user được lưu với thời gian delay dài hơn
   const handleUserSaved = useCallback(() => {
-    console.log("[AdminUsers] Đã phát hiện người dùng được lưu, đang làm mới dữ liệu sau 1000ms...");
-    // Delay refresh để giao diện người dùng có thời gian cập nhật
-    debouncedRefreshUsers(true, 1000);
+    console.log("[AdminUsers] Đã phát hiện người dùng được lưu, đang làm mới dữ liệu sau 1500ms...");
+    // Delay refresh dài hơn để đảm bảo dữ liệu đã được cập nhật trên server
+    setTimeout(() => {
+      if (isMounted.current) {
+        debouncedRefreshUsers(true);
+      }
+    }, 1500);
   }, [debouncedRefreshUsers]);
 
   // Handler sau khi xóa hoặc cập nhật credits
   const handleUserActionComplete = useCallback(() => {
-    console.log("[AdminUsers] Hoàn thành hành động người dùng, đang làm mới dữ liệu sau 800ms...");
-    debouncedRefreshUsers(true, 800);
+    console.log("[AdminUsers] Hoàn thành hành động người dùng, đang làm mới dữ liệu sau 1200ms...");
+    setTimeout(() => {
+      if (isMounted.current) {
+        debouncedRefreshUsers(true);
+      }
+    }, 1200);
   }, [debouncedRefreshUsers]);
 
   // Xử lý xóa người dùng
@@ -176,15 +170,8 @@ const AdminUsers = () => {
       handleUserActionComplete();
     } catch (error) {
       console.error("[AdminUsers] Lỗi khi xóa người dùng:", error);
-      if (isMounted.current) {
-        toast({
-          title: "Lỗi",
-          description: "Không thể xóa người dùng. Vui lòng thử lại sau.",
-          variant: "destructive"
-        });
-      }
     }
-  }, [confirmDeleteUser, setDeleteDialogOpen, handleUserActionComplete, toast]);
+  }, [confirmDeleteUser, setDeleteDialogOpen, handleUserActionComplete]);
 
   // Xử lý thêm credits
   const handleConfirmAddCredits = useCallback(async (amount: number) => {
@@ -195,15 +182,8 @@ const AdminUsers = () => {
       handleUserActionComplete();
     } catch (error) {
       console.error("[AdminUsers] Lỗi khi thêm credits:", error);
-      if (isMounted.current) {
-        toast({
-          title: "Lỗi",
-          description: "Không thể thêm credits. Vui lòng thử lại sau.",
-          variant: "destructive"
-        });
-      }
     }
-  }, [confirmAddCredits, setAddCreditsDialogOpen, handleUserActionComplete, toast]);
+  }, [confirmAddCredits, setAddCreditsDialogOpen, handleUserActionComplete]);
 
   return (
     <div className="space-y-6">

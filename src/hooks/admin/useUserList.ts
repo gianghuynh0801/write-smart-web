@@ -41,7 +41,20 @@ interface UsersCache {
 const cacheValidTime = 30000; // 30 giây
 let usersCache: UsersCache | null = null;
 
-// Hàm fetchUsers cải tiến với xử lý lỗi tốt hơn, timeout và caching
+// Định nghĩa kiểu dữ liệu tối thiểu cho table users
+type MinimalUser = {
+  id: string | number;
+  name: string;
+  email: string;
+  credits: number;
+  subscription: string;
+  status: "active" | "inactive";
+  registeredAt: string;
+  role: "user" | "admin" | "editor";
+  email_verified?: boolean;
+};
+
+// Hàm fetchUsers sửa đổi để chỉ lấy dữ liệu cần thiết cho bảng
 const fetchUsers = async (params: {
   page: number;
   pageSize: number;
@@ -75,9 +88,12 @@ const fetchUsers = async (params: {
       );
     }
 
-    // Tạo promise cho API call
+    // Gọi Edge Function với tham số minimal=true để chỉ lấy dữ liệu tối thiểu
     const apiPromise = supabase.functions.invoke('admin-users', {
-      body: params,
+      body: {
+        ...params,
+        minimal: true  // Flag để Edge Function biết chỉ trả về dữ liệu tối thiểu
+      },
       headers: {
         Authorization: `Bearer ${token}`
       }
@@ -115,7 +131,10 @@ const fetchUsers = async (params: {
         if (newToken) {
           console.log("Đã làm mới token, thử gọi lại API...");
           const retryResponse = await supabase.functions.invoke('admin-users', {
-            body: params,
+            body: {
+              ...params,
+              minimal: true
+            },
             headers: {
               Authorization: `Bearer ${newToken}`
             }
@@ -206,7 +225,7 @@ export const useUserList = () => {
         setSearchTerm(value);
         setCurrentPage(1);
       }
-    }, 800), // Tăng lên 800ms để giảm số lượng request
+    }, 800), // 800ms để giảm số lượng request
     []
   );
 
@@ -248,8 +267,8 @@ export const useUserList = () => {
         return false;
       }
       
-      // Thử lại tối đa 2 lần nếu là lỗi xác thực
-      if (isAuthError(error) && failureCount < 2) {
+      // Thử lại tối đa 1 lần nếu là lỗi xác thực
+      if (isAuthError(error) && failureCount < 1) {
         console.log(`Thử lại lần ${failureCount + 1} sau lỗi xác thực`);
         return true;
       }
@@ -259,7 +278,7 @@ export const useUserList = () => {
     gcTime: 60000, // Giữ dữ liệu trong cache 1 phút
     meta: {
       onError: (err: Error) => {
-        // Bỏ qua lỗi khi request bị hủy (component unmount hoặc params thay đổi)
+        // Bỏ qua lỗi khi request bị hủy
         if (err.message === "Request bị hủy") {
           console.log("Request bị hủy, không hiển thị lỗi");
           return;
@@ -268,37 +287,12 @@ export const useUserList = () => {
         console.error("Lỗi khi tải danh sách người dùng:", err);
         
         if (isMounted.current) {
-          // Hiển thị thông báo lỗi chi tiết hơn
-          if (err instanceof AuthError) {
-            switch (err.type) {
-              case AuthErrorType.TOKEN_EXPIRED:
-                toast({
-                  title: "Phiên làm việc hết hạn",
-                  description: "Vui lòng đăng nhập lại để tiếp tục.",
-                  variant: "destructive"
-                });
-                break;
-              case AuthErrorType.PERMISSION_DENIED:
-                toast({
-                  title: "Không có quyền truy cập",
-                  description: "Bạn không có quyền thực hiện thao tác này.",
-                  variant: "destructive"
-                });
-                break;
-              default:
-                toast({
-                  title: "Lỗi xác thực",
-                  description: err.message,
-                  variant: "destructive"
-                });
-            }
-          } else {
-            toast({
-              title: "Lỗi",
-              description: err.message || "Không thể tải danh sách người dùng",
-              variant: "destructive"
-            });
-          }
+          // Hiển thị thông báo lỗi
+          toast({
+            title: "Lỗi",
+            description: err.message || "Không thể tải danh sách người dùng",
+            variant: "destructive"
+          });
         }
       }
     }
@@ -343,13 +337,6 @@ export const useUserList = () => {
                   refreshUsers();
                 }
               }, 1000);
-            } else if (isMounted.current) {
-              console.log("Không thể làm mới token");
-              toast({
-                title: "Lỗi xác thực",
-                description: "Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.",
-                variant: "destructive"
-              });
             }
           })
           .finally(() => {
@@ -357,7 +344,7 @@ export const useUserList = () => {
           });
       }
     }
-  }, [isError, error, refreshUsers, toast]);
+  }, [isError, error, refreshUsers]);
 
   const handleSearch = useCallback((value: string) => {
     debouncedSetSearchTerm(value);

@@ -38,12 +38,14 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
   const { toast } = useToast();
   const [isClosing, setIsClosing] = useState(false);
 
+  // Reset dialog khi đóng
   useEffect(() => {
     if (!isOpen) {
       resetDialog();
     }
   }, [isOpen, resetDialog]);
 
+  // Kiểm soát mounting
   useEffect(() => {
     isMounted.current = true;
     return () => {
@@ -51,6 +53,7 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
     };
   }, []);
 
+  // Chỉ fetch user data khi dialog mở và có userId
   useEffect(() => {
     if (isOpen && userId && !isClosing) {
       // Thêm độ trễ nhỏ để tránh gửi quá nhiều request ngay khi dialog mở
@@ -58,7 +61,7 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
         if (isMounted.current && isOpen) {
           fetchUser();
         }
-      }, 100);
+      }, 300); // Tăng thêm độ trễ để tránh fetch quá sớm
       
       return () => clearTimeout(timer);
     }
@@ -106,12 +109,12 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
               description: successMessage
             });
             
-            // Delay refresh dữ liệu để tránh đóng băng UI và đảm bảo dialog đã đóng
+            // Delay refresh dữ liệu để tránh đóng băng UI
             setTimeout(() => {
               if (isMounted.current) {
                 onUserSaved();
               }
-            }, 600);
+            }, 800);
           }
         }, 300);
       }
@@ -159,7 +162,7 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
                       if (isMounted.current) {
                         onUserSaved();
                       }
-                    }, 600);
+                    }, 800);
                   }
                 }, 300);
               }

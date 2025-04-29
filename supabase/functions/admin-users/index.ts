@@ -63,12 +63,17 @@ const checkUserIsAdmin = async (userId: string) => {
   }
 };
 
-// Hàm lấy danh sách người dùng với phân trang và tìm kiếm
-const getUsers = async (page: number, pageSize: number, status: string, searchTerm: string) => {
+// Hàm lấy danh sách người dùng với phân trang và tìm kiếm - đã tối ưu để trả về ít dữ liệu hơn
+const getUsers = async (page: number, pageSize: number, status: string, searchTerm: string, minimal = false) => {
   try {
-    console.log("Đang lấy danh sách người dùng với thông số:", { page, pageSize, status, searchTerm });
+    console.log("Đang lấy danh sách người dùng với thông số:", { page, pageSize, status, searchTerm, minimal });
     
-    let query = supabaseAdmin.from('users').select('*', { count: 'exact' });
+    // Chọn các trường cần thiết dựa vào cờ minimal
+    const selectColumns = minimal 
+      ? 'id, name, email, credits, status, role, created_at, email_verified, subscription' 
+      : '*';
+    
+    let query = supabaseAdmin.from('users').select(selectColumns, { count: 'exact' });
 
     // Áp dụng bộ lọc trạng thái
     if (status && status !== 'all') {
@@ -85,6 +90,7 @@ const getUsers = async (page: number, pageSize: number, status: string, searchTe
     const to = from + pageSize - 1;
     query = query.range(from, to);
 
+    // Thực hiện truy vấn
     const { data: users, count, error } = await query;
 
     if (error) {
@@ -92,7 +98,21 @@ const getUsers = async (page: number, pageSize: number, status: string, searchTe
       throw error;
     }
 
-    return { users, total: count || 0 };
+    // Biến đổi dữ liệu nếu cần
+    const transformedUsers = users.map(user => ({
+      id: user.id,
+      name: user.name || "",
+      email: user.email || "",
+      credits: user.credits ?? 0,
+      subscription: user.subscription ?? "Không có",
+      status: user.status === "inactive" ? "inactive" : "active",
+      registeredAt: user.created_at ? new Date(user.created_at).toISOString().split("T")[0] : "",
+      avatar: user.avatar || `https://i.pravatar.cc/150?u=${user.id}`,
+      role: user.role === "admin" || user.role === "editor" ? user.role : "user",
+      email_verified: !!user.email_verified
+    }));
+
+    return { users: transformedUsers, total: count || 0 };
   } catch (error) {
     console.error("Lỗi khi lấy danh sách người dùng:", error);
     throw error;
@@ -135,10 +155,10 @@ Deno.serve(async (req) => {
     console.log("Xác nhận quyền admin thành công");
 
     // Lấy tham số từ request
-    const { searchTerm = '', status = 'all', page = 1, pageSize = 5 } = await req.json();
+    const { searchTerm = '', status = 'all', page = 1, pageSize = 5, minimal = false } = await req.json();
     
-    // Lấy danh sách người dùng
-    const { users, total } = await getUsers(page, pageSize, status, searchTerm);
+    // Lấy danh sách người dùng với cờ minimal để kiểm soát dữ liệu trả về
+    const { users, total } = await getUsers(page, pageSize, status, searchTerm, minimal);
     
     console.log(`Đã tìm thấy ${users.length} người dùng, tổng số: ${total}`);
 

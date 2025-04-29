@@ -207,7 +207,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Xử lý thay đổi gói đăng ký trong background nếu có
+    // Xử lý thay đổi gói đăng ký trong background để không chặn response
     if (subscriptionChanged) {
       try {
         console.log('[update-user] Phát hiện thay đổi gói đăng ký:', {
@@ -259,7 +259,7 @@ Deno.serve(async (req) => {
   }
 });
 
-// Hàm xử lý cập nhật gói đăng ký
+// Hàm xử lý cập nhật gói đăng ký - đã tối ưu để không block main thread
 async function updateUserSubscription(userId: string, subscriptionName: string): Promise<void> {
   try {
     const timeoutMs = 5000;

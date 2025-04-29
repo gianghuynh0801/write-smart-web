@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { parseUser } from "./userParser";
 import { User } from "@/types/user";
@@ -23,7 +24,8 @@ export const fetchUsers = async (
         page,
         pageSize,
         status,
-        searchTerm
+        searchTerm,
+        minimal: true // Thêm flag để lấy dữ liệu tối thiểu
       },
       headers: {
         Authorization: `Bearer ${session.access_token}`
@@ -61,6 +63,23 @@ export const getUserById = async (id: string | number): Promise<User | undefined
   try {
     console.log("Đang lấy thông tin chi tiết của user:", id);
     
+    // Tạo cache key
+    const cacheKey = `user_details_${id}`;
+    
+    // Thử lấy từ sessionStorage trước
+    const cachedData = sessionStorage.getItem(cacheKey);
+    if (cachedData) {
+      try {
+        const userData = JSON.parse(cachedData);
+        if (userData && userData.id) {
+          console.log("Sử dụng dữ liệu người dùng từ cache:", userData.id);
+          return userData as User;
+        }
+      } catch (err) {
+        console.warn("Lỗi khi parse dữ liệu cache:", err);
+      }
+    }
+    
     const { data: { session } } = await supabase.auth.getSession();
     if (!session || !session.access_token) {
       throw new Error("Không có phiên đăng nhập hợp lệ");
@@ -85,6 +104,13 @@ export const getUserById = async (id: string | number): Promise<User | undefined
 
     const userWithSubscription = parseUser(response.data);
     console.log("Đã lấy được thông tin user:", userWithSubscription);
+    
+    // Lưu vào cache
+    try {
+      sessionStorage.setItem(cacheKey, JSON.stringify(userWithSubscription));
+    } catch (err) {
+      console.warn("Không thể lưu user vào cache:", err);
+    }
     
     return userWithSubscription;
   } catch (error) {
