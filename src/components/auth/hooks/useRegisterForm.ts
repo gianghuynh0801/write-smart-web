@@ -57,9 +57,18 @@ export const useRegisterForm = () => {
         console.log("Đã tạo người dùng thành công với ID:", userId);
       } catch (registerError: any) {
         console.error("Lỗi đăng ký người dùng:", registerError);
+        
+        // Kiểm tra lỗi tạo bảng hoặc tạo gói đăng ký
+        if (registerError.message?.includes("subscriptions") || registerError.message?.includes("relation")) {
+          // Đây là lỗi database, không hiển thị cho người dùng
+          console.error("Lỗi cơ sở dữ liệu khi đăng ký:", registerError);
+          throw new Error("Có lỗi xảy ra khi thiết lập tài khoản. Vui lòng thử lại sau.");
+        }
+        
         if (registerError.message?.includes("23505") || registerError.message?.includes("đã được sử dụng")) {
           throw new Error("Email này đã được sử dụng. Vui lòng chọn email khác hoặc đăng nhập.");
         }
+        
         throw registerError;
       }
       
@@ -68,9 +77,14 @@ export const useRegisterForm = () => {
       
       try {
         console.log("Đồng bộ dữ liệu người dùng:", userId);
-        await syncUser(userId, formData.email, formData.name);
-        syncSuccess = true;
-        console.log("Đồng bộ dữ liệu người dùng thành công");
+        const syncResult = await syncUser(userId, formData.email, formData.name);
+        syncSuccess = syncResult?.success || false;
+        
+        if (!syncSuccess && syncResult?.warnings?.length > 0) {
+          console.warn("Cảnh báo khi đồng bộ dữ liệu:", syncResult.warnings);
+        }
+        
+        console.log("Kết quả đồng bộ dữ liệu người dùng:", syncResult);
       } catch (syncError: any) {
         console.error("Không thể đồng bộ dữ liệu người dùng:", syncError);
         // Không ném lỗi ở đây, vẫn tiếp tục quy trình ngay cả khi không thể đồng bộ
@@ -136,13 +150,18 @@ export const useRegisterForm = () => {
         setError("Email này đã được sử dụng. Vui lòng chọn email khác hoặc đăng nhập.");
       } else if (error.message?.includes("URL")) {
         setError("Lỗi cấu hình URL xác thực. Vui lòng liên hệ admin.");
+      } else if (error.message?.includes("relation") || error.message?.includes("subscriptions")) {
+        // Đây là lỗi database, hiển thị thông điệp thân thiện hơn
+        setError("Có lỗi xảy ra khi thiết lập tài khoản. Hệ thống đang bảo trì, vui lòng thử lại sau.");
       } else {
         setError(error.message || "Đã có lỗi xảy ra khi đăng ký. Vui lòng thử lại sau.");
       }
 
       toast({
         title: "Lỗi đăng ký",
-        description: error.message || "Đã có lỗi xảy ra khi đăng ký. Vui lòng thử lại sau.",
+        description: error.message?.includes("relation") || error.message?.includes("subscriptions")
+          ? "Hệ thống đang bảo trì, vui lòng thử lại sau." 
+          : (error.message || "Đã có lỗi xảy ra khi đăng ký. Vui lòng thử lại sau."),
         variant: "destructive"
       });
       

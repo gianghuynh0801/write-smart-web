@@ -1,5 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { UserSyncResponse } from "@/api/subscription/types";
 
 interface RegisterFormData {
   name: string;
@@ -53,7 +54,7 @@ export const useRegisterUser = () => {
     }
   };
 
-  const syncUser = async (userId: string, email: string, name: string) => {
+  const syncUser = async (userId: string, email: string, name: string): Promise<UserSyncResponse | null> => {
     try {
       console.log("Đồng bộ dữ liệu cho người dùng:", userId);
       
@@ -61,6 +62,7 @@ export const useRegisterUser = () => {
       let attempts = 0;
       const maxAttempts = 5; // Tăng số lần thử
       let lastError: any = null;
+      let result: UserSyncResponse | null = null;
       
       while (attempts < maxAttempts) {
         try {
@@ -85,9 +87,10 @@ export const useRegisterUser = () => {
           }
           
           console.log("Kết quả đồng bộ người dùng:", data);
+          result = data as UserSyncResponse;
           
           // Đồng bộ thành công, thoát vòng lặp
-          return data;
+          return result;
         } catch (attemptError) {
           console.error(`Lỗi đồng bộ lần ${attempts}:`, attemptError);
           lastError = attemptError;
@@ -96,16 +99,28 @@ export const useRegisterUser = () => {
             // Đợi tăng dần trước khi thử lại
             await new Promise(resolve => setTimeout(resolve, attempts * 2000));
           } else {
-            throw lastError;
+            return {
+              success: false,
+              message: `Không thể đồng bộ dữ liệu người dùng: ${lastError?.message || 'Lỗi không xác định'}`,
+              warnings: [`Lỗi sau ${maxAttempts} lần thử: ${lastError?.message || 'Lỗi không xác định'}`]
+            };
           }
         }
       }
       
       // Nếu đã thử hết số lần mà vẫn không thành công
-      throw lastError || new Error("Không thể đồng bộ dữ liệu người dùng sau nhiều lần thử");
-    } catch (error) {
+      return {
+        success: false,
+        message: `Không thể đồng bộ dữ liệu người dùng sau ${maxAttempts} lần thử`,
+        warnings: [`Lỗi sau ${maxAttempts} lần thử: ${lastError?.message || 'Lỗi không xác định'}`]
+      };
+    } catch (error: any) {
       console.error("Lỗi trong quá trình đồng bộ:", error);
-      throw error;
+      return {
+        success: false,
+        message: `Lỗi đồng bộ: ${error?.message || 'Lỗi không xác định'}`,
+        warnings: [`Lỗi đồng bộ: ${error?.message || 'Lỗi không xác định'}`]
+      };
     }
   };
 
@@ -131,7 +146,7 @@ export const useRegisterUser = () => {
         
         if (user) {
           console.log("Người dùng đã được tạo thành công:", user);
-          return;
+          return true;
         }
         
         await new Promise(resolve => setTimeout(resolve, delay));
@@ -140,10 +155,12 @@ export const useRegisterUser = () => {
       }
       
       console.warn("Không thể xác minh người dùng trong database sau nhiều lần thử. Tiếp tục quá trình.");
+      return false;
     } catch (error) {
       console.error("Lỗi khi xác minh người dùng:", error);
       // Không ném lỗi ở đây để quá trình đăng ký tiếp tục
       console.warn("Tiếp tục quá trình mặc dù có lỗi xác minh");
+      return false;
     }
   };
 
