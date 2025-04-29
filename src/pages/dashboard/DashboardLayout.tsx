@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import Sidebar from "@/components/dashboard/Sidebar";
@@ -7,7 +6,7 @@ import { Home } from "lucide-react";
 import LanguageSwitcher from "@/components/common/LanguageSwitcher";
 import { useAuthRedirect } from "@/hooks/useAuthRedirect";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/auth";
 
 const DashboardLayout = () => {
   const { isChecking } = useAuthRedirect('/login');

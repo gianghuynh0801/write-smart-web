@@ -1,8 +1,7 @@
-
 import { useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth';
 
 /**
  * Hook để refresh dữ liệu người dùng (tín dụng và gói đăng ký)

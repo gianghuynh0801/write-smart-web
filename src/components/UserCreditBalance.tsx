@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { Wallet } from "lucide-react";
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth';
 import { useUserDataRefresh } from '@/hooks/useUserDataRefresh';
 
 export const UserCreditBalance = () => {
