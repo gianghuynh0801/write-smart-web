@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/contexts/auth"; // Sửa import path
 import App from "../App";
-import "./index.css";
+import "../index.css"; // Sửa đường dẫn import CSS
 
 // Khởi tạo React Query client
 const queryClient = new QueryClient({
