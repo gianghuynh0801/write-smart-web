@@ -11,8 +11,9 @@ const channelSingleton = {
 };
 
 export const useRealtimeUsers = (userIds: (string | number)[]) => {
-  const [realtimeUsers, setRealtimeUsers] = useState<Record<string | number, User>>({});
+  const [realtimeUsers, setRealtimeUsers] = useState<Record<string | number, Partial<User>>>({});
   const updateTimeoutsRef = useRef<Record<string | number, NodeJS.Timeout>>({});
+  const isMountedRef = useRef<boolean>(true);
   
   // Debounced update cho từng user riêng biệt
   const debouncedUpdateUser = (userId: string | number, userData: Partial<User>) => {
@@ -23,9 +24,11 @@ export const useRealtimeUsers = (userIds: (string | number)[]) => {
     
     // Tạo timeout mới để cập nhật sau 100ms
     updateTimeoutsRef.current[userId] = setTimeout(() => {
+      if (!isMountedRef.current) return;
+      
       setRealtimeUsers(prev => ({
         ...prev,
-        [userId]: { ...prev[userId], ...userData } as User
+        [userId]: { ...prev[userId], ...userData }
       }));
       
       delete updateTimeoutsRef.current[userId];
@@ -34,6 +37,8 @@ export const useRealtimeUsers = (userIds: (string | number)[]) => {
 
   // Thiết lập và xử lý kênh realtime chung
   useEffect(() => {
+    isMountedRef.current = true;
+    
     if (userIds.length === 0) return;
 
     // Cập nhật danh sách userIds trong singleton
@@ -80,6 +85,8 @@ export const useRealtimeUsers = (userIds: (string | number)[]) => {
 
     // Cleanup khi component unmount
     return () => {
+      isMountedRef.current = false;
+      
       // Xóa tất cả timeout
       Object.values(updateTimeoutsRef.current).forEach(timeout => {
         clearTimeout(timeout);

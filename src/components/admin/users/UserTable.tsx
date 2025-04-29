@@ -42,11 +42,22 @@ const UserTable = ({
   // Tính toán danh sách user với dữ liệu realtime
   const displayUsers = useMemo(() => {
     return users.map(user => {
-      const realtimeUser = {
-        ...user,
-        ...realtimeUserUpdates[user.id],
-        ...realtimeSubscriptionUpdates[user.id]
-      };
+      // Tạo một bản sao của user để không ảnh hưởng đến dữ liệu gốc
+      const realtimeUser = { ...user };
+      
+      // Cập nhật từ realtimeUserUpdates (credits, status, role)
+      if (realtimeUserUpdates[user.id]) {
+        const updates = realtimeUserUpdates[user.id];
+        if (updates.credits !== undefined) realtimeUser.credits = updates.credits;
+        if (updates.status !== undefined) realtimeUser.status = updates.status;
+        if (updates.role !== undefined) realtimeUser.role = updates.role;
+      }
+      
+      // Cập nhật subscription từ realtimeSubscriptionUpdates
+      if (realtimeSubscriptionUpdates[user.id]?.subscription) {
+        realtimeUser.subscription = realtimeSubscriptionUpdates[user.id].subscription;
+      }
+      
       return realtimeUser;
     });
   }, [users, realtimeUserUpdates, realtimeSubscriptionUpdates]);

@@ -17,7 +17,7 @@ const CACHE_TTL = 1000 * 60 * 5; // 5 phút
 export const useRealtimeSubscriptions = (userIds: (string | number)[]) => {
   const [realtimeUsers, setRealtimeUsers] = useState<Record<string | number, User>>({});
   const updateTimeoutsRef = useRef<Record<string | number, NodeJS.Timeout>>({});
-  const pendingUpdatesRef = useRef<Set<string>>>(new Set());
+  const pendingUpdatesRef = useRef<Set<string>>(new Set());
   const isMountedRef = useRef<boolean>(true);
 
   // Debounced update function
