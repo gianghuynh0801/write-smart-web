@@ -1,170 +1,173 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { UserSubscription } from "@/types/subscriptions";
+import { authService, isAuthError } from "@/services/auth";
 
+/**
+ * Tạo hoặc cập nhật gói đăng ký cho người dùng với quyền admin
+ */
 export const createUserSubscriptionAsAdmin = async (
-  userId: string, 
-  subscriptionId: number, 
+  userId: string,
+  subscriptionId: number,
   startDate: string,
   endDate: string,
-  status: string = 'active'
-): Promise<boolean> => {
+  status: string
+): Promise<void> => {
   try {
-    console.log("Thực hiện thao tác gói đăng ký:", { userId, subscriptionId, startDate, endDate, status });
+    console.log(`[createUserSubscriptionAsAdmin] Thiết lập gói đăng ký ${subscriptionId} cho user ${userId}`);
     
-    if (!userId) {
-      throw new Error("ID người dùng không được để trống");
+    // Nếu subscriptionId < 0, hủy tất cả gói đăng ký hiện tại
+    if (subscriptionId < 0) {
+      const adminToken = await authService.getAdminToken();
+      
+      const { error } = await supabase.functions.invoke(
+        'admin-subscription',
+        {
+          body: { 
+            action: 'deactivate-all', 
+            userId,
+          },
+          headers: {
+            Authorization: `Bearer ${adminToken}`
+          }
+        }
+      );
+      
+      if (error) {
+        console.error(`[createUserSubscriptionAsAdmin] Lỗi khi hủy gói đăng ký: ${error.message}`);
+        
+        // Kiểm tra lỗi xác thực và thử lại
+        if (isAuthError(error)) {
+          const newToken = await authService.getAdminToken(true);
+          
+          const { error: retryError } = await supabase.functions.invoke(
+            'admin-subscription',
+            {
+              body: { 
+                action: 'deactivate-all', 
+                userId,
+              },
+              headers: {
+                Authorization: `Bearer ${newToken}`
+              }
+            }
+          );
+          
+          if (retryError) throw retryError;
+        } else {
+          throw error;
+        }
+      }
+      
+      return;
     }
     
-    const client = getAdminClient();
+    // Tạo gói đăng ký mới
+    const adminToken = await authService.getAdminToken();
     
-    if (status === 'inactive') {
-      console.log("Đang hủy tất cả gói đăng ký hiện tại của người dùng:", userId);
-      
-      const { error: updateError } = await client
-        .from("user_subscriptions")
-        .update({ status: "inactive" })
-        .eq("user_id", userId)
-        .eq("status", "active");
-        
-      if (updateError) {
-        console.error("Lỗi khi hủy gói đăng ký hiện tại:", updateError.message);
-        throw new Error(`Không thể hủy gói đăng ký hiện tại: ${updateError.message}`);
+    const { error } = await supabase.functions.invoke(
+      'admin-subscription',
+      {
+        body: { 
+          action: 'create', 
+          userId,
+          subscriptionId,
+          startDate,
+          endDate,
+          status
+        },
+        headers: {
+          Authorization: `Bearer ${adminToken}`
+        }
       }
+    );
+    
+    if (error) {
+      console.error(`[createUserSubscriptionAsAdmin] Lỗi khi tạo gói đăng ký: ${error.message}`);
       
-      console.log("Đã hủy thành công tất cả gói đăng ký hiện tại");
-      
-      if (subscriptionId === -1 || !startDate || !endDate) {
-        console.log("Không tạo gói đăng ký mới, chỉ hủy gói hiện tại");
-        return true;
+      // Kiểm tra lỗi xác thực và thử lại
+      if (isAuthError(error)) {
+        const newToken = await authService.getAdminToken(true);
+        
+        const { error: retryError } = await supabase.functions.invoke(
+          'admin-subscription',
+          {
+            body: { 
+              action: 'create', 
+              userId,
+              subscriptionId,
+              startDate,
+              endDate,
+              status
+            },
+            headers: {
+              Authorization: `Bearer ${newToken}`
+            }
+          }
+        );
+        
+        if (retryError) throw retryError;
+      } else {
+        throw error;
       }
     }
-    
-    if (status === 'active') {
-      if (subscriptionId <= 0) {
-        throw new Error("ID gói đăng ký không hợp lệ");
-      }
-      
-      if (!startDate || !endDate) {
-        throw new Error("Ngày bắt đầu và kết thúc là bắt buộc");
-      }
-      
-      const { data: subscriptionExists, error: checkError } = await client
-        .from("subscriptions")
-        .select("id")
-        .eq("id", subscriptionId)
-        .maybeSingle();
-        
-      if (checkError) {
-        console.error("Lỗi khi kiểm tra gói đăng ký:", checkError.message);
-        throw new Error(`Không thể kiểm tra gói đăng ký: ${checkError.message}`);
-      }
-      
-      if (!subscriptionExists) {
-        console.error("Gói đăng ký không tồn tại trong hệ thống:", subscriptionId);
-        throw new Error(`Gói đăng ký ID=${subscriptionId} không tồn tại trong hệ thống`);
-      }
-      
-      const { error: updateError } = await client
-        .from("user_subscriptions")
-        .update({ status: "inactive" })
-        .eq("user_id", userId)
-        .eq("status", "active");
-        
-      if (updateError) {
-        console.error("Lỗi khi cập nhật gói đăng ký cũ:", updateError.message);
-        throw new Error(`Không thể hủy gói đăng ký cũ: ${updateError.message}`);
-      }
-      
-      console.log("Đang tạo gói đăng ký mới:", { userId, subscriptionId, startDate, endDate, status });
-      
-      const { error: insertError } = await client
-        .from("user_subscriptions")
-        .insert({
-          user_id: userId,
-          subscription_id: subscriptionId,
-          start_date: startDate,
-          end_date: endDate,
-          status: status
-        });
-        
-      if (insertError) {
-        console.error("Lỗi khi tạo gói đăng ký mới:", insertError.message);
-        throw new Error(`Không thể tạo gói đăng ký mới: ${insertError.message}`);
-      }
-      
-      console.log("Đã tạo gói đăng ký mới thành công");
-    }
-    
-    return true;
   } catch (error) {
-    console.error("Lỗi trong quá trình xử lý gói đăng ký:", error);
+    console.error(`[createUserSubscriptionAsAdmin] Lỗi không mong đợi: ${error}`);
     throw error;
   }
 };
 
+/**
+ * Lấy gói đăng ký đang hoạt động của người dùng
+ */
 export const getUserActiveSubscription = async (userId: string) => {
   try {
-    console.log("Đang lấy thông tin gói đăng ký hiện tại cho người dùng:", userId);
+    console.log(`[getUserActiveSubscription] Lấy gói đăng ký cho user ${userId}`);
     
-    const client = getAdminClient();
-
-    const { data, error } = await client
-      .from("user_subscriptions")
-      .select(`
-        id,
-        start_date,
-        end_date,
-        status,
-        user_id,
-        subscription_id,
-        subscriptions:subscription_id (
-          id,
-          name
-        )
-      `)
-      .eq("user_id", userId)
-      .eq("status", "active")
-      .maybeSingle();
-      
-    if (error) {
-      if (error.code !== 'PGRST116') {
-        console.error("Lỗi khi lấy thông tin gói đăng ký:", error.message);
+    const adminToken = await authService.getAdminToken();
+    
+    const { data, error } = await supabase.functions.invoke(
+      'admin-subscription',
+      {
+        body: { 
+          action: 'get-active', 
+          userId 
+        },
+        headers: {
+          Authorization: `Bearer ${adminToken}`
+        }
       }
-      return null;
-    }
+    );
     
-    if (data) {
-      const subscription: UserSubscription = {
-        id: data.id,
-        user_id: data.user_id,
-        subscription_id: data.subscription_id,
-        start_date: data.start_date,
-        end_date: data.end_date,
-        status: data.status,
-        subscriptions: data.subscriptions ? {
-          id: (data.subscriptions as any).id,
-          name: (data.subscriptions as any).name,
-          description: null,
-          price: 0,
-          period: '',
-          features: null
-        } : undefined
-      };
+    if (error) {
+      console.error(`[getUserActiveSubscription] Lỗi: ${error.message}`);
       
-      return subscription;
+      // Kiểm tra lỗi xác thực và thử lại
+      if (isAuthError(error)) {
+        const newToken = await authService.getAdminToken(true);
+        
+        const { data: retryData, error: retryError } = await supabase.functions.invoke(
+          'admin-subscription',
+          {
+            body: { 
+              action: 'get-active', 
+              userId 
+            },
+            headers: {
+              Authorization: `Bearer ${newToken}`
+            }
+          }
+        );
+        
+        if (retryError) throw retryError;
+        return retryData;
+      } else {
+        throw error;
+      }
     }
     
-    return null;
+    return data;
   } catch (error) {
-    console.error("Lỗi trong quá trình xử lý:", error);
-    return null;
+    console.error(`[getUserActiveSubscription] Lỗi không mong đợi: ${error}`);
+    throw error;
   }
 };
-
-// Helper function to get admin client
-const getAdminClient = () => {
-  console.log("Sử dụng client Supabase hiện có thay vì tạo client admin mới");
-  return supabase;
-};
-

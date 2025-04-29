@@ -3,39 +3,31 @@
 export enum AuthErrorType {
   TOKEN_EXPIRED = "TOKEN_EXPIRED",
   UNAUTHORIZED = "UNAUTHORIZED",
-  PERMISSION_DENIED = "PERMISSION_DENIED",
-  NETWORK_ERROR = "NETWORK_ERROR",
+  SERVER_ERROR = "SERVER_ERROR",
   UNKNOWN_ERROR = "UNKNOWN_ERROR"
 }
 
-// Class lỗi xác thực tùy chỉnh
+// Class Error tùy chỉnh cho lỗi xác thực
 export class AuthError extends Error {
   type: AuthErrorType;
-  
-  constructor(message: string, type: AuthErrorType) {
+
+  constructor(message: string, type: AuthErrorType = AuthErrorType.UNKNOWN_ERROR) {
     super(message);
     this.name = "AuthError";
     this.type = type;
+    
+    // Cài đặt prototype đúng cách khi kế thừa từ Error
+    Object.setPrototypeOf(this, AuthError.prototype);
   }
 }
 
-/**
- * Kiểm tra lỗi xác thực từ API response
- * @param error Lỗi cần kiểm tra
- * @returns true nếu là lỗi xác thực, false nếu không phải
- */
-export const isAuthError = (error: any): boolean => {
-  if (!error) return false;
-  
-  const errorMsg = error instanceof Error ? 
-    error.message.toLowerCase() : 
-    String(error).toLowerCase();
-  
-  return errorMsg.includes('xác thực') || 
-         errorMsg.includes('phiên đăng nhập') ||
-         errorMsg.includes('token') || 
-         errorMsg.includes('auth') ||
-         errorMsg.includes('unauthorized') ||
-         errorMsg.includes('401') || 
-         errorMsg.includes('403');
+// Hàm kiểm tra một đối tượng có phải là AuthError hay không
+export function isAuthError(error: any): error is AuthError {
+  return (
+    error instanceof AuthError || 
+    (error && 
+     error.name === "AuthError" && 
+     typeof error.type === "string" && 
+     Object.values(AuthErrorType).includes(error.type as AuthErrorType))
+  );
 }

@@ -1,150 +1,114 @@
 
-import { setItem, getItem, removeItem, LOCAL_STORAGE_KEYS } from "@/utils/localStorageService";
 import { supabase } from "@/integrations/supabase/client";
 
-// Đối tượng chứa các thông tin về token hiện tại
-interface TokenInfo {
-  token: string;
-  expiresAt: number; // Unix timestamp
-}
-
-// Class quản lý token
 class TokenManager {
   private static instance: TokenManager;
-  private refreshInProgress: boolean = false;
-  private refreshPromise: Promise<string | null> | null = null;
-  private tokenCache: Record<string, TokenInfo> = {};
+  private token: string | null = null;
+  private expiresAt: number = 0;
   
+  // Private constructor để áp dụng Singleton pattern
   private constructor() {}
-
-  // Singleton pattern
+  
+  // Phương thức tĩnh trả về instance duy nhất
   public static getInstance(): TokenManager {
     if (!TokenManager.instance) {
       TokenManager.instance = new TokenManager();
     }
     return TokenManager.instance;
   }
-
-  // Lấy token từ localStorage hoặc cache
+  
+  // Lấy token hiện tại hoặc làm mới nếu cần
   public async getToken(): Promise<string | null> {
-    try {
-      // Kiểm tra cache trước
-      const cachedToken = this.tokenCache[LOCAL_STORAGE_KEYS.SESSION_TOKEN];
-      if (cachedToken && cachedToken.expiresAt > Date.now()) {
-        return cachedToken.token;
-      }
-
-      // Nếu không có trong cache hoặc đã hết hạn, kiểm tra localStorage
-      const storedToken = getItem<string>(LOCAL_STORAGE_KEYS.SESSION_TOKEN, false);
-      
-      if (!storedToken) {
-        console.log("[TokenManager] Không tìm thấy token trong storage");
-        return await this.refreshToken();
-      }
-
-      // Nếu có token, cập nhật vào cache
-      this.updateTokenCache(storedToken);
-      return storedToken;
-    } catch (error) {
-      console.error("[TokenManager] Lỗi khi lấy token:", error);
-      return null;
+    // Nếu token đã hết hạn hoặc còn ít hơn 5 phút, làm mới
+    const now = Math.floor(Date.now() / 1000);
+    if (!this.token || now > this.expiresAt - 300) {
+      return this.refreshToken();
     }
+    return this.token;
   }
-
-  // Lưu token vào localStorage và cache
-  public saveToken(token: string): void {
-    try {
-      setItem(LOCAL_STORAGE_KEYS.SESSION_TOKEN, token);
-      this.updateTokenCache(token);
-      console.log("[TokenManager] Đã lưu token mới");
-    } catch (error) {
-      console.error("[TokenManager] Lỗi khi lưu token:", error);
-    }
-  }
-
-  // Xóa token khỏi localStorage và cache
-  public clearToken(): void {
-    try {
-      removeItem(LOCAL_STORAGE_KEYS.SESSION_TOKEN);
-      delete this.tokenCache[LOCAL_STORAGE_KEYS.SESSION_TOKEN];
-      console.log("[TokenManager] Đã xóa token");
-    } catch (error) {
-      console.error("[TokenManager] Lỗi khi xóa token:", error);
-    }
-  }
-
-  // Làm mới token nếu cần
+  
+  // Làm mới token dù token hiện tại còn hạn hay không
   public async refreshToken(): Promise<string | null> {
-    // Nếu đang refresh, trả về promise hiện tại
-    if (this.refreshInProgress && this.refreshPromise) {
-      console.log("[TokenManager] Refresh đang được thực hiện, sử dụng promise hiện tại");
-      return this.refreshPromise;
-    }
-
     try {
-      this.refreshInProgress = true;
-      this.refreshPromise = this.doRefreshToken();
-      const newToken = await this.refreshPromise;
-      return newToken;
-    } finally {
-      this.refreshInProgress = false;
-      this.refreshPromise = null;
-    }
-  }
-
-  // Kiểm tra token có hợp lệ hay không
-  public async validateToken(token: string): Promise<boolean> {
-    try {
-      // Kiểm tra token bằng cách gọi API getUser
-      const { data, error } = await supabase.auth.getUser(token);
+      console.log("Đang làm mới token...");
       
-      if (error || !data.user) {
-        console.log("[TokenManager] Token không hợp lệ:", error?.message);
-        return false;
-      }
+      // Lấy phiên hiện tại
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       
-      return true;
-    } catch (error) {
-      console.error("[TokenManager] Lỗi khi xác thực token:", error);
-      return false;
-    }
-  }
-
-  // Thực hiện refresh token
-  private async doRefreshToken(): Promise<string | null> {
-    try {
-      console.log("[TokenManager] Đang làm mới token...");
-      const { data, error } = await supabase.auth.refreshSession();
-      
-      if (error || !data.session) {
-        console.error("[TokenManager] Lỗi khi làm mới session:", error);
+      if (sessionError) {
+        console.error("Lỗi lấy phiên hiện tại:", sessionError);
         this.clearToken();
         return null;
       }
       
-      console.log("[TokenManager] Đã làm mới token thành công");
-      const newToken = data.session.access_token;
-      this.saveToken(newToken);
-      return newToken;
+      if (!sessionData.session) {
+        console.log("Không có phiên hiện tại");
+        this.clearToken();
+        return null;
+      }
+      
+      // Làm mới token
+      const { data, error } = await supabase.auth.refreshSession();
+      
+      if (error) {
+        console.error("Lỗi khi làm mới token:", error);
+        this.clearToken();
+        return null;
+      }
+      
+      if (!data.session) {
+        console.error("Không có phiên sau khi làm mới token");
+        this.clearToken();
+        return null;
+      }
+      
+      // Lưu token mới
+      this.token = data.session.access_token;
+      
+      // Tính thời gian hết hạn
+      const jwtPayload = JSON.parse(atob(this.token.split('.')[1]));
+      this.expiresAt = jwtPayload.exp;
+      
+      console.log("Đã làm mới token thành công");
+      return this.token;
     } catch (error) {
-      console.error("[TokenManager] Lỗi không mong đợi khi làm mới token:", error);
+      console.error("Lỗi không mong đợi khi làm mới token:", error);
       this.clearToken();
       return null;
     }
   }
-
-  // Cập nhật cache token với thời gian hết hạn (+10 phút để dự phòng)
-  private updateTokenCache(token: string): void {
-    // Tạo thời gian hết hạn là 50 phút (token JWT thường có thời hạn 1 giờ)
-    // Chúng ta giảm 10 phút để đảm bảo token được làm mới trước khi thực sự hết hạn
-    const expiresAt = Date.now() + 50 * 60 * 1000;
+  
+  // Kiểm tra token có hợp lệ không
+  public async validateToken(token: string): Promise<boolean> {
+    if (!token) return false;
     
-    this.tokenCache[LOCAL_STORAGE_KEYS.SESSION_TOKEN] = {
-      token,
-      expiresAt
-    };
+    try {
+      // Parse JWT payload
+      const parts = token.split('.');
+      if (parts.length !== 3) return false;
+      
+      const payload = JSON.parse(atob(parts[1]));
+      const exp = payload.exp;
+      
+      if (!exp) return false;
+      
+      // Kiểm tra thời gian hết hạn
+      const now = Math.floor(Date.now() / 1000);
+      if (now >= exp) return false;
+      
+      return true;
+    } catch (error) {
+      console.error("Lỗi khi xác thực token:", error);
+      return false;
+    }
+  }
+  
+  // Xóa token
+  public clearToken(): void {
+    this.token = null;
+    this.expiresAt = 0;
   }
 }
 
-// Xuất instance singleton
+// Export singleton instance
 export const tokenManager = TokenManager.getInstance();
