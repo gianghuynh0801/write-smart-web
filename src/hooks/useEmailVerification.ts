@@ -11,6 +11,24 @@ export interface VerificationParams {
   type: "email_verification" | "password_reset";
 }
 
+// Kiểm tra xem lỗi có thể thử lại hay không
+const isRetryableError = (error: any): boolean => {
+  if (!error) return false;
+  
+  // Lỗi mạng hoặc kết nối
+  if (error.message?.includes('network') || error.message?.includes('connect')) return true;
+  
+  // Lỗi timeout
+  if (error.message?.includes('timeout') || error.message?.includes('timed out')) return true;
+  
+  // Lỗi database tạm thời
+  if (error.message?.includes('temporarily unavailable') || 
+      error.message?.includes('too many connections') ||
+      error.message?.includes('resource busy')) return true;
+  
+  return false;
+};
+
 export const useEmailVerification = () => {
   const { toast } = useToast();
 
@@ -21,7 +39,7 @@ export const useEmailVerification = () => {
       // Sử dụng cơ chế retry tối ưu hơn cho việc đồng bộ người dùng
       const syncUser = async () => {
         let attempts = 0;
-        const maxAttempts = 3; // Giảm số lần thử
+        const maxAttempts = 2; // Giảm số lần thử
         
         while (attempts < maxAttempts) {
           try {
@@ -39,20 +57,37 @@ export const useEmailVerification = () => {
             
             if (error) {
               console.error("Error syncing user:", error);
+              
+              // Kiểm tra xem lỗi có thể thử lại không
+              if (!isRetryableError(error) && attempts > 1) {
+                console.log("Lỗi không thể thử lại, dừng quá trình retry");
+                throw error;
+              }
+              
               if (attempts >= maxAttempts) {
                 throw error;
               }
               
-              // Tối ưu thời gian chờ
-              const delay = Math.min(500 * Math.pow(1.5, attempts-1), 3000);
+              // Tối ưu thời gian chờ với jitter
+              const baseDelay = Math.min(300 * Math.pow(1.3, attempts-1), 2000);
+              const delay = baseDelay * (0.9 + Math.random() * 0.2);
               await new Promise(resolve => setTimeout(resolve, delay));
               continue;
             }
             
             return data;
           } catch (err) {
+            // Kiểm tra xem lỗi có thể thử lại không
+            if (!isRetryableError(err) && attempts > 1) {
+              console.log("Lỗi không thể thử lại, dừng quá trình retry");
+              throw err;
+            }
+            
             if (attempts >= maxAttempts) throw err;
-            const delay = Math.min(500 * Math.pow(1.5, attempts-1), 3000);
+            
+            // Tối ưu thời gian chờ với jitter
+            const baseDelay = Math.min(300 * Math.pow(1.3, attempts-1), 2000);
+            const delay = baseDelay * (0.9 + Math.random() * 0.2);
             await new Promise(resolve => setTimeout(resolve, delay));
           }
         }
@@ -95,7 +130,7 @@ export const useEmailVerification = () => {
         .from('system_configurations')
         .select('value')
         .eq('key', 'site_url')
-        .single();
+        .maybeSingle();
       
       // Sử dụng origin làm URL trang web mặc định nếu không được cấu hình trong cơ sở dữ liệu
       const siteUrl = configData?.value || window.location.origin;

@@ -30,11 +30,29 @@ async function cachedQuery(cacheKey: string, queryFn: () => Promise<any>) {
   return result;
 }
 
-// Tối ưu hóa retry với backoff
+// Kiểm tra xem lỗi có thể thử lại không
+function isRetryableError(error: any): boolean {
+  if (!error) return false;
+  
+  // Lỗi mạng hoặc kết nối
+  if (error.message?.includes('network') || error.message?.includes('connect')) return true;
+  
+  // Lỗi timeout
+  if (error.message?.includes('timeout') || error.message?.includes('timed out')) return true;
+  
+  // Lỗi database tạm thời
+  if (error.message?.includes('temporarily unavailable') || 
+      error.message?.includes('too many connections') ||
+      error.message?.includes('resource busy')) return true;
+  
+  return false;
+}
+
+// Tối ưu hóa retry với backoff và jitter
 async function retryOperation<T>(
   operation: () => Promise<T>, 
-  maxAttempts: number = 3,
-  baseDelay: number = 500
+  maxAttempts: number = 2,  // Giảm từ 3 xuống 2
+  baseDelay: number = 300   // Giảm từ 500ms xuống 300ms
 ): Promise<T> {
   let attempt = 1;
   
@@ -42,12 +60,21 @@ async function retryOperation<T>(
     try {
       return await operation();
     } catch (error) {
+      // Nếu là lỗi không thể thử lại, ném ngay lập tức
+      if (!isRetryableError(error) && attempt > 1) {
+        console.log(`[sync-user] Lỗi không thể thử lại: ${error.message}`);
+        throw error;
+      }
+      
       if (attempt >= maxAttempts) {
         throw error;
       }
       
-      const delay = Math.min(baseDelay * Math.pow(1.5, attempt - 1), 5000);
-      console.log(`[sync-user] Lỗi, thử lại sau ${delay}ms (lần ${attempt}/${maxAttempts})`);
+      // Tính toán thời gian chờ với jitter
+      const baseDelayWithBackoff = Math.min(baseDelay * Math.pow(1.3, attempt - 1), 2000);
+      const delay = baseDelayWithBackoff * (0.9 + Math.random() * 0.2); // Thêm jitter 10%
+      
+      console.log(`[sync-user] Lỗi, thử lại sau ${Math.round(delay)}ms (lần ${attempt}/${maxAttempts})`);
       await new Promise(resolve => setTimeout(resolve, delay));
       attempt++;
     }
@@ -98,7 +125,7 @@ Deno.serve(async (req) => {
       console.log('[sync-user] Người dùng chưa tồn tại, đang tạo mới');
       
       try {
-        // Tạo người dùng mới với thông tin cơ bản - sử dụng retry logic
+        // Tạo người dùng mới với thông tin cơ bản - sử dụng retry logic tối ưu
         const { data: newUser, error: insertError } = await retryOperation(
           () => supabaseAdmin
             .from('users')
@@ -117,7 +144,7 @@ Deno.serve(async (req) => {
             ])
             .select()
             .single(),
-          4  // Giảm số lần thử xuống 4
+          2  // Giảm số lần thử xuống 2
         );
         
         if (insertError) {
@@ -222,8 +249,8 @@ Deno.serve(async (req) => {
           };
           
           try {
-            // Tìm gói đăng ký với retry
-            const basicSubId = await retryOperation(() => findBasicSubscription());
+            // Tìm gói đăng ký với retry tối ưu
+            const basicSubId = await retryOperation(() => findBasicSubscription(), 2);
             
             if (basicSubId) {
               console.log('[sync-user] Tạo subscription với gói ID:', basicSubId);
@@ -244,7 +271,8 @@ Deno.serve(async (req) => {
                     end_date: endDateStr,
                     status: 'active'
                   })
-                  .select()
+                  .select(),
+                2 // giảm xuống 2 lần thử
               );
               
               if (subError) {

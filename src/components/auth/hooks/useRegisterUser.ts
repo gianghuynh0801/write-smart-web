@@ -8,6 +8,24 @@ interface RegisterFormData {
   password: string;
 }
 
+// Hàm kiểm tra xem lỗi có thể thử lại hay không
+const isRetryableError = (error: any): boolean => {
+  if (!error) return false;
+  
+  // Lỗi mạng hoặc kết nối
+  if (error.message?.includes('network') || error.message?.includes('connect')) return true;
+  
+  // Lỗi timeout
+  if (error.message?.includes('timeout') || error.message?.includes('timed out')) return true;
+  
+  // Lỗi database tạm thời
+  if (error.message?.includes('temporarily unavailable') || 
+      error.message?.includes('too many connections') ||
+      error.message?.includes('resource busy')) return true;
+  
+  return false;
+};
+
 export const useRegisterUser = () => {
   const registerUser = async (formData: RegisterFormData): Promise<string | null> => {
     console.log("Bắt đầu tạo tài khoản:", formData.email);
@@ -44,9 +62,7 @@ export const useRegisterUser = () => {
 
       console.log("Đăng ký thành công, ID người dùng:", data.user.id);
       
-      // Giảm thời gian chờ xuống còn 1000ms (từ 3000ms)
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      // Không chờ đợi cố định nữa
       return data.user.id;
     } catch (error) {
       console.error("Lỗi chi tiết khi đăng ký người dùng:", error);
@@ -60,9 +76,8 @@ export const useRegisterUser = () => {
       
       // Cải thiện cơ chế thử lại
       let attempts = 0;
-      const maxAttempts = 4; // Giảm từ 5 xuống 4
+      const maxAttempts = 2; // Giảm từ 4 xuống 2
       let lastError: any = null;
-      let result: UserSyncResponse | null = null;
       
       while (attempts < maxAttempts) {
         try {
@@ -81,24 +96,36 @@ export const useRegisterUser = () => {
           if (error) {
             console.error(`Lỗi đồng bộ người dùng (lần thử ${attempts}):`, error);
             lastError = error;
-            // Tối ưu công thức tính thời gian chờ
-            const delay = Math.min(500 * Math.pow(1.5, attempts-1), 5000);
+            
+            // Chỉ thử lại nếu là lỗi có thể thử lại
+            if (!isRetryableError(error) && attempts > 1) {
+              console.log("Lỗi không thể thử lại, dừng quá trình retry");
+              break;
+            }
+            
+            // Tối ưu công thức tính thời gian chờ với jitter
+            const baseDelay = Math.min(300 * Math.pow(1.3, attempts-1), 2000);
+            const delay = baseDelay * (0.9 + Math.random() * 0.2); // Thêm jitter 10%
             await new Promise(resolve => setTimeout(resolve, delay));
             continue;
           }
           
           console.log("Kết quả đồng bộ người dùng:", data);
-          result = data as UserSyncResponse;
-          
-          // Đồng bộ thành công, thoát vòng lặp
-          return result;
+          return data as UserSyncResponse;
         } catch (attemptError) {
           console.error(`Lỗi đồng bộ lần ${attempts}:`, attemptError);
           lastError = attemptError;
           
+          // Chỉ thử lại nếu là lỗi có thể thử lại
+          if (!isRetryableError(attemptError) && attempts > 1) {
+            console.log("Lỗi không thể thử lại, dừng quá trình retry");
+            break;
+          }
+          
           if (attempts < maxAttempts) {
-            // Tối ưu công thức tính thời gian chờ
-            const delay = Math.min(500 * Math.pow(1.5, attempts-1), 5000);
+            // Tối ưu công thức tính thời gian chờ với jitter
+            const baseDelay = Math.min(300 * Math.pow(1.3, attempts-1), 2000);
+            const delay = baseDelay * (0.9 + Math.random() * 0.2); // Thêm jitter 10%
             await new Promise(resolve => setTimeout(resolve, delay));
           } else {
             return {
@@ -129,11 +156,11 @@ export const useRegisterUser = () => {
   const verifyUserCreation = async (userId: string) => {
     try {
       // Tối ưu: giảm số lần thử và thời gian chờ
-      let retries = 5; // Giảm từ 7 xuống 5
-      let delay = 1000;  // Giảm từ 2000ms xuống 1000ms
+      let retries = 3; // Giảm từ 5 xuống 3
+      let attempt = 1;
       
       while (retries > 0) {
-        console.log(`Kiểm tra người dùng lần ${6-retries}/5...`);
+        console.log(`Kiểm tra người dùng lần ${attempt}/3...`);
         
         const { data: user, error } = await supabase
           .from('users')
@@ -143,7 +170,12 @@ export const useRegisterUser = () => {
         
         if (error) {
           console.error("Lỗi kiểm tra người dùng:", error);
-          throw error;
+          
+          // Nếu là lỗi không thể thử lại thì dừng lại
+          if (!isRetryableError(error)) {
+            console.log("Lỗi không thể thử lại, dừng quá trình kiểm tra");
+            throw error;
+          }
         }
         
         if (user) {
@@ -151,9 +183,13 @@ export const useRegisterUser = () => {
           return true;
         }
         
+        // Tối ưu công thức tính thời gian chờ với jitter
+        const baseDelay = Math.min(300 * Math.pow(1.3, attempt), 2000);
+        const delay = baseDelay * (0.9 + Math.random() * 0.2); // Thêm jitter 10%
+        
         await new Promise(resolve => setTimeout(resolve, delay));
         retries--;
-        delay = Math.min(delay * 1.3, 3000); // Tăng delay với giới hạn tối đa 3000ms
+        attempt++;
       }
       
       console.warn("Không thể xác minh người dùng trong database sau nhiều lần thử. Tiếp tục quá trình.");
