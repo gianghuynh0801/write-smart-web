@@ -5,8 +5,25 @@ import { supabase } from "@/integrations/supabase/client";
 import { User } from "@/types/user";
 import { useToast } from "@/hooks/use-toast";
 import { authService, AuthErrorType, AuthError, isAuthError } from "@/services/authService";
+import { tokenManager } from "@/utils/tokenManager";
 
-// Hàm fetchUsers cải tiến với xử lý lỗi tốt hơn
+// Thêm debounce helper function
+function debounce<F extends (...args: any[]) => any>(func: F, wait: number) {
+  let timeout: NodeJS.Timeout | null = null;
+  
+  return function(this: any, ...args: Parameters<F>) {
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+    
+    timeout = setTimeout(() => {
+      func.apply(this, args);
+      timeout = null;
+    }, wait);
+  };
+}
+
+// Hàm fetchUsers cải tiến với xử lý lỗi tốt hơn và timeout
 const fetchUsers = async (params: {
   page: number;
   pageSize: number;
@@ -16,8 +33,8 @@ const fetchUsers = async (params: {
   console.log("Đang lấy danh sách người dùng với các thông số:", params);
 
   try {
-    // Lấy admin token từ AuthService
-    const token = await authService.getAdminToken();
+    // Lấy admin token từ TokenManager
+    const token = await tokenManager.getToken();
     if (!token) {
       throw new AuthError(
         "Không có phiên đăng nhập hợp lệ", 
@@ -25,13 +42,26 @@ const fetchUsers = async (params: {
       );
     }
 
-    // Gọi edge function với token đã xác thực
-    const { data, error } = await supabase.functions.invoke('admin-users', {
+    // Tạo promise cho API call
+    const apiPromise = supabase.functions.invoke('admin-users', {
       body: params,
       headers: {
         Authorization: `Bearer ${token}`
       }
     });
+    
+    // Tạo timeout promise
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error('Timeout khi lấy danh sách người dùng'));
+      }, 15000); // 15 giây timeout
+    });
+    
+    // Sử dụng Promise.race để áp dụng timeout
+    const { data, error } = await Promise.race([
+      apiPromise,
+      timeoutPromise
+    ]) as any;
 
     if (error) {
       console.error("Lỗi khi gọi admin-users function:", error);
@@ -39,7 +69,7 @@ const fetchUsers = async (params: {
       // Kiểm tra lỗi xác thực và thử làm mới token
       if (isAuthError(error)) {
         console.log("Phát hiện lỗi xác thực trong phản hồi, thử làm mới token...");
-        const newToken = await authService.getAdminToken(true); // Force refresh
+        const newToken = await tokenManager.refreshToken();
         
         if (newToken) {
           console.log("Đã làm mới token, thử gọi lại API...");
@@ -91,6 +121,9 @@ export const useUserList = () => {
   const [isRefreshingToken, setIsRefreshingToken] = useState(false);
   // Theo dõi component còn mounted hay không
   const isMounted = useRef(true);
+  // Theo dõi thời gian refresh cuối cùng để tránh refresh quá nhanh
+  const lastRefreshTime = useRef(0);
+  const minRefreshInterval = 1000; // 1 giây giữa các lần refresh
 
   useEffect(() => {
     isMounted.current = true;
@@ -99,15 +132,41 @@ export const useUserList = () => {
     };
   }, []);
 
+  // Debounced search term setter
+  const debouncedSetSearchTerm = useCallback(
+    debounce((value: string) => {
+      if (isMounted.current) {
+        setSearchTerm(value);
+        setCurrentPage(1);
+      }
+    }, 500),
+    []
+  );
+
   const {
     data,
     isLoading,
     isError,
     error,
-    refetch: refreshUsers
+    refetch
   } = useQuery({
     queryKey: ['users', currentPage, pageSize, status, searchTerm],
-    queryFn: () => fetchUsers({ page: currentPage, pageSize, status, searchTerm }),
+    queryFn: () => {
+      // Kiểm tra thời gian giữa các lần refresh
+      const now = Date.now();
+      if (now - lastRefreshTime.current < minRefreshInterval) {
+        console.log(`Hạn chế tần suất refresh: ${minRefreshInterval - (now - lastRefreshTime.current)}ms còn lại`);
+        return new Promise(resolve => {
+          setTimeout(() => {
+            lastRefreshTime.current = Date.now();
+            resolve(fetchUsers({ page: currentPage, pageSize, status, searchTerm }));
+          }, minRefreshInterval);
+        });
+      }
+      
+      lastRefreshTime.current = now;
+      return fetchUsers({ page: currentPage, pageSize, status, searchTerm });
+    },
     retry: (failureCount, error) => {
       // Thử lại tối đa 3 lần nếu là lỗi xác thực
       if (isAuthError(error) && failureCount < 3) {
@@ -116,6 +175,7 @@ export const useUserList = () => {
       }
       return false;
     },
+    staleTime: 30000, // Dữ liệu được coi là "tươi" trong 30 giây
     meta: {
       onError: (err: Error) => {
         console.error("Lỗi khi tải danh sách người dùng:", err);
@@ -157,6 +217,27 @@ export const useUserList = () => {
     }
   });
 
+  // Tạo một phiên bản refetch có kiểm soát
+  const refreshUsers = useCallback(async () => {
+    try {
+      // Kiểm tra thời gian giữa các lần refresh
+      const now = Date.now();
+      if (now - lastRefreshTime.current < minRefreshInterval) {
+        console.log(`Refresh bị hạn chế: Chờ ${minRefreshInterval - (now - lastRefreshTime.current)}ms`);
+        await new Promise(resolve => setTimeout(resolve, minRefreshInterval - (now - lastRefreshTime.current)));
+      }
+      
+      lastRefreshTime.current = Date.now();
+      console.log("Bắt đầu làm mới danh sách người dùng");
+      
+      await refetch();
+      return true;
+    } catch (err) {
+      console.error("Lỗi khi làm mới dữ liệu:", err);
+      return false;
+    }
+  }, [refetch]);
+
   // Effect để tự động thử làm mới token khi có lỗi
   useEffect(() => {
     if (isError && !isRefreshingToken) {
@@ -166,11 +247,15 @@ export const useUserList = () => {
         if (isMounted.current) {
           setIsRefreshingToken(true);
           
-          authService.getAdminToken(true)
+          tokenManager.refreshToken()
             .then(token => {
               if (token && isMounted.current) {
                 console.log("Đã làm mới token thành công, đang tải lại dữ liệu...");
-                setTimeout(() => refreshUsers(), 500);
+                setTimeout(() => {
+                  if (isMounted.current) {
+                    refreshUsers();
+                  }
+                }, 500);
               } else if (isMounted.current) {
                 console.log("Không thể làm mới token");
                 toast({
@@ -189,17 +274,20 @@ export const useUserList = () => {
   }, [isError, error, refreshUsers, toast]);
 
   const handleSearch = useCallback((value: string) => {
-    setSearchTerm(value);
-    setCurrentPage(1);
-  }, []);
+    debouncedSetSearchTerm(value);
+  }, [debouncedSetSearchTerm]);
 
   const handleStatusChange = useCallback((value: string) => {
-    setStatus(value);
-    setCurrentPage(1);
+    if (isMounted.current) {
+      setStatus(value);
+      setCurrentPage(1);
+    }
   }, []);
 
   const handlePageChange = useCallback((page: number) => {
-    setCurrentPage(page);
+    if (isMounted.current) {
+      setCurrentPage(page);
+    }
   }, []);
 
   return {

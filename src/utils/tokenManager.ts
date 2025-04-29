@@ -7,6 +7,9 @@ class TokenManager {
   private token: string | null = null;
   private expiresAt: number = 0;
   private refreshPromise: Promise<string | null> | null = null;
+  private isRefreshing: boolean = false;
+  private lastRefreshTime: number = 0;
+  private refreshMinInterval: number = 3000; // Tối thiểu 3 giây giữa các lần refresh
   
   // Private constructor để áp dụng Singleton pattern
   private constructor() {}
@@ -34,15 +37,29 @@ class TokenManager {
     }
   }
   
-  // Làm mới token dù token hiện tại còn hạn hay không, có cơ chế chống trùng lặp
+  // Làm mới token dù token hiện tại còn hạn hay không, có cơ chế chống trùng lặp và throttling
   public async refreshToken(): Promise<string | null> {
     try {
-      // Nếu đã có một promise đang chờ, sử dụng lại để tránh nhiều yêu cầu cùng lúc
-      if (this.refreshPromise) {
+      // Kiểm tra khoảng thời gian giữa các lần refresh để tránh gọi quá nhiều
+      const now = Date.now();
+      if (this.isRefreshing) {
         console.log("Đang có yêu cầu làm mới token, sử dụng lại promise hiện tại");
-        return this.refreshPromise;
+        if (this.refreshPromise) {
+          return this.refreshPromise;
+        }
+        // Trường hợp isRefreshing=true nhưng refreshPromise=null (hiếm gặp)
+        this.isRefreshing = false;
       }
       
+      // Kiểm tra thời gian tối thiểu giữa các lần refresh
+      if (now - this.lastRefreshTime < this.refreshMinInterval) {
+        console.log(`Quá sớm để làm mới token, chờ ${this.refreshMinInterval - (now - this.lastRefreshTime)}ms`);
+        if (this.token) {
+          return this.token; // Sử dụng token hiện tại nếu có
+        }
+      }
+      
+      this.isRefreshing = true;
       console.log("Bắt đầu làm mới token...");
       
       // Tạo promise mới với timeout
@@ -51,6 +68,7 @@ class TokenManager {
           // Thiết lập timeout để tránh chờ vô hạn
           const timeoutId = setTimeout(() => {
             console.error("Quá thời gian làm mới token");
+            this.isRefreshing = false;
             this.refreshPromise = null;
             reject(new Error("Timeout khi làm mới token"));
           }, 10000);
@@ -62,6 +80,7 @@ class TokenManager {
             console.error("Lỗi lấy phiên hiện tại:", sessionError);
             clearTimeout(timeoutId);
             this.clearToken();
+            this.isRefreshing = false;
             this.refreshPromise = null;
             reject(sessionError);
             return;
@@ -71,6 +90,7 @@ class TokenManager {
             console.log("Không có phiên hiện tại");
             clearTimeout(timeoutId);
             this.clearToken();
+            this.isRefreshing = false;
             this.refreshPromise = null;
             resolve(null);
             return;
@@ -80,10 +100,12 @@ class TokenManager {
           const { data, error } = await supabase.auth.refreshSession();
           
           clearTimeout(timeoutId);
+          this.lastRefreshTime = Date.now();
           
           if (error) {
             console.error("Lỗi khi làm mới token:", error);
             this.clearToken();
+            this.isRefreshing = false;
             this.refreshPromise = null;
             reject(error);
             return;
@@ -92,6 +114,7 @@ class TokenManager {
           if (!data.session) {
             console.error("Không có phiên sau khi làm mới token");
             this.clearToken();
+            this.isRefreshing = false;
             this.refreshPromise = null;
             resolve(null);
             return;
@@ -111,11 +134,13 @@ class TokenManager {
           }
           
           console.log("Đã làm mới token thành công");
+          this.isRefreshing = false;
+          const tokenToReturn = this.token;
           this.refreshPromise = null;
-          resolve(this.token);
+          resolve(tokenToReturn);
         } catch (error) {
           console.error("Lỗi không mong đợi khi làm mới token:", error);
-          this.clearToken();
+          this.isRefreshing = false;
           this.refreshPromise = null;
           reject(error);
         }
@@ -125,6 +150,7 @@ class TokenManager {
     } catch (error) {
       console.error("Lỗi không mong đợi khi làm mới token:", error);
       this.clearToken();
+      this.isRefreshing = false;
       this.refreshPromise = null;
       return null;
     }
@@ -167,6 +193,7 @@ class TokenManager {
     this.token = null;
     this.expiresAt = 0;
     this.refreshPromise = null;
+    this.isRefreshing = false;
   }
 }
 

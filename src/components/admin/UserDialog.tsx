@@ -1,3 +1,4 @@
+
 import { useEffect } from "react";
 import {
   Dialog,
@@ -50,6 +51,7 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
   }, []);
 
   useEffect(() => {
+    // Chỉ fetch dữ liệu khi dialog mở và có userId
     if (isOpen && userId) {
       fetchUser();
     }
@@ -65,32 +67,45 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
       // Lấy token admin trước khi thực hiện
       await authService.getAdminToken();
       
+      let successMessage = "";
+      
       if (userId) {
         // Cập nhật người dùng hiện có
         await updateUser(userId, data);
         console.log("[UserDialog] Đã cập nhật thông tin người dùng thành công");
+        successMessage = "Cập nhật thông tin người dùng thành công";
       } else {
         // Tạo người dùng mới
         await createUser(data);
         console.log("[UserDialog] Đã tạo người dùng mới thành công");
+        successMessage = "Tạo người dùng mới thành công";
       }
       
       if (isMounted.current) {
-        toast({
-          title: "Thành công",
-          description: userId ? "Cập nhật thông tin người dùng thành công" : "Tạo người dùng mới thành công"
-        });
-      }
-      
-      if (isMounted.current) {
+        // Đóng dialog trước khi hiển thị thông báo thành công
         onClose();
-        // Đảm bảo onUserSaved được gọi sau khi đã đóng dialog
+        
+        // Hiển thị thông báo thành công sau khi đóng dialog
         setTimeout(() => {
-          onUserSaved();
-        }, 300);
+          if (isMounted.current) {
+            toast({
+              title: "Thành công",
+              description: successMessage
+            });
+            
+            // Delay refresh dữ liệu để tránh đóng băng UI và đảm bảo dialog đã đóng
+            setTimeout(() => {
+              if (isMounted.current) {
+                onUserSaved();
+              }
+            }, 300);
+          }
+        }, 100);
       }
     } catch (error: any) {
       console.error("[UserDialog] Lỗi khi lưu thông tin user:", error);
+      
+      if (!isMounted.current) return;
       
       // Kiểm tra nếu là lỗi xác thực
       if (isAuthError(error)) {
@@ -111,31 +126,43 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
               }
               
               if (isMounted.current) {
-                toast({
-                  title: "Thành công",
-                  description: userId ? "Cập nhật thông tin người dùng thành công" : "Tạo người dùng mới thành công"
-                });
-                
                 onClose();
-                // Đảm bảo onUserSaved được gọi sau khi đã đóng dialog
+                
+                // Hiển thị thông báo thành công sau khi đóng dialog
                 setTimeout(() => {
-                  onUserSaved();
-                }, 300);
+                  if (isMounted.current) {
+                    toast({
+                      title: "Thành công",
+                      description: userId ? "Cập nhật thông tin người dùng thành công" : "Tạo người dùng mới thành công"
+                    });
+                    
+                    // Delay refresh dữ liệu để tránh đóng băng UI
+                    setTimeout(() => {
+                      if (isMounted.current) {
+                        onUserSaved();
+                      }
+                    }, 300);
+                  }
+                }, 100);
               }
               
               return;
             } catch (retryError: any) {
+              if (!isMounted.current) return;
               console.error("[UserDialog] Lỗi khi thử lại:", retryError);
               throw retryError;
             }
           }
           
-          toast({
-            title: "Lỗi xác thực",
-            description: "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại để tiếp tục.",
-            variant: "destructive"
-          });
+          if (isMounted.current) {
+            toast({
+              title: "Lỗi xác thực",
+              description: "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại để tiếp tục.",
+              variant: "destructive"
+            });
+          }
         } catch (refreshError) {
+          if (!isMounted.current) return;
           console.error("[UserDialog] Lỗi khi làm mới token:", refreshError);
           toast({
             title: "Lỗi xác thực",
@@ -143,7 +170,7 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
             variant: "destructive"
           });
         }
-      } else {
+      } else if (isMounted.current) {
         toast({
           title: "Lỗi",
           description: error.message || "Có lỗi xảy ra khi lưu thông tin",

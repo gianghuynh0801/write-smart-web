@@ -21,17 +21,39 @@ const standardResponse = (data: any = null, error: string | null = null, status 
   )
 }
 
+// Thêm timeout cho các database queries
+const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number, operationName: string): Promise<T> => {
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => reject(new Error(`Timeout khi thực hiện: ${operationName}`)), timeoutMs);
+  });
+  
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } catch (error) {
+    if ((error as Error).message.includes('Timeout')) {
+      console.error(`[update-user] ${(error as Error).message}`);
+    }
+    throw error;
+  }
+};
+
 // Function để kiểm tra quyền admin dựa trên user_roles
 async function checkIsAdmin(userId: string): Promise<boolean> {
   try {
     console.log('[update-user] Kiểm tra quyền admin cho user:', userId);
     
-    const { data: roleData, error: roleError } = await supabaseAdmin
+    const roleCheckPromise = supabaseAdmin
       .from('user_roles')
       .select('*')
       .eq('user_id', userId)
       .eq('role', 'admin')
       .maybeSingle();
+    
+    const { data: roleData, error: roleError } = await withTimeout(
+      roleCheckPromise, 
+      5000, 
+      'Kiểm tra quyền admin'
+    );
 
     if (roleError) {
       console.error('[update-user] Lỗi khi kiểm tra user_roles:', roleError);
@@ -64,7 +86,12 @@ Deno.serve(async (req) => {
     const token = authHeader.replace('Bearer ', '')
     console.log('[update-user] Đang xác thực token')
     
-    const { data: { user: caller }, error: authError } = await supabaseAdmin.auth.getUser(token)
+    const authPromise = supabaseAdmin.auth.getUser(token);
+    const { data: { user: caller }, error: authError } = await withTimeout(
+      authPromise,
+      5000,
+      'Xác thực người dùng'
+    );
     
     if (authError || !caller) {
       console.error('[update-user] Lỗi xác thực:', authError)
@@ -115,11 +142,17 @@ Deno.serve(async (req) => {
     console.log("[update-user] Đang cập nhật user:", { id, userData });
 
     // Kiểm tra user tồn tại
-    const { data: existingUser, error: getUserError } = await supabaseAdmin
+    const getUserPromise = supabaseAdmin
       .from('users')
       .select('*')
       .eq('id', id)
       .maybeSingle();
+    
+    const { data: existingUser, error: getUserError } = await withTimeout(
+      getUserPromise,
+      5000,
+      'Kiểm tra user tồn tại'
+    );
 
     if (getUserError) {
       console.error('[update-user] Lỗi khi kiểm tra user:', getUserError);
@@ -140,7 +173,7 @@ Deno.serve(async (req) => {
     }
 
     // Cập nhật thông tin user
-    const { data: updatedUser, error: updateError } = await supabaseAdmin
+    const updatePromise = supabaseAdmin
       .from('users')
       .update({
         name: userData.name,
@@ -153,6 +186,12 @@ Deno.serve(async (req) => {
       .eq('id', id)
       .select()
       .single();
+    
+    const { data: updatedUser, error: updateError } = await withTimeout(
+      updatePromise,
+      10000,
+      'Cập nhật thông tin user'
+    );
 
     if (updateError) {
       console.error('[update-user] Lỗi khi cập nhật:', updateError);
@@ -165,56 +204,30 @@ Deno.serve(async (req) => {
 
     // Xử lý thay đổi gói đăng ký nếu có
     if (existingUser.subscription !== userData.subscription) {
-      console.log('[update-user] Cập nhật gói đăng ký:', {
-        from: existingUser.subscription,
-        to: userData.subscription
-      });
-      
       try {
-        // Tìm subscription id
-        const { data: subscriptionData, error: subError } = await supabaseAdmin
-          .from('subscriptions')
-          .select('id')
-          .eq('name', userData.subscription)
-          .maybeSingle();
-
-        if (subError) {
-          console.error('[update-user] Lỗi khi tìm gói đăng ký:', subError);
-          return standardResponse(
-            null,
-            `Lỗi khi tìm gói đăng ký: ${subError.message}`,
-            500
-          );
-        }
-
-        if (subscriptionData) {
-          const startDate = new Date().toISOString().split('T')[0];
-          const endDate = new Date();
-          endDate.setMonth(endDate.getMonth() + 1);
-          const endDateStr = endDate.toISOString().split('T')[0];
-
-          // Hủy các gói đăng ký cũ
-          await supabaseAdmin
-            .from('user_subscriptions')
-            .update({ status: 'inactive' })
-            .eq('user_id', id)
-            .eq('status', 'active');
-
-          // Tạo gói đăng ký mới nếu không phải "Không có"
-          if (userData.subscription !== 'Không có') {
-            await supabaseAdmin
-              .from('user_subscriptions')
-              .insert({
-                user_id: id,
-                subscription_id: subscriptionData.id,
-                start_date: startDate,
-                end_date: endDateStr,
-                status: 'active'
-              });
-          }
+        console.log('[update-user] Cập nhật gói đăng ký:', {
+          from: existingUser.subscription,
+          to: userData.subscription
+        });
+        
+        // Sử dụng EdgeRuntime.waitUntil để xử lý subscription trong background
+        if (typeof EdgeRuntime !== 'undefined') {
+          EdgeRuntime.waitUntil((async () => {
+            try {
+              await updateUserSubscription(id, userData.subscription);
+              console.log('[update-user] Đã cập nhật gói đăng ký thành công trong background');
+            } catch (err) {
+              console.error('[update-user] Lỗi khi cập nhật gói đăng ký trong background:', err);
+            }
+          })());
+          
+          console.log('[update-user] Đã gửi cập nhật gói đăng ký để xử lý trong background');
+        } else {
+          // Fallback nếu không hỗ trợ waitUntil
+          await updateUserSubscription(id, userData.subscription);
         }
       } catch (subProcessError) {
-        console.error('[update-user] Lỗi khi xử lý gói đăng ký:', subProcessError);
+        console.error('[update-user] Lỗi khi khởi tạo xử lý gói đăng ký:', subProcessError);
         return standardResponse(
           null,
           `Lỗi xử lý gói đăng ký: ${subProcessError instanceof Error ? subProcessError.message : String(subProcessError)}`,
@@ -236,3 +249,60 @@ Deno.serve(async (req) => {
     );
   }
 });
+
+// Hàm xử lý cập nhật gói đăng ký
+async function updateUserSubscription(userId: string, subscriptionName: string): Promise<void> {
+  try {
+    // Tìm subscription id
+    const { data: subscriptionData, error: subError } = await supabaseAdmin
+      .from('subscriptions')
+      .select('id')
+      .eq('name', subscriptionName)
+      .maybeSingle();
+
+    if (subError) {
+      console.error('[update-user] Lỗi khi tìm gói đăng ký:', subError);
+      throw new Error(`Lỗi khi tìm gói đăng ký: ${subError.message}`);
+    }
+
+    // Hủy các gói đăng ký cũ
+    const deactivatePromise = supabaseAdmin
+      .from('user_subscriptions')
+      .update({ status: 'inactive' })
+      .eq('user_id', userId)
+      .eq('status', 'active');
+    
+    await withTimeout(
+      deactivatePromise,
+      5000,
+      'Hủy gói đăng ký cũ'
+    );
+
+    // Tạo gói đăng ký mới nếu không phải "Không có" và tìm thấy subscription
+    if (subscriptionName !== 'Không có' && subscriptionData) {
+      const startDate = new Date().toISOString().split('T')[0];
+      const endDate = new Date();
+      endDate.setMonth(endDate.getMonth() + 1);
+      const endDateStr = endDate.toISOString().split('T')[0];
+
+      const insertPromise = supabaseAdmin
+        .from('user_subscriptions')
+        .insert({
+          user_id: userId,
+          subscription_id: subscriptionData.id,
+          start_date: startDate,
+          end_date: endDateStr,
+          status: 'active'
+        });
+      
+      await withTimeout(
+        insertPromise,
+        5000,
+        'Tạo gói đăng ký mới'
+      );
+    }
+  } catch (error) {
+    console.error('[update-user] Lỗi khi xử lý gói đăng ký:', error);
+    throw error;
+  }
+}
