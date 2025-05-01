@@ -4,10 +4,14 @@ import { useUserCache } from "./users/useUserCache";
 import { useUserFetch } from "./users/useUserFetch";
 import { useUserSearch } from "./users/useUserSearch";
 import { useUserPagination } from "./users/useUserPagination";
-import { featureFlags } from "@/config/featureFlags";
 
 export const useUserList = () => {
-  const { checkRefreshThrottle, hasCachedData, getCachedParams } = useUserCache();
+  const { 
+    checkRefreshThrottle, 
+    hasCachedData, 
+    getCachedParams,
+    initialLoadDone
+  } = useUserCache();
   
   const { 
     searchTerm, 
@@ -41,7 +45,7 @@ export const useUserList = () => {
         handleSearch(cachedParams.searchTerm);
       }
     }
-  }, []);
+  }, [getCachedParams, handleSearch, handleStatusChange]);
   
   const { 
     data,
@@ -49,7 +53,8 @@ export const useUserList = () => {
     isError, 
     error, 
     refreshUsers,
-    isMounted 
+    isMounted,
+    hasInitialFetch
   } = useUserFetch(
     currentPage,
     pageSize,
@@ -57,9 +62,6 @@ export const useUserList = () => {
     searchTerm,
     checkRefreshThrottle
   );
-
-  // Hoàn toàn loại bỏ auto-refresh để ngăn vòng lặp vô hạn
-  // KHÔNG có useEffect nào gọi refreshUsers() khi component mount
 
   return {
     users: (data?.users ?? []),
@@ -75,5 +77,6 @@ export const useUserList = () => {
     handleSearch,
     handleStatusChange,
     handlePageChange,
+    hasInitialFetch
   };
 };

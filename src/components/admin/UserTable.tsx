@@ -30,9 +30,6 @@ const UserTable = ({
   onDeleteUser,
   onResendVerification,
 }: UserTableProps) => {
-  // Hoàn toàn loại bỏ các hook realtime và logic phức tạp không cần thiết
-  // Điều này giúp giảm đáng kể số lần render và gọi API không cần thiết
-
   return (
     <div className="rounded-md border">
       <Table>

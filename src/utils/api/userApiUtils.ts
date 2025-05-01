@@ -24,6 +24,29 @@ export interface UsersCache {
 export const cacheValidTime = featureFlags.cacheValidTimeMs || 300000; // Mặc định 5 phút
 export let usersCache: UsersCache | null = null;
 
+// Cố gắng lấy cache từ sessionStorage khi module được import lần đầu
+try {
+  const sessionCache = sessionStorage.getItem('users_cache');
+  if (sessionCache) {
+    const parsedCache = JSON.parse(sessionCache);
+    // Kiểm tra xem cache có hợp lệ không
+    if (parsedCache && parsedCache.data && parsedCache.timestamp) {
+      // Kiểm tra xem cache có còn hiệu lực không
+      if (Date.now() - parsedCache.timestamp < cacheValidTime) {
+        console.log("[userApiUtils] Khôi phục cache từ sessionStorage", {
+          cacheAge: (Date.now() - parsedCache.timestamp) / 1000,
+          userCount: parsedCache.data.users.length
+        });
+        usersCache = parsedCache;
+      } else {
+        console.log("[userApiUtils] Cache từ sessionStorage đã hết hạn");
+      }
+    }
+  }
+} catch (error) {
+  console.warn("[userApiUtils] Lỗi khi phân tích cache từ sessionStorage:", error);
+}
+
 // Hàm fetchUsers sửa đổi để chỉ lấy dữ liệu cần thiết cho bảng
 export const fetchUsers = async (params: {
   page: number;
@@ -121,6 +144,13 @@ export const fetchUsers = async (params: {
             params: { ...params }
           };
           
+          // Lưu cache vào sessionStorage
+          try {
+            sessionStorage.setItem('users_cache', JSON.stringify(usersCache));
+          } catch (err) {
+            console.warn("[fetchUsers] Không thể lưu cache vào sessionStorage:", err);
+          }
+          
           return retryResponse.data.data;
         }
       }
@@ -141,6 +171,13 @@ export const fetchUsers = async (params: {
       timestamp: Date.now(),
       params: { ...params }
     };
+    
+    // Lưu cache vào sessionStorage
+    try {
+      sessionStorage.setItem('users_cache', JSON.stringify(usersCache));
+    } catch (err) {
+      console.warn("[fetchUsers] Không thể lưu cache vào sessionStorage:", err);
+    }
     
     return data.data;
   } catch (error) {
@@ -163,5 +200,11 @@ export const fetchUsers = async (params: {
 // Xóa cache
 export const clearUsersCache = () => {
   usersCache = null;
+  try {
+    sessionStorage.removeItem('users_cache');
+    sessionStorage.removeItem('users_data_loaded');
+  } catch (err) {
+    console.warn("[clearUsersCache] Không thể xóa cache từ sessionStorage:", err);
+  }
   console.log("Đã xóa cache người dùng");
 };

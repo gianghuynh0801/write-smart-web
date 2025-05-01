@@ -6,8 +6,6 @@ import AdminUsersContent from "@/components/admin/users/AdminUsersContent";
 import AdminUsersDialogs from "@/components/admin/users/AdminUsersDialogs";
 import { useAdminUsersEffects } from "@/components/admin/users/hooks/useAdminUsersEffects";
 import { useUserDialogHandlers } from "@/components/admin/users/hooks/useUserDialogHandlers";
-import { Button } from "@/components/ui/button";
-import { RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const AdminUsers = () => {
@@ -50,7 +48,8 @@ const AdminUsers = () => {
   // Handler cập nhật sau khi user được lưu 
   const handleUserSaved = useCallback(() => {
     console.log("[AdminUsers] Đã phát hiện người dùng được lưu, đang làm mới dữ liệu...");
-  }, []);
+    refreshUsers();
+  }, [refreshUsers]);
 
   // Sử dụng effect hooks
   const { 
@@ -74,11 +73,11 @@ const AdminUsers = () => {
     handleUserActionComplete
   });
 
-  // Thêm hàm để load dữ liệu ban đầu khi trang được mở - chỉ gọi một lần khi component mount
+  // Thêm hàm để load dữ liệu ban đầu khi trang được mở - tự động tải dữ liệu khi component mount
   useEffect(() => {
-    console.log("[AdminUsers] Trang đã được mở, cần làm mới dữ liệu thủ công");
-    // KHÔNG tự động tải dữ liệu
-  }, []);
+    console.log("[AdminUsers] Trang đã được mở, tự động tải dữ liệu ban đầu");
+    refreshUsers();
+  }, [refreshUsers]);
 
   // Thêm một hàm để refresh dữ liệu thủ công với kiểm soát throttle
   const handleManualRefresh = useCallback(async () => {

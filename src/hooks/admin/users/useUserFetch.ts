@@ -16,6 +16,7 @@ export const useUserFetch = (
 ) => {
   const { toast } = useToast();
   const isMounted = useRef(true);
+  const hasInitialFetch = useRef(false);
   const [isRefreshingToken, setIsRefreshingToken] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   
@@ -52,6 +53,9 @@ export const useUserFetch = (
       abortControllerRef.current = new AbortController();
       
       try {
+        // Đánh dấu đã thực hiện lần fetch đầu tiên
+        hasInitialFetch.current = true;
+        
         return await fetchUsers(
           { page: currentPage, pageSize, status, searchTerm },
           abortControllerRef.current.signal
@@ -64,7 +68,7 @@ export const useUserFetch = (
     retry: 0, // Không tự động thử lại để tránh nhiều request
     staleTime: staleTime, // Tăng thời gian stale lên rất cao
     gcTime: staleTime * 2, // Giữ dữ liệu trong cache lâu hơn
-    enabled: false, // Tắt tự động fetch khi mount để ngăn vòng lặp vô hạn
+    enabled: true, // Cho phép tự động fetch khi mount, sẽ sử dụng cache nếu có
     meta: {
       onError: (err: Error) => {
         // Bỏ qua lỗi khi request bị hủy
@@ -90,7 +94,14 @@ export const useUserFetch = (
   // Tạo một phiên bản refetch có kiểm soát
   const refreshUsers = useCallback(async () => {
     try {
-      // Kiểm tra giới hạn tần suất refresh - chỉ thực sự refresh khi cần
+      // Nếu đang trong lần đầu tiên tải dữ liệu, bỏ qua kiểm tra hạn chế tần suất
+      if (!hasInitialFetch.current) {
+        console.log("[useUserFetch] Đang thực hiện tải dữ liệu lần đầu tiên");
+        await refetch();
+        return true;
+      }
+      
+      // Kiểm tra giới hạn tần suất refresh khi đã có dữ liệu
       const canRefresh = await checkRefreshThrottle();
       if (!canRefresh) {
         console.log("[useUserFetch] Đã từ chối yêu cầu refresh do hạn chế tần suất");
@@ -141,6 +152,7 @@ export const useUserFetch = (
     isError,
     error,
     refreshUsers,
-    isMounted
+    isMounted,
+    hasInitialFetch
   };
 };
