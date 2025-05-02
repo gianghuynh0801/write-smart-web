@@ -1,5 +1,5 @@
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback } from "react";
 import { User } from "@/types/user";
 import { getUserById } from "@/api/user/userCrud";
 import { useToast } from "@/hooks/use-toast";
@@ -18,43 +18,6 @@ export const useUserDialog = (
   const maxRetries = 1; // Giảm số lần retry xuống
   const { toast } = useToast();
   const abortControllerRef = useRef<AbortController | null>(null);
-
-  // Đảm bảo các biến tham chiếu được reset khi component unmount
-  useEffect(() => {
-    isMounted.current = true;
-    return () => {
-      isMounted.current = false;
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, []);
-
-  // Reset state khi dialog đóng
-  useEffect(() => {
-    if (!isOpen) {
-      // Đảm bảo hủy các request đang chạy khi dialog đóng
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-        abortControllerRef.current = null;
-      }
-    }
-  }, [isOpen]);
-
-  const resetDialog = useCallback(() => {
-    if (isMounted.current) {
-      setUser(undefined);
-      setError(null);
-      retryCount.current = 0;
-      setIsSubmitting(false);
-    }
-    
-    // Hủy các request đang chạy khi reset
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
-    }
-  }, []);
 
   const handleError = useCallback((errorMessage: string, shouldRetry = true) => {
     if (!isMounted.current) return;
@@ -79,6 +42,21 @@ export const useUserDialog = (
       });
     }
   }, [maxRetries, toast]);
+
+  const resetDialog = useCallback(() => {
+    if (isMounted.current) {
+      setUser(undefined);
+      setError(null);
+      retryCount.current = 0;
+      setIsSubmitting(false);
+    }
+    
+    // Hủy các request đang chạy khi reset
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+  }, []);
 
   const fetchUser = useCallback(async (shouldRetry = true) => {
     // Không fetch nếu dialog đóng hoặc không có userId
@@ -112,7 +90,7 @@ export const useUserDialog = (
       setUser(userData);
       setError(null);
       retryCount.current = 0;
-    } catch (error) {
+    } catch (error: any) {
       if (!isMounted.current) return;
       
       console.error("[useUserDialog] Lỗi khi lấy thông tin user:", error);

@@ -1,7 +1,5 @@
 
 import React from "react";
-import { Loader } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
 import { User, UserFormValues } from "@/types/user";
 import { BasicInfoFields } from "./users/form-fields/BasicInfoFields";
@@ -9,6 +7,7 @@ import { SubscriptionField } from "./users/form-fields/SubscriptionField";
 import { StatusField } from "./users/form-fields/StatusField";
 import { RoleField } from "./users/form-fields/RoleField";
 import { useUserForm } from "./users/hooks/useUserForm";
+import { UserDialogActions } from "./users/components/UserDialogActions";
 
 interface UserFormProps {
   user?: User;
@@ -21,7 +20,6 @@ const UserForm = ({ user, onSubmit, onCancel, isSubmitting = false }: UserFormPr
   const { form, subscriptions, isLoading } = useUserForm(user);
   
   const buttonDisabled = isLoading || isSubmitting;
-  const showSpinner = isLoading || isSubmitting;
   
   const handleFormSubmit = async (data: UserFormValues) => {
     if (buttonDisabled) return;
@@ -43,25 +41,11 @@ const UserForm = ({ user, onSubmit, onCancel, isSubmitting = false }: UserFormPr
           <RoleField form={form} isDisabled={buttonDisabled} />
         </div>
         
-        <div className="flex justify-end space-x-4 pt-4">
-          <Button 
-            type="button" 
-            variant="outline" 
-            onClick={onCancel} 
-            disabled={buttonDisabled}
-          >
-            Hủy bỏ
-          </Button>
-          <Button 
-            type="submit" 
-            disabled={buttonDisabled}
-          >
-            {showSpinner && 
-              <Loader className="mr-2 h-4 w-4 animate-spin" />
-            }
-            {user ? "Cập nhật" : "Tạo mới"}
-          </Button>
-        </div>
+        <UserDialogActions 
+          onCancel={onCancel} 
+          isSubmitting={isSubmitting}
+          isUpdate={!!user}
+        />
       </form>
     </Form>
   );
