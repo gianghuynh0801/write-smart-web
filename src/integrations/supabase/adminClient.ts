@@ -13,9 +13,6 @@ export const supabaseAdmin = createClient<Database>(
     auth: {
       persistSession: false,  // Không lưu session cho admin client
       autoRefreshToken: false,
-    },
-    db: {
-      schema: 'seo_project' // Sử dụng schema seo_project
     }
   }
 );

@@ -28,8 +28,8 @@ const EmailVerification = () => {
         const { data, error } = await supabase
           .from('verification_tokens')
           .select('*')
-          .eq('token', token)
-          .eq('type', 'email_verification')
+          .eq('token', token as any)
+          .eq('type', 'email_verification' as any)
           .single();
 
         if (error || !data) {
@@ -37,26 +37,38 @@ const EmailVerification = () => {
         }
 
         // Check token expiration
-        const expiresAt = new Date(data.expires_at);
+        if (!data || typeof data !== 'object' || !('expires_at' in data)) {
+          throw new Error("Dữ liệu token không hợp lệ");
+        }
+        
+        const expiresAt = new Date(data.expires_at as string);
         if (expiresAt < new Date()) {
           throw new Error("Mã xác thực đã hết hạn");
         }
 
         // Update user's email_verified status
+        if (!data || typeof data !== 'object' || !('user_id' in data)) {
+          throw new Error("Không tìm thấy ID người dùng");
+        }
+        
         const { error: updateError } = await supabase
           .from('users')
-          .update({ email_verified: true })
-          .eq('id', data.user_id);
+          .update({ email_verified: true } as any)
+          .eq('id', data.user_id as any);
 
         if (updateError) {
           throw updateError;
         }
 
         // Delete the used token
-        await supabase
-          .from('verification_tokens')
-          .delete()
-          .eq('id', data.id);
+        if (!data || typeof data !== 'object' || !('id' in data)) {
+          console.warn("Không thể xóa token đã sử dụng (không có ID)");
+        } else {
+          await supabase
+            .from('verification_tokens')
+            .delete()
+            .eq('id', data.id as any);
+        }
 
         setStatus("success");
         setMessage("Email của bạn đã được xác thực thành công!");

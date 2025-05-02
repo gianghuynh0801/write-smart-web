@@ -31,7 +31,7 @@ export const useUserDataRefresh = () => {
       const userPromise = supabase
         .from('users')
         .select('credits, email_verified, subscription')
-        .eq('id', user.id)
+        .eq('id', user.id as any)
         .single();
         
       // Sử dụng Promise.race để áp dụng timeout
@@ -66,8 +66,8 @@ export const useUserDataRefresh = () => {
             features
           )
         `)
-        .eq('user_id', user.id)
-        .eq('status', 'active')
+        .eq('user_id', user.id as any)
+        .eq('status', 'active' as any)
         .maybeSingle();
         
       const subResult = await Promise.race([subPromise, timeoutPromise]) as any;

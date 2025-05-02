@@ -34,8 +34,8 @@ const EmailVerified = () => {
         const { data: tokenData, error: tokenError } = await supabase
           .from('verification_tokens')
           .select('*')
-          .eq('token', token)
-          .eq('type', 'email_verification')
+          .eq('token', token as any)
+          .eq('type', 'email_verification' as any)
           .maybeSingle();
 
         if (tokenError) {
@@ -51,18 +51,26 @@ const EmailVerified = () => {
         console.log("Token verified in database:", tokenData);
 
         // Kiểm tra hết hạn token
-        const expiresAt = new Date(tokenData.expires_at);
+        if (!tokenData || typeof tokenData !== 'object' || !('expires_at' in tokenData)) {
+          throw new Error("Dữ liệu token không hợp lệ");
+        }
+        
+        const expiresAt = new Date(tokenData.expires_at as string);
         if (expiresAt < new Date()) {
           console.error("Token expired at:", expiresAt);
           throw new Error("Mã xác thực đã hết hạn");
         }
 
         // Cập nhật trạng thái email_verified cho người dùng trong bảng users
+        if (!tokenData || typeof tokenData !== 'object' || !('user_id' in tokenData)) {
+          throw new Error("Không tìm thấy ID người dùng");
+        }
+        
         console.log("Updating user verification status for user:", tokenData.user_id);
         const { error: updateError } = await supabase
           .from('users')
-          .update({ email_verified: true })
-          .eq('id', tokenData.user_id);
+          .update({ email_verified: true } as any)
+          .eq('id', tokenData.user_id as any);
 
         if (updateError) {
           console.error("Error updating user verification status:", updateError);
@@ -70,11 +78,15 @@ const EmailVerified = () => {
         }
 
         // Xóa token đã sử dụng
-        console.log("Deleting used verification token");
-        await supabase
-          .from('verification_tokens')
-          .delete()
-          .eq('id', tokenData.id);
+        if (!tokenData || typeof tokenData !== 'object' || !('id' in tokenData)) {
+          console.warn("Không thể xóa token đã sử dụng (không có ID)");
+        } else {
+          console.log("Deleting used verification token");
+          await supabase
+            .from('verification_tokens')
+            .delete()
+            .eq('id', tokenData.id as any);
+        }
 
         console.log("Email verification completed successfully!");
         setStatus("success");

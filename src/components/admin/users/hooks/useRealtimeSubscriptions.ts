@@ -45,14 +45,15 @@ export const useRealtimeSubscriptions = () => {
       let processedData = [...dataArray];
       
       if (!hasNoneOption) {
-        processedData.unshift({
+        const noneOption = {
           id: -1,
           name: 'Không có',
           price: 0,
           period: 'month',
           description: 'Không sử dụng gói đăng ký',
           features: []
-        } as any);
+        };
+        processedData.unshift(noneOption as any);
       }
       
       // Đảm bảo dữ liệu hợp lệ
@@ -123,25 +124,27 @@ export const useRealtimeSubscriptions = () => {
       if (!data) return null;
       
       // Kiểm tra và truy cập an toàn
-      const name = data && typeof data === 'object' && 'name' in data ? 
-        data.name as string : 'Không xác định';
+      const sub = data as any;
+
+      const name = sub && typeof sub === 'object' && 'name' in sub ? 
+        sub.name as string : 'Không xác định';
         
-      const price = data && typeof data === 'object' && 'price' in data ? 
-        Number(data.price) : 0;
+      const price = sub && typeof sub === 'object' && 'price' in sub ? 
+        Number(sub.price) : 0;
         
-      const period = data && typeof data === 'object' && 'period' in data ? 
-        data.period as string : 'month';
+      const period = sub && typeof sub === 'object' && 'period' in sub ? 
+        sub.period as string : 'month';
       
-      const description = data && typeof data === 'object' && 'description' in data ? 
-        data.description as string : '';
+      const description = sub && typeof sub === 'object' && 'description' in sub ? 
+        sub.description as string : '';
       
       let features: string[] = [];
-      if (data && typeof data === 'object' && 'features' in data && data.features) {
+      if (sub && typeof sub === 'object' && 'features' in sub && sub.features) {
         try {
-          if (Array.isArray(data.features)) {
-            features = data.features;
-          } else if (typeof data.features === 'string') {
-            features = JSON.parse(data.features as string);
+          if (Array.isArray(sub.features)) {
+            features = sub.features;
+          } else if (typeof sub.features === 'string') {
+            features = JSON.parse(sub.features as string);
           }
         } catch (e) {
           console.warn(`Error parsing features for subscription ${id}:`, e);
