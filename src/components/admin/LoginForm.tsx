@@ -1,162 +1,82 @@
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { defaultAdmin } from "@/hooks/useAdminAuth"; // Sửa import để sử dụng defaultAdmin từ useAdminAuth
 import { Eye, EyeOff } from "lucide-react";
 
-// Thông tin đăng nhập mặc định cho quản trị viên
-export const defaultAdmin = {
-  username: "admin",
-  email: "admin@example.com",
-  password: "Admin123!"
-};
-
-interface LoginFormProps {
-  onSubmit: (username: string, password: string) => Promise<void>;
-  isLoading: boolean;
-}
-
-export const LoginForm = ({ onSubmit, isLoading }: LoginFormProps) => {
-  const [formData, setFormData] = useState({
-    username: "",
-    password: ""
-  });
+const LoginForm = () => {
+  const [email, setEmail] = useState(defaultAdmin.email);
+  const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [formSubmitted, setFormSubmitted] = useState(false);
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Xử lý đăng nhập
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (isLoading || formSubmitted) {
-      return; // Ngăn submit nhiều lần
-    }
-    
-    setFormSubmitted(true);
-    
-    try {
-      await onSubmit(formData.username, formData.password);
-    } catch (error) {
-      console.error("Lỗi khi xử lý form:", error);
-    } finally {
-      setTimeout(() => {
-        // Đặt lại trạng thái sau một khoảng thời gian để đảm bảo mọi thứ đã hoàn thành
-        setFormSubmitted(false);
-      }, 3000);
-    }
-  };
 
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
-  };
+    // Kiểm tra thông tin đăng nhập với thông tin mặc định
+    if (email !== defaultAdmin.email || password !== defaultAdmin.password) {
+      toast({
+        title: "Lỗi đăng nhập",
+        description: "Thông tin đăng nhập không chính xác",
+        variant: "destructive",
+      });
+      return;
+    }
 
-  const fillDefaultCredentials = () => {
-    setFormData({
-      username: defaultAdmin.username,
-      password: defaultAdmin.password
-    });
+    // Chuyển hướng đến trang quản trị
+    navigate("/admin");
   };
 
   return (
-    <div className="w-full max-w-md p-8 bg-white rounded-lg shadow-md">
-      <div className="text-center mb-8">
-        <h1 className="text-2xl font-bold">Quản trị viên</h1>
-        <p className="text-gray-600">Đăng nhập vào hệ thống quản trị</p>
-      </div>
-      
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
-            Tên đăng nhập / Email
-          </label>
-          <Input
-            id="username"
-            name="username"
-            value={formData.username}
-            onChange={handleChange}
-            placeholder="Nhập tên đăng nhập hoặc email"
-            required
-            disabled={isLoading || formSubmitted}
-          />
-        </div>
-        
-        <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-            Mật khẩu
-          </label>
-          <div className="relative">
-            <Input
-              id="password"
-              name="password"
-              type={showPassword ? "text" : "password"}
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="••••••••"
-              required
-              className="pr-10"
-              disabled={isLoading || formSubmitted}
-            />
-            <button
-              type="button"
-              onClick={togglePasswordVisibility}
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
-              tabIndex={-1}
-              disabled={isLoading || formSubmitted}
-            >
-              {showPassword ? (
-                <EyeOff className="h-4 w-4" />
-              ) : (
-                <Eye className="h-4 w-4" />
-              )}
-            </button>
-          </div>
-        </div>
-        
-        <Button 
-          type="submit" 
-          className="w-full" 
-          disabled={isLoading || formSubmitted}
-        >
-          {(isLoading || formSubmitted) ? (
-            <span className="flex items-center">
-              <span className="mr-2 h-4 w-4 border-2 border-t-transparent border-white rounded-full animate-spin"></span>
-              Đang đăng nhập...
-            </span>
-          ) : "Đăng nhập"}
-        </Button>
-        
-        <Button 
-          type="button" 
-          variant="outline" 
-          className="w-full mt-2" 
-          onClick={fillDefaultCredentials}
-          disabled={isLoading || formSubmitted}
-        >
-          Dùng tài khoản mặc định
-        </Button>
-      </form>
-      
-      <div className="mt-6 text-center text-sm">
-        <p className="text-gray-600">
-          Quay lại trang chủ?{" "}
-          <a href="/" className="text-primary hover:underline">
-            Trang chủ
-          </a>
-        </p>
+    <form onSubmit={handleLogin} className="space-y-4 w-full">
+      <div className="space-y-2">
+        <label htmlFor="email" className="block text-sm font-medium">
+          Email
+        </label>
+        <Input
+          id="email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="admin@example.com"
+          required
+        />
       </div>
 
-      <div className="mt-8 p-4 bg-gray-50 rounded-lg">
-        <p className="text-sm font-medium text-gray-700 mb-2">Tài khoản mặc định:</p>
-        <div className="text-sm text-gray-600">
-          <p>Tên đăng nhập: <span className="font-mono bg-gray-200 px-1 rounded">{defaultAdmin.username}</span></p>
-          <p>Email: <span className="font-mono bg-gray-200 px-1 rounded">{defaultAdmin.email}</span></p>
-          <p>Mật khẩu: <span className="font-mono bg-gray-200 px-1 rounded">{defaultAdmin.password}</span></p>
+      <div className="space-y-2">
+        <label htmlFor="password" className="block text-sm font-medium">
+          Mật khẩu
+        </label>
+        <div className="relative">
+          <Input
+            id="password"
+            type={showPassword ? "text" : "password"}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••"
+            required
+          />
+          <button
+            type="button"
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
+            onClick={() => setShowPassword(!showPassword)}
+          >
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
         </div>
       </div>
-    </div>
+
+      <Button type="submit" className="w-full" disabled={isLoading}>
+        {isLoading ? "Đang đăng nhập..." : "Đăng nhập"}
+      </Button>
+    </form>
   );
 };
+
+export default LoginForm;

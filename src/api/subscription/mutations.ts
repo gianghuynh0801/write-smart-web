@@ -17,9 +17,9 @@ export const updateUserSubscription = async (userId: string, planId: number): Pr
 
   // Type safe features - using null check to satisfy TypeScript
   const typedPlanData: Subscription = {
-    ...(planData as any), 
+    ...((planData as any) || {}), 
     features: (planData && typeof planData === 'object' && 'features' in planData) ? 
-      parseSubscriptionFeatures((planData.features as any) || []) : [],
+      parseSubscriptionFeatures(((planData as any).features) || []) : [],
   };
 
   // Calculate subscription dates
@@ -44,7 +44,7 @@ export const updateUserSubscription = async (userId: string, planId: number): Pr
     // Inactivate old subscription if exists
     if (existingSubscription && typeof existingSubscription === 'object') {
       const subscriptionId = existingSubscription && 'id' in existingSubscription ? 
-        existingSubscription.id : null;
+        (existingSubscription as any).id : null;
       
       if (subscriptionId) {
         const { error: updateError } = await supabase
@@ -110,7 +110,7 @@ export const cancelUserSubscription = async (userId: string): Promise<Subscripti
 
   // Mark as canceled
   const subscriptionId = subscription && typeof subscription === 'object' && 'id' in subscription ? 
-    subscription.id : null;
+    (subscription as any).id : null;
   
   if (!subscriptionId) {
     throw new Error("Không tìm thấy ID gói đăng ký");

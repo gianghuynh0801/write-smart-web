@@ -39,7 +39,7 @@ export const useRealtimeSubscriptions = () => {
       const dataArray = data || [];
       const hasNoneOption = dataArray.some(sub => {
         if (!sub) return false;
-        return typeof sub === 'object' && 'name' in sub && sub.name === 'Không có';
+        return typeof sub === 'object' && 'name' in sub && (sub as any).name === 'Không có';
       });
       
       let processedData = [...dataArray];
@@ -71,24 +71,24 @@ export const useRealtimeSubscriptions = () => {
         
         // Xử lý features nếu có
         let features: string[] = [];
-        if ('features' in sub && sub.features) {
+        if ('features' in sub && (sub as any).features) {
           try {
-            if (Array.isArray(sub.features)) {
-              features = sub.features;
-            } else if (typeof sub.features === 'string') {
-              features = JSON.parse(sub.features);
+            if (Array.isArray((sub as any).features)) {
+              features = (sub as any).features;
+            } else if (typeof (sub as any).features === 'string') {
+              features = JSON.parse((sub as any).features);
             }
           } catch (e) {
-            console.warn('Error parsing features for subscription:', sub.id, e);
+            console.warn('Error parsing features for subscription:', (sub as any).id, e);
           }
         }
         
         return {
-          id: 'id' in sub ? (sub.id as number) : -999,
-          name: 'name' in sub ? (sub.name as string) : 'Không xác định',
-          price: 'price' in sub ? Number(sub.price) : 0,
-          period: 'period' in sub ? (sub.period as string) : 'month',
-          description: 'description' in sub ? (sub.description as string) : '',
+          id: 'id' in sub ? Number((sub as any).id) : -999,
+          name: 'name' in sub ? String((sub as any).name) : 'Không xác định',
+          price: 'price' in sub ? Number((sub as any).price) : 0,
+          period: 'period' in sub ? String((sub as any).period) : 'month',
+          description: 'description' in sub ? String((sub as any).description) : '',
           features
         };
       });
@@ -127,16 +127,16 @@ export const useRealtimeSubscriptions = () => {
       const sub = data as any;
 
       const name = sub && typeof sub === 'object' && 'name' in sub ? 
-        sub.name as string : 'Không xác định';
+        String(sub.name) : 'Không xác định';
         
       const price = sub && typeof sub === 'object' && 'price' in sub ? 
         Number(sub.price) : 0;
         
       const period = sub && typeof sub === 'object' && 'period' in sub ? 
-        sub.period as string : 'month';
+        String(sub.period) : 'month';
       
       const description = sub && typeof sub === 'object' && 'description' in sub ? 
-        sub.description as string : '';
+        String(sub.description) : '';
       
       let features: string[] = [];
       if (sub && typeof sub === 'object' && 'features' in sub && sub.features) {
@@ -144,7 +144,7 @@ export const useRealtimeSubscriptions = () => {
           if (Array.isArray(sub.features)) {
             features = sub.features;
           } else if (typeof sub.features === 'string') {
-            features = JSON.parse(sub.features as string);
+            features = JSON.parse(sub.features);
           }
         } catch (e) {
           console.warn(`Error parsing features for subscription ${id}:`, e);

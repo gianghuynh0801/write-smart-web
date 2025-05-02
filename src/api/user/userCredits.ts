@@ -24,7 +24,7 @@ export const addUserCredits = async (id: string | number, amount: number): Promi
 
   // Xử lý an toàn với credits - kiểm tra null/undefined
   const currentCredits = (currentData && typeof currentData === 'object' && 'credits' in currentData) ? 
-    Number(currentData.credits) : 0;
+    Number((currentData as any).credits) : 0;
     
   console.log(`[API] Số dư tín dụng hiện tại: ${currentCredits}`);
   const newCredits = currentCredits + amount;
@@ -69,7 +69,7 @@ export const addUserCredits = async (id: string | number, amount: number): Promi
   
   // Xử lý an toàn với credits khi trả về - kiểm tra null/undefined
   const credits = (data && typeof data === 'object' && 'credits' in data) ? 
-    Number(data.credits) : 0;
+    Number((data as any).credits) : 0;
     
   console.log(`[API] Thêm tín dụng thành công, số dư mới: ${credits}`);
   return parseUser(data);

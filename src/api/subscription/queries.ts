@@ -20,10 +20,10 @@ export const fetchSubscriptionPlans = async (): Promise<Subscription[]> => {
     
     // Kiểm tra null trước khi truy cập thuộc tính
     const features = row && typeof row === 'object' && 'features' in row ? 
-      parseSubscriptionFeatures((row.features as any) || []) : [];
+      parseSubscriptionFeatures(((row as any).features) || []) : [];
       
     return {
-      ...(row as any),
+      ...((row as any) || {}),
       features
     } as Subscription;
   });

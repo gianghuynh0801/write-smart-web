@@ -5,7 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/auth";
 
-// Thông tin đăng nhập mặc định cho quản trị viên
+// Thông tin đăng nhập mặc định cho quản trị viên - Xuất ra để LoginForm có thể sử dụng
 export const defaultAdmin = {
   username: "admin",
   email: "admin@example.com",
@@ -35,7 +35,7 @@ export const useAdminAuth = () => {
       
       // Kiểm tra quyền admin trong bảng user_roles
       const { data, error } = await supabase
-        .from('user_roles')
+        .from('user_roles' as any)
         .select('*')
         .eq('user_id', auth.user.id as any)
         .eq('role', 'admin' as any)

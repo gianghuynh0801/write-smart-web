@@ -55,7 +55,7 @@ export const checkAdminRole = async (userId: string) => {
       
       // Kiểm tra an toàn cho giá trị role từ userData
       const userRole = userData && typeof userData === 'object' && 'role' in userData ? 
-        userData.role : null;
+        (userData as any).role : null;
         
       if (!userError && userRole === 'admin') {
         console.log("Admin role found in users table:", userData);
