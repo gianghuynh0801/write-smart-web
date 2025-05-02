@@ -6,8 +6,8 @@ import { featureFlags } from "@/config/featureFlags";
 export const useUserCache = () => {
   // Theo dõi thời gian refresh cuối cùng để tránh refresh quá nhanh
   const lastRefreshTime = useRef(0);
-  // Tăng khoảng thời gian tối thiểu giữa các lần refresh lên 30 giây
-  const minRefreshInterval = 15000; // 15 giây giữa các lần refresh
+  // Giảm khoảng thời gian tối thiểu giữa các lần refresh xuống 5 giây để cải thiện UX
+  const minRefreshInterval = 5000; // 5 giây giữa các lần refresh
   // Biến cờ để đánh dấu đã tải dữ liệu lần đầu
   const initialLoadDone = useRef(false);
 
@@ -32,7 +32,14 @@ export const useUserCache = () => {
     };
   }, []);
 
-  const checkRefreshThrottle = async () => {
+  const checkRefreshThrottle = async (forceRefresh = false) => {
+    // Nếu yêu cầu force refresh, bỏ qua kiểm tra throttle
+    if (forceRefresh) {
+      console.log("[useUserCache] Force refresh được yêu cầu, bỏ qua kiểm tra thời gian");
+      lastRefreshTime.current = Date.now();
+      return true;
+    }
+    
     // Nếu là lần đầu tiên tải, luôn cho phép
     if (!initialLoadDone.current) {
       initialLoadDone.current = true;

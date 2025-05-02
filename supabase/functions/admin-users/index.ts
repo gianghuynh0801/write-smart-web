@@ -63,7 +63,7 @@ const checkUserIsAdmin = async (userId: string) => {
   }
 };
 
-// Hàm lấy danh sách người dùng với phân trang và tìm kiếm - đã tối ưu để trả về ít dữ liệu hơn
+// Hàm lấy danh sách người dùng với phân trang và tìm kiếm
 const getUsers = async (page: number, pageSize: number, status: string, searchTerm: string, minimal = false) => {
   try {
     console.log("Đang lấy danh sách người dùng với thông số:", { page, pageSize, status, searchTerm, minimal });
@@ -140,7 +140,7 @@ Deno.serve(async (req) => {
 
     if (authError || !user) {
       console.error("Lỗi xác thực:", authError);
-      return standardResponse(null, 'Xác thực không thành công', 401);
+      return standardResponse(null, 'Xác thực không thành công: ' + (authError?.message || 'Token không hợp lệ'), 401);
     }
 
     console.log("Đã xác thực người dùng:", user.id);
@@ -155,7 +155,15 @@ Deno.serve(async (req) => {
     console.log("Xác nhận quyền admin thành công");
 
     // Lấy tham số từ request và đặt giá trị mặc định
-    let { searchTerm = '', status = 'all', page = 1, pageSize = 5, minimal = false } = await req.json();
+    let body;
+    try {
+      body = await req.json();
+    } catch (e) {
+      console.error("Lỗi khi parse request body:", e);
+      return standardResponse(null, 'Request body không hợp lệ', 400);
+    }
+    
+    let { searchTerm = '', status = 'all', page = 1, pageSize = 5, minimal = false } = body;
     
     // Đảm bảo giá trị hợp lệ và giới hạn kích thước trang để tránh quá tải
     page = Math.max(1, Number(page));
@@ -171,7 +179,7 @@ Deno.serve(async (req) => {
     console.error("Lỗi không mong đợi:", error);
     return standardResponse(
       null,
-      error instanceof Error ? error.message : 'Lỗi không xác định',
+      error instanceof Error ? error.message : 'Lỗi không xác định khi xử lý yêu cầu',
       500
     );
   }

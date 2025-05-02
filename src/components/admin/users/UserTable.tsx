@@ -16,6 +16,7 @@ type UserTableProps = {
   onAddCredits: (user: User) => void;
   onDeleteUser: (user: User) => void;
   onResendVerification?: (user: User) => void;
+  onRetryLoad?: () => void;
 };
 
 const UserTable = ({
@@ -29,6 +30,7 @@ const UserTable = ({
   onAddCredits,
   onDeleteUser,
   onResendVerification,
+  onRetryLoad,
 }: UserTableProps) => {
   return (
     <div className="rounded-md border">
@@ -48,7 +50,7 @@ const UserTable = ({
           {isLoading ? (
             <UserTableLoading />
           ) : isError ? (
-            <UserTableError errorMessage={errorMessage} />
+            <UserTableError errorMessage={errorMessage} onRetry={onRetryLoad} />
           ) : users.length > 0 ? (
             users.map((user) => (
               <UserTableRow

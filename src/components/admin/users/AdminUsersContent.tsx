@@ -100,6 +100,7 @@ const AdminUsersContent = ({
           onAddCredits={handleAddCredits}
           onDeleteUser={handleDeleteUser}
           onResendVerification={handleResendVerification}
+          onRetryLoad={handleRefresh}
         />
         {!isError && totalPages > 0 && (
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-4 gap-2">
