@@ -52,7 +52,7 @@ export const useUserDialogHandlers = ({
         toast({
           title: "Cảnh báo",
           description: "Quá trình xóa người dùng mất nhiều thời gian. Vui lòng thử lại sau.",
-          variant: "warning"
+          variant: "destructive" // Thay đổi từ "warning" sang "destructive"
         });
         
         setDeleteDialogOpen(false);
@@ -121,7 +121,7 @@ export const useUserDialogHandlers = ({
         toast({
           title: "Cảnh báo",
           description: "Quá trình thêm credits mất nhiều thời gian. Vui lòng thử lại sau.",
-          variant: "warning"
+          variant: "destructive" // Thay đổi từ "warning" sang "destructive"
         });
         
         setAddCreditsDialogOpen(false);
@@ -173,3 +173,4 @@ export const useUserDialogHandlers = ({
     resetProcessingState
   };
 };
+
