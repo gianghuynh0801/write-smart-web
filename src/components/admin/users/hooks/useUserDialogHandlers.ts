@@ -32,6 +32,11 @@ export const useUserDialogHandlers = ({
       // Báo cáo hành động hoàn thành
       handleUserActionComplete();
       
+      toast({
+        title: "Thành công",
+        description: "Đã xóa người dùng thành công",
+      });
+      
       // Thêm tải lại trang sau khi xóa
       setTimeout(() => {
         window.location.reload();
@@ -57,6 +62,11 @@ export const useUserDialogHandlers = ({
       
       // Báo cáo hành động hoàn thành
       handleUserActionComplete();
+      
+      toast({
+        title: "Thành công",
+        description: "Đã thêm credits thành công",
+      });
       
       // Thêm tải lại trang sau khi thêm credits
       setTimeout(() => {

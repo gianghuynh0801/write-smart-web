@@ -1,26 +1,49 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileText, CreditCard, Package, ArrowUpRight, Link } from "lucide-react";
+import { FileText, CreditCard, Package, ArrowUpRight, Link, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link as RouterLink } from "react-router-dom";
 import { useDashboardStats } from "./hooks/useDashboardStats";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useEffect } from "react";
 import { useUserDataRefresh } from "@/hooks/useUserDataRefresh";
+import { useToast } from "@/hooks/use-toast";
 
 const Dashboard = () => {
-  const { stats, isLoading } = useDashboardStats();
-  const { refreshUserData } = useUserDataRefresh();
+  const { stats, isLoading, isRefreshing, error, refreshStats } = useDashboardStats();
+  const { refreshUserData, isRefreshing: isUserRefreshing } = useUserDataRefresh();
+  const { toast } = useToast();
   
   // Refresh dữ liệu người dùng khi trang dashboard được tải
   useEffect(() => {
     const initData = async () => {
       console.log("Dashboard mounted, refreshing user data...");
-      await refreshUserData();
+      const result = await refreshUserData();
+      if (!result.success) {
+        console.log("Failed to refresh user data on mount");
+      }
     };
     
     initData();
   }, [refreshUserData]);
+
+  // Xử lý sự kiện khi người dùng nhấn nút làm mới
+  const handleRefresh = async () => {
+    console.log("Manual refresh requested");
+    try {
+      const userResult = await refreshUserData(true);
+      if (userResult.success) {
+        await refreshStats(true);
+      }
+    } catch (err) {
+      console.error("Lỗi khi làm mới dữ liệu:", err);
+      toast({
+        title: "Lỗi",
+        description: "Không thể làm mới dữ liệu. Vui lòng thử lại sau.",
+        variant: "destructive"
+      });
+    }
+  };
 
   const renderStats = () => {
     if (isLoading) {
@@ -95,12 +118,29 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Bảng điều khiển</h1>
-        <p className="text-gray-500">
-          Chào mừng bạn đến với WriteSmart, xem thống kê và tạo nội dung của bạn tại đây.
-        </p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Bảng điều khiển</h1>
+          <p className="text-gray-500">
+            Chào mừng bạn đến với WriteSmart, xem thống kê và tạo nội dung của bạn tại đây.
+          </p>
+        </div>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={handleRefresh}
+          disabled={isRefreshing || isUserRefreshing}
+        >
+          <RefreshCw className={`mr-2 h-4 w-4 ${(isRefreshing || isUserRefreshing) ? 'animate-spin' : ''}`} />
+          {(isRefreshing || isUserRefreshing) ? 'Đang cập nhật...' : 'Làm mới dữ liệu'}
+        </Button>
       </div>
+      
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative">
+          <span className="block sm:inline">{error}</span>
+        </div>
+      )}
       
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {renderStats()}

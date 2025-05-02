@@ -1,13 +1,9 @@
 
 import { Table, TableBody, TableHead, TableHeader, TableRow, TableCell } from "@/components/ui/table";
 import { User } from "@/types/user";
-import { useRealtimeUsers } from "./hooks/useRealtimeUsers";
-import { useRealtimeSubscriptions } from "./hooks/useRealtimeSubscriptions";
 import { UserTableRow } from "./components/UserTableRow";
 import { UserTableLoading } from "./components/UserTableLoading";
 import { UserTableError } from "./components/UserTableError";
-import { useMemo } from "react";
-import { featureFlags } from "@/config/featureFlags";
 
 type UserTableProps = {
   users: User[];
@@ -34,50 +30,6 @@ const UserTable = ({
   onDeleteUser,
   onResendVerification,
 }: UserTableProps) => {
-  // Tối ưu useMemo để tránh re-render không cần thiết
-  const userIds = useMemo(() => {
-    // Chỉ tạo mảng ID khi tính năng realtime được bật
-    return featureFlags.enableRealtimeUpdates ? users.map(u => u.id) : [];
-  }, [users, featureFlags.enableRealtimeUpdates]);
-  
-  // Chỉ sử dụng realtime updates khi tính năng được bật
-  const realtimeUserUpdates = featureFlags.enableRealtimeUpdates 
-    ? useRealtimeUsers(userIds) 
-    : {};
-    
-  const realtimeSubscriptionUpdates = featureFlags.enableRealtimeUpdates 
-    ? useRealtimeSubscriptions(userIds)
-    : {};
-
-  // Tính toán danh sách user với dữ liệu realtime chỉ khi tính năng được bật
-  const displayUsers = useMemo(() => {
-    // Nếu tính năng realtime bị tắt, trả về danh sách users gốc
-    if (!featureFlags.enableRealtimeUpdates) {
-      return users;
-    }
-    
-    // Xử lý khi tính năng realtime được bật
-    return users.map(user => {
-      // Tạo một bản sao của user để không ảnh hưởng đến dữ liệu gốc
-      const realtimeUser = { ...user };
-      
-      // Cập nhật từ realtimeUserUpdates (credits, status, role)
-      if (realtimeUserUpdates[user.id]) {
-        const updates = realtimeUserUpdates[user.id];
-        if (updates.credits !== undefined) realtimeUser.credits = updates.credits;
-        if (updates.status !== undefined) realtimeUser.status = updates.status;
-        if (updates.role !== undefined) realtimeUser.role = updates.role;
-      }
-      
-      // Cập nhật subscription từ realtimeSubscriptionUpdates
-      if (realtimeSubscriptionUpdates[user.id]?.subscription) {
-        realtimeUser.subscription = realtimeSubscriptionUpdates[user.id].subscription;
-      }
-      
-      return realtimeUser;
-    });
-  }, [users, realtimeUserUpdates, realtimeSubscriptionUpdates, featureFlags.enableRealtimeUpdates]);
-
   return (
     <div className="rounded-md border">
       <Table>
@@ -97,8 +49,8 @@ const UserTable = ({
             <UserTableLoading />
           ) : isError ? (
             <UserTableError errorMessage={errorMessage} />
-          ) : displayUsers.length > 0 ? (
-            displayUsers.map((user) => (
+          ) : users.length > 0 ? (
+            users.map((user) => (
               <UserTableRow
                 key={user.id}
                 user={user}

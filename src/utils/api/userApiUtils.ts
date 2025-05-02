@@ -85,7 +85,8 @@ export const fetchUsers = async (params: {
     const apiPromise = supabase.functions.invoke('admin-users', {
       body: {
         ...params,
-        minimal: true  // Flag để Edge Function biết chỉ trả về dữ liệu tối thiểu
+        minimal: true,  // Flag để Edge Function biết chỉ trả về dữ liệu tối thiểu
+        timestamp: Date.now() // Thêm timestamp để tránh cache
       },
       headers: {
         Authorization: `Bearer ${token}`
@@ -126,7 +127,8 @@ export const fetchUsers = async (params: {
           const retryResponse = await supabase.functions.invoke('admin-users', {
             body: {
               ...params,
-              minimal: true
+              minimal: true,
+              timestamp: Date.now() // Thêm timestamp để tránh cache
             },
             headers: {
               Authorization: `Bearer ${newToken}`
@@ -203,28 +205,31 @@ export const clearUsersCache = () => {
   try {
     sessionStorage.removeItem('users_cache');
     sessionStorage.removeItem('users_data_loaded');
+    sessionStorage.removeItem('dashboard_stats');
   } catch (err) {
     console.warn("[clearUsersCache] Không thể xóa cache từ sessionStorage:", err);
   }
   console.log("Đã xóa cache người dùng");
 };
 
-// Mới: Xóa cache người dùng cụ thể
+// Xóa cache người dùng cụ thể
 export const clearUserCache = (userId: string | number) => {
   const cacheKey = `user_details_${userId}`;
   try {
     sessionStorage.removeItem(cacheKey);
+    sessionStorage.removeItem('dashboard_stats');
     console.log(`[clearUserCache] Đã xóa cache cho user ID: ${userId}`);
   } catch (err) {
     console.warn(`[clearUserCache] Không thể xóa cache cho user ID: ${userId}`, err);
   }
 };
 
-// Mới: Xóa toàn bộ cache liên quan đến người dùng
+// Xóa toàn bộ cache liên quan đến người dùng
 export const clearAllUserCache = () => {
   try {
     // Xóa cache danh sách người dùng
     clearUsersCache();
+    sessionStorage.removeItem('dashboard_stats');
     
     // Xóa tất cả các mục cache chi tiết người dùng
     const keysToRemove: string[] = [];
@@ -243,5 +248,15 @@ export const clearAllUserCache = () => {
     console.log(`[clearAllUserCache] Đã xóa ${keysToRemove.length} mục cache chi tiết người dùng`);
   } catch (err) {
     console.warn("[clearAllUserCache] Lỗi khi xóa cache:", err);
+  }
+};
+
+// Xóa cache dashboard stats
+export const clearDashboardCache = () => {
+  try {
+    sessionStorage.removeItem('dashboard_stats');
+    console.log("[clearDashboardCache] Đã xóa cache dashboard stats");
+  } catch (err) {
+    console.warn("[clearDashboardCache] Không thể xóa cache dashboard stats:", err);
   }
 };

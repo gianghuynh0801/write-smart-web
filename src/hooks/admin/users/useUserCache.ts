@@ -7,7 +7,7 @@ export const useUserCache = () => {
   // Theo dõi thời gian refresh cuối cùng để tránh refresh quá nhanh
   const lastRefreshTime = useRef(0);
   // Tăng khoảng thời gian tối thiểu giữa các lần refresh lên 30 giây
-  const minRefreshInterval = 30000; // 30 giây giữa các lần refresh
+  const minRefreshInterval = 15000; // 15 giây giữa các lần refresh
   // Biến cờ để đánh dấu đã tải dữ liệu lần đầu
   const initialLoadDone = useRef(false);
 
@@ -45,6 +45,7 @@ export const useUserCache = () => {
     const timeSinceLastRefresh = now - lastRefreshTime.current;
     console.log(`[useUserCache] Kiểm tra tần suất refresh: Đã ${Math.round(timeSinceLastRefresh / 1000)}s từ lần cuối (giới hạn: ${minRefreshInterval / 1000}s)`);
     
+    // Giảm thời gian chờ để cải thiện trải nghiệm người dùng
     if (timeSinceLastRefresh < minRefreshInterval) {
       console.log(`[useUserCache] Hạn chế tần suất refresh: ${Math.round((minRefreshInterval - timeSinceLastRefresh) / 1000)}s còn lại`);
       // Trả về false nếu chưa đủ thời gian để refresh
