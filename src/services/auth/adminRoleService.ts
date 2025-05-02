@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 class AdminRoleService {
   private static instance: AdminRoleService;
   private adminUserIds: Map<string, boolean> = new Map();
+  private lastChecks: Map<string, number> = new Map();
+  private cacheDuration = 10 * 60 * 1000; // 10 phút
   
   private constructor() {}
 
@@ -19,24 +21,81 @@ class AdminRoleService {
   public async checkAdminStatus(userId: string): Promise<boolean> {
     // Kiểm tra cache trước
     if (this.adminUserIds.has(userId)) {
-      return this.adminUserIds.get(userId) || false;
+      const lastCheck = this.lastChecks.get(userId) || 0;
+      const now = Date.now();
+      
+      // Cache còn hiệu lực
+      if (now - lastCheck < this.cacheDuration) {
+        return this.adminUserIds.get(userId) || false;
+      }
     }
 
     try {
       console.log("Kiểm tra quyền admin cho user:", userId);
       
-      // Gọi RPC function is_admin từ database
-      const { data, error } = await supabase.rpc('is_admin', { uid: userId });
+      // Thử từng phương thức kiểm tra admin một cách tuần tự với cơ chế fallback
       
-      if (error) {
-        console.error("Lỗi khi kiểm tra quyền admin:", error);
-        return false;
+      // 1. Gọi RPC function is_admin từ database
+      try {
+        const { data, error } = await supabase.rpc('is_admin', { uid: userId });
+        
+        if (error) {
+          console.error("Lỗi khi kiểm tra quyền admin qua RPC:", error);
+        } else if (data === true) {
+          // Cache kết quả để sử dụng lại
+          this.adminUserIds.set(userId, true);
+          this.lastChecks.set(userId, Date.now());
+          return true;
+        }
+      } catch (error) {
+        console.error("Lỗi ngoại lệ khi kiểm tra quyền admin qua RPC:", error);
       }
       
-      // Cache kết quả để sử dụng lại
-      this.adminUserIds.set(userId, !!data);
+      // 2. Kiểm tra từ bảng user_roles
+      try {
+        const { data, error } = await supabase
+          .from('user_roles')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('role', 'admin')
+          .maybeSingle();
+        
+        if (error) {
+          console.error("Lỗi khi kiểm tra bảng user_roles:", error);
+        } else if (data) {
+          // Cache kết quả để sử dụng lại
+          this.adminUserIds.set(userId, true);
+          this.lastChecks.set(userId, Date.now());
+          return true;
+        }
+      } catch (error) {
+        console.error("Lỗi ngoại lệ khi kiểm tra bảng user_roles:", error);
+      }
       
-      return !!data;
+      // 3. Kiểm tra từ bảng users cuối cùng
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', userId)
+          .maybeSingle();
+        
+        if (error) {
+          console.error("Lỗi khi kiểm tra bảng users:", error);
+        } else if (data?.role === 'admin') {
+          // Cache kết quả để sử dụng lại
+          this.adminUserIds.set(userId, true);
+          this.lastChecks.set(userId, Date.now());
+          return true;
+        }
+      } catch (error) {
+        console.error("Lỗi ngoại lệ khi kiểm tra bảng users:", error);
+      }
+      
+      // Không tìm thấy quyền admin qua bất kỳ phương thức nào
+      this.adminUserIds.set(userId, false);
+      this.lastChecks.set(userId, Date.now());
+      return false;
     } catch (error) {
       console.error("Lỗi không mong đợi khi kiểm tra quyền admin:", error);
       return false;
@@ -46,11 +105,20 @@ class AdminRoleService {
   // Xóa cache cho một user ID cụ thể
   public clearCache(userId: string): void {
     this.adminUserIds.delete(userId);
+    this.lastChecks.delete(userId);
   }
 
   // Xóa toàn bộ cache
   public clearAllCache(): void {
     this.adminUserIds.clear();
+    this.lastChecks.clear();
+  }
+
+  // Thay đổi thời gian cache tùy chỉnh (đơn vị: mili giây)
+  public setCacheDuration(durationMs: number): void {
+    if (durationMs > 0) {
+      this.cacheDuration = durationMs;
+    }
   }
 }
 

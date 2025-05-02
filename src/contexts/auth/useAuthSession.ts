@@ -1,10 +1,8 @@
-// Chỉ sửa một phần của tệp để giải quyết các lỗi TypeScript
-// Bắt đầu từ dòng chứa lỗi
-
+// Chỉ cập nhật hàm kiểm tra quyền admin trong file này - giữ nguyên phần còn lại
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { db } from "@/integrations/supabase/typeSafeClient"; // Thêm import db
+import { db } from "@/integrations/supabase/typeSafeClient"; 
 import { AuthState, UserDetails } from "./types";
 import { setItem, LOCAL_STORAGE_KEYS } from "@/utils/localStorageService";
 
@@ -136,7 +134,7 @@ export function useAuthSession() {
     return fetchUserDetails(userId);
   }, [state.userDetails, state.user?.id, fetchUserDetails]);
 
-  // Hàm kiểm tra quyền admin với cache - tối ưu hóa để giảm API calls
+  // Cập nhật hàm kiểm tra quyền admin với cache - tối ưu hóa để giảm API calls
   const checkAdminStatus = useCallback(async (userId?: string): Promise<boolean> => {
     try {
       const targetUserId = userId || state.user?.id;
@@ -165,9 +163,11 @@ export function useAuthSession() {
 
       console.log("Kiểm tra quyền admin cho user:", targetUserId);
       
-      // Thử gọi RPC is_admin từ database - nhanh nhất
+      // Thử nhiều phương thức kiểm tra admin khác nhau
+      
+      // 1. Thử gọi RPC is_admin từ database - nhanh nhất
       try {
-        const { data: isAdmin, error: rpcError } = await db.rpc('is_admin', { uid: targetUserId });
+        const { data: isAdmin, error: rpcError } = await supabase.rpc('is_admin', { uid: targetUserId });
         
         if (!rpcError && isAdmin === true) {
           console.log("Xác định quyền admin qua RPC function");
@@ -181,16 +181,16 @@ export function useAuthSession() {
         console.log("Lỗi khi gọi RPC is_admin:", err);
       }
       
-      // Kiểm tra từ user_roles nếu RPC không thành công
+      // 2. Kiểm tra từ user_roles
       try {
-        const { data: roleData, error: roleError } = await db.user_roles() // Sử dụng db.user_roles()
+        const { data: roleData, error: roleError } = await db.user_roles()
           .select('*')
           .eq('user_id', targetUserId as any)
           .eq('role', 'admin' as any)
           .maybeSingle();
         
         if (!roleError && roleData) {
-          console.log("Xác định quyền admin qua user_roles");
+          console.log("Xác định quyền admin qua bảng user_roles");
           setAdminCheckCache(prev => ({
             ...prev,
             [targetUserId]: { result: true, timestamp: now }
@@ -201,7 +201,27 @@ export function useAuthSession() {
         console.log("Lỗi khi kiểm tra bảng user_roles:", err);
       }
       
+      // 3. Kiểm tra từ bảng users
+      try {
+        const { data: userData, error: userError } = await db.users()
+          .select('role')
+          .eq('id', targetUserId as any)
+          .maybeSingle();
+        
+        if (!userError && userData?.role === 'admin') {
+          console.log("Xác định quyền admin qua bảng users");
+          setAdminCheckCache(prev => ({
+            ...prev,
+            [targetUserId]: { result: true, timestamp: now }
+          }));
+          return true;
+        }
+      } catch (err) {
+        console.log("Lỗi khi kiểm tra bảng users:", err);
+      }
+      
       // Không tìm thấy quyền admin
+      console.log("Không tìm thấy quyền admin cho user:", targetUserId);
       setAdminCheckCache(prev => ({
         ...prev,
         [targetUserId]: { result: false, timestamp: now }

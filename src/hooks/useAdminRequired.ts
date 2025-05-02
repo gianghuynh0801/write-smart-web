@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth";
@@ -7,6 +8,7 @@ export const useAdminRequired = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isLocalChecking, setIsLocalChecking] = useState(true);
+  const isMounted = useRef(true);
   const { 
     user, 
     session, 
@@ -17,7 +19,7 @@ export const useAdminRequired = () => {
   } = useAuth();
 
   useEffect(() => {
-    let isMounted = true;
+    isMounted.current = true;
     let retryCount = 0;
     const maxRetries = 3;
 
@@ -38,7 +40,7 @@ export const useAdminRequired = () => {
 
         console.log("Đã tìm thấy session, user ID:", user.id);
         
-        // Kiểm tra vai trò admin
+        // Kiểm tra vai trò admin - chức năng này đã được cải thiện trong AuthContext
         const isUserAdmin = await checkAdminStatus(user.id);
 
         if (!isUserAdmin) {
@@ -55,7 +57,7 @@ export const useAdminRequired = () => {
 
         console.log("Xác thực quyền admin thành công");
         
-        if (isMounted) {
+        if (isMounted.current) {
           setIsLocalChecking(false);
         }
       } catch (error) {
@@ -64,13 +66,13 @@ export const useAdminRequired = () => {
         // Thử làm mới session nếu có lỗi
         const refreshSuccessful = await refreshSession();
         
-        if (!refreshSuccessful && retryCount < maxRetries && isMounted) {
+        if (!refreshSuccessful && retryCount < maxRetries && isMounted.current) {
           retryCount++;
           console.log(`Thử lại lần ${retryCount}/${maxRetries}...`);
           setTimeout(checkAdminAccess, 1000);
           return;
         } else if (!refreshSuccessful) {
-          if (isMounted) {
+          if (isMounted.current) {
             toast({
               title: "Lỗi hệ thống",
               description: "Không thể xác thực quyền truy cập. Vui lòng đăng nhập lại.",
@@ -80,7 +82,7 @@ export const useAdminRequired = () => {
           }
         }
       } finally {
-        if (isMounted) {
+        if (isMounted.current) {
           setIsLocalChecking(false);
         }
       }
@@ -94,7 +96,7 @@ export const useAdminRequired = () => {
     }
 
     return () => {
-      isMounted = false;
+      isMounted.current = false;
     };
   }, [navigate, toast, user, session, isChecking, isAdmin, refreshSession, checkAdminStatus]);
 

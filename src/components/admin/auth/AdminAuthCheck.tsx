@@ -1,11 +1,13 @@
+
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth";
+import { db } from "@/integrations/supabase/typeSafeClient";
 
 interface AdminAuthCheckProps {
   onAuthSuccess: () => void;
-  children: React.ReactNode; // Thêm children vào interface
+  children: React.ReactNode;
 }
 
 export const AdminAuthCheck = ({ children, onAuthSuccess }: AdminAuthCheckProps) => {
@@ -38,7 +40,7 @@ export const AdminAuthCheck = ({ children, onAuthSuccess }: AdminAuthCheckProps)
               description: "Vui lòng đăng nhập với tài khoản quản trị.",
               variant: "destructive"
             });
-            navigate("/admin/login");
+            navigate("/admin-login");
           }
           return;
         }
@@ -57,7 +59,7 @@ export const AdminAuthCheck = ({ children, onAuthSuccess }: AdminAuthCheckProps)
               variant: "destructive"
             });
             
-            navigate("/admin/login");
+            navigate("/admin-login");
           }
           return;
         }
@@ -85,7 +87,7 @@ export const AdminAuthCheck = ({ children, onAuthSuccess }: AdminAuthCheckProps)
               description: "Không thể xác thực quyền truy cập.",
               variant: "destructive"
             });
-            navigate("/admin/login");
+            navigate("/admin-login");
           }
         }
       } finally {
