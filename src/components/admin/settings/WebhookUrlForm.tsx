@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -73,7 +72,7 @@ export const WebhookUrlForm = ({ initialUrl, onSave }: WebhookUrlFormProps) => {
       const { data: existingConfig } = await supabase
         .from('system_configurations')
         .select('*')
-        .eq('key', 'webhook_url')
+        .eq('key', 'webhook_url' as any)
         .maybeSingle();
       
       let result;
@@ -85,8 +84,8 @@ export const WebhookUrlForm = ({ initialUrl, onSave }: WebhookUrlFormProps) => {
           .update({ 
             value: webhookUrl || '',
             updated_at: new Date().toISOString()
-          })
-          .eq('key', 'webhook_url');
+          } as any)
+          .eq('key', 'webhook_url' as any);
       } else {
         // Nếu bản ghi chưa tồn tại, tạo mới
         result = await supabase
@@ -95,7 +94,7 @@ export const WebhookUrlForm = ({ initialUrl, onSave }: WebhookUrlFormProps) => {
             key: 'webhook_url', 
             value: webhookUrl || '',
             updated_at: new Date().toISOString()
-          });
+          } as any);
       }
       
       const { error } = result;

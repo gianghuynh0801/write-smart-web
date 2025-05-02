@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -84,9 +85,9 @@ const PaymentHistoryCard = () => {
               {payments.length > 0 ? (
                 payments.map((payment) => (
                   <div key={payment.id} className="grid grid-cols-4 p-4">
-                    <div className="font-medium">INV-{payment.id.toString().substring(0, 3).padStart(3, '0')}</div>
-                    <div className="text-gray-500">{formatDate(payment.payment_at)}</div>
-                    <div>{formatAmount(payment.amount)}</div>
+                    <div className="font-medium">INV-{payment.id?.toString().substring(0, 3).padStart(3, '0') || '000'}</div>
+                    <div className="text-gray-500">{formatDate(payment.payment_at || '')}</div>
+                    <div>{formatAmount(payment.amount || 0)}</div>
                     <div>
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                         payment.status === 'success' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'

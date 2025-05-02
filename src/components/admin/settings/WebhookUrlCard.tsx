@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { AdminAuthCheck } from "@/components/admin/auth/AdminAuthCheck";
@@ -27,7 +26,7 @@ export const WebhookUrlCard = () => {
       const { data, error } = await supabase
         .from('system_configurations')
         .select('value')
-        .eq('key', 'webhook_url')
+        .eq('key', 'webhook_url' as any)
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
@@ -40,7 +39,7 @@ export const WebhookUrlCard = () => {
         return;
       }
 
-      if (data) {
+      if (data && data.value) {
         console.log("Đã tải webhook URL:", data.value);
         setWebhookUrl(data.value);
       } else {

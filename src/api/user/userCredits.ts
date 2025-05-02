@@ -10,7 +10,7 @@ export const addUserCredits = async (id: string | number, amount: number): Promi
   const { data: currentData, error: getError } = await supabase
     .from("users")
     .select("*")
-    .eq("id", userId)
+    .eq("id", userId as any)
     .maybeSingle();
 
   if (getError) {
@@ -22,14 +22,16 @@ export const addUserCredits = async (id: string | number, amount: number): Promi
     throw new Error("Không tìm thấy người dùng");
   }
 
-  console.log(`[API] Số dư tín dụng hiện tại: ${currentData.credits ?? 0}`);
-  const newCredits = (currentData.credits ?? 0) + amount;
+  // Xử lý an toàn với credits
+  const currentCredits = currentData && typeof currentData.credits !== 'undefined' ? currentData.credits : 0;
+  console.log(`[API] Số dư tín dụng hiện tại: ${currentCredits}`);
+  const newCredits = currentCredits + amount;
   
   console.log(`[API] Cập nhật số dư tín dụng mới: ${newCredits}`);
   const { data, error } = await supabase
     .from("users")
-    .update({ credits: newCredits })
-    .eq("id", userId)
+    .update({ credits: newCredits } as any)
+    .eq("id", userId as any)
     .select()
     .maybeSingle();
 
@@ -50,8 +52,9 @@ export const addUserCredits = async (id: string | number, amount: number): Promi
         user_id: userId,
         amount: amount,
         status: "completed",
-        description: `Quản trị viên thêm ${amount} tín dụng`
-      });
+        description: `Quản trị viên thêm ${amount} tín dụng`,
+        payment_at: new Date().toISOString() // Thêm trường payment_at bắt buộc
+      } as any);
     
     if (logError) {
       console.warn(`[API] Không thể ghi log giao dịch:`, logError);
@@ -62,6 +65,8 @@ export const addUserCredits = async (id: string | number, amount: number): Promi
     console.warn(`[API] Lỗi khi ghi log giao dịch:`, logErr);
   }
   
-  console.log(`[API] Thêm tín dụng thành công, số dư mới: ${data.credits}`);
+  // Xử lý an toàn với credits khi trả về
+  const credits = data && typeof data.credits !== 'undefined' ? data.credits : 0;
+  console.log(`[API] Thêm tín dụng thành công, số dư mới: ${credits}`);
   return parseUser(data);
 };

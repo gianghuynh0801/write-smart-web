@@ -32,8 +32,8 @@ export const checkAdminRole = async (userId: string) => {
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('*')
-        .eq('user_id', userId)
-        .eq('role', 'admin')
+        .eq('user_id', userId as any)
+        .eq('role', 'admin' as any)
         .single();
       
       console.log("Admin role check in user_roles:", { roleData, roleError });
@@ -50,10 +50,10 @@ export const checkAdminRole = async (userId: string) => {
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('role')
-        .eq('id', userId)
+        .eq('id', userId as any)
         .maybeSingle();
       
-      if (!userError && userData?.role === 'admin') {
+      if (!userError && userData && userData.role === 'admin') {
         console.log("Admin role found in users table:", userData);
         return { 
           roleData: { user_id: userId, role: 'admin' }, 

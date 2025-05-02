@@ -15,8 +15,8 @@ export const fetchSubscriptionPlans = async (): Promise<Subscription[]> => {
   }
 
   return (data || []).map((row) => ({
-    ...row as any,
-    features: parseSubscriptionFeatures(row.features as any)
+    ...(row as any),
+    features: row && row.features ? parseSubscriptionFeatures(row.features as any) : []
   })) as Subscription[];
 };
 

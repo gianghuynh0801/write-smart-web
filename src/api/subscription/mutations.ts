@@ -9,7 +9,7 @@ export const updateUserSubscription = async (userId: string, planId: number): Pr
   const { data: planData, error: planError } = await supabase
     .from("subscriptions")
     .select("*")
-    .eq("id", planId.toString()) // Chuyển thành string để tránh lỗi type
+    .eq("id", planId as any) // Chuyển thành any để tránh lỗi type
     .maybeSingle();
 
   if (planError) throw new Error(`Error fetching plan: ${planError.message}`);
@@ -17,8 +17,8 @@ export const updateUserSubscription = async (userId: string, planId: number): Pr
 
   // Type safe features
   const typedPlanData: Subscription = {
-    ...planData as any, // Sử dụng any để tránh lỗi spread type
-    features: parseSubscriptionFeatures(planData.features as any),
+    ...(planData as any), // Sử dụng any để tránh lỗi spread type
+    features: planData && planData.features ? parseSubscriptionFeatures(planData.features as any) : [],
   };
 
   // Calculate subscription dates
@@ -45,7 +45,7 @@ export const updateUserSubscription = async (userId: string, planId: number): Pr
       const { error: updateError } = await supabase
         .from("user_subscriptions")
         .update({ status: "inactive" } as any)
-        .eq("id", existingSubscription.id);
+        .eq("id", existingSubscription && existingSubscription.id ? existingSubscription.id : null);
 
       if (updateError) throw new Error(`Error updating old subscription: ${updateError.message}`);
     }
@@ -106,7 +106,7 @@ export const cancelUserSubscription = async (userId: string): Promise<Subscripti
   const { error: updateError } = await supabase
     .from("user_subscriptions")
     .update({ status: "canceled" } as any)
-    .eq("id", subscription.id);
+    .eq("id", subscription && subscription.id ? subscription.id : null);
 
   if (updateError) {
     throw new Error(`Error canceling subscription: ${updateError.message}`);

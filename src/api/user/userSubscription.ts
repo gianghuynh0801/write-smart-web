@@ -30,7 +30,7 @@ export async function handleSubscriptionChange(userId: string, subscriptionName:
     const { data: subscriptionData, error: subscriptionError } = await supabase
       .from("subscriptions")
       .select("id")
-      .eq("name", subscriptionName)
+      .eq("name", subscriptionName as any)
       .maybeSingle();
 
     if (subscriptionError) {
@@ -44,7 +44,11 @@ export async function handleSubscriptionChange(userId: string, subscriptionName:
     }
 
     console.log("Đã tìm thấy thông tin gói đăng ký:", subscriptionData);
-    const subscriptionId = subscriptionData.id;
+    // Kiểm tra và truy cập an toàn thuộc tính id
+    const subscriptionId = subscriptionData && subscriptionData.id ? subscriptionData.id : null;
+    if (subscriptionId === null) {
+      throw new Error("ID gói đăng ký không hợp lệ");
+    }
 
     // Tính toán ngày bắt đầu và kết thúc gói đăng ký
     const startDate = new Date().toISOString().split('T')[0];
@@ -68,11 +72,13 @@ export async function handleSubscriptionChange(userId: string, subscriptionName:
       'active'
     );
 
-    console.log("Đã hoàn thành việc cập nhật gói đăng ký thành:", subscriptionName);
+    // Truy cập an toàn thuộc tính name
+    const displayName = subscriptionName || "Không xác định";
+    console.log("Đã hoàn thành việc cập nhật gói đăng ký thành:", displayName);
     
     return {
       success: true,
-      message: `Đã cập nhật gói đăng ký thành ${subscriptionName}`
+      message: `Đã cập nhật gói đăng ký thành ${displayName}`
     };
 
   } catch (error) {
