@@ -4,7 +4,7 @@ project_id = "lxhawtndkubaeljbaylp"
 [api]
 enabled = true
 port = 54321
-schemas = ["public", "storage", "graphql_public"]
+schemas = ["public", "storage", "graphql_public", "seo_project"]
 
 [db]
 port = 54322

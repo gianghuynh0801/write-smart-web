@@ -14,5 +14,8 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     storage: localStorage,
     persistSession: true,
     autoRefreshToken: true,
+  },
+  db: {
+    schema: 'seo_project' // Sử dụng schema seo_project thay vì public
   }
 });
