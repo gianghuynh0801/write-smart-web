@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { AdminAuthCheck } from "@/components/admin/auth/AdminAuthCheck";
 import { WebhookUrlForm } from "@/components/admin/settings/WebhookUrlForm";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/integrations/supabase/typeSafeClient";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ExternalLink } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -24,8 +24,7 @@ export const WebhookUrlCard = () => {
       setIsLoading(true);
       console.log("Đang tải webhook URL từ database...");
       
-      const { data, error } = await supabase
-        .from('system_configurations')
+      const { data, error } = await db.system_configurations()
         .select('value')
         .eq('key', 'webhook_url')
         .maybeSingle();

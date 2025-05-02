@@ -23,6 +23,8 @@ export const db = {
   payment_history: () => supabase.from('payment_history') as unknown as PostgrestQueryBuilder<any, any, any>,
   user_roles: () => supabase.from('user_roles') as unknown as PostgrestQueryBuilder<any, any, any>,
   system_configurations: () => supabase.from('system_configurations') as unknown as PostgrestQueryBuilder<any, any, any>,
+  articles: () => supabase.from('articles') as unknown as PostgrestQueryBuilder<any, any, any>,
+  profiles: () => supabase.from('profiles') as unknown as PostgrestQueryBuilder<any, any, any>,
   
   // Helper để truy cập bảng tùy chỉnh
   table: (tableName: string) => supabase.from(tableName) as unknown as PostgrestQueryBuilder<any, any, any>,
@@ -33,4 +35,3 @@ export const db = {
   functions: supabase.functions,
   rpc: supabase.rpc.bind(supabase),
 };
-

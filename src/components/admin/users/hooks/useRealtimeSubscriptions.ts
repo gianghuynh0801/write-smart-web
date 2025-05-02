@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/supabase/typeSafeClient';
 
 interface Subscription {
   id: number;
@@ -23,8 +23,7 @@ export const useRealtimeSubscriptions = () => {
       setError(null);
       
       console.log('Fetching subscription plans...');
-      const { data, error: fetchError } = await supabase
-        .from('subscriptions' as any)
+      const { data, error: fetchError } = await db.subscriptions()
         .select('*')
         .order('price', { ascending: true });
       
@@ -110,10 +109,9 @@ export const useRealtimeSubscriptions = () => {
       if (cached) return cached;
       
       console.log(`Fetching subscription with ID ${id}...`);
-      const { data, error } = await supabase
-        .from('subscriptions' as any)
+      const { data, error } = await db.subscriptions()
         .select('*')
-        .eq('id', id as any)
+        .eq('id', id)
         .maybeSingle();
       
       if (error) {
@@ -181,19 +179,13 @@ export const useRealtimeSubscriptions = () => {
     fetchSubscriptions();
     
     // Thiết lập channel realtime để theo dõi thay đổi
-    const subscriptionsChannel = supabase
-      .channel('subscriptions_changes')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'subscriptions' }, 
-        () => {
-          console.log('Subscription data changed, reloading...');
-          fetchSubscriptions();
-        }
-      )
-      .subscribe();
+    const subscriptionsChannel = db.auth.onAuthStateChange(() => {
+      console.log('Auth state changed, reloading subscriptions...');
+      fetchSubscriptions();
+    });
     
     return () => {
-      supabase.removeChannel(subscriptionsChannel);
+      subscriptionsChannel.data.subscription.unsubscribe();
     };
   }, [fetchSubscriptions]);
   

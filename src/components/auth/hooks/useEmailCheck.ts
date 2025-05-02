@@ -1,5 +1,5 @@
 
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/integrations/supabase/typeSafeClient";
 
 export const useEmailCheck = () => {
   const checkEmailExists = async (email: string): Promise<boolean> => {
@@ -8,10 +8,9 @@ export const useEmailCheck = () => {
     }
     
     try {
-      const { data, error } = await supabase
-        .from('users')
+      const { data, error } = await db.users()
         .select('email')
-        .eq('email', email.trim().toLowerCase() as any)
+        .eq('email', email.trim().toLowerCase())
         .maybeSingle();
       
       if (error) {

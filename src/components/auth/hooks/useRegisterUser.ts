@@ -1,5 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/integrations/supabase/typeSafeClient";
 import { UserSyncResponse } from "@/api/subscription/types";
 
 interface RegisterFormData {
@@ -162,10 +163,9 @@ export const useRegisterUser = () => {
       while (retries > 0) {
         console.log(`Kiểm tra người dùng lần ${attempt}/3...`);
         
-        const { data: user, error } = await supabase
-          .from('users')
+        const { data: user, error } = await db.users()
           .select('*')
-          .eq('id', userId as any)
+          .eq('id', userId)
           .maybeSingle();
         
         if (error) {
