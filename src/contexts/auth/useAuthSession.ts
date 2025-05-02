@@ -1,10 +1,10 @@
-
 // Chỉ sửa một phần của tệp để giải quyết các lỗi TypeScript
 // Bắt đầu từ dòng chứa lỗi
 
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/integrations/supabase/typeSafeClient"; // Thêm import db
 import { AuthState, UserDetails } from "./types";
 import { setItem, LOCAL_STORAGE_KEYS } from "@/utils/localStorageService";
 
@@ -45,9 +45,8 @@ export function useAuthSession() {
       console.log("Đang lấy thông tin chi tiết người dùng:", targetUserId);
 
       // Thêm timeout để tránh treo vô hạn
-      const getUserPromise = supabase
-        .from('users')
-        .select('credits, email_verified, subscription, role') // Thêm role để giảm số lần gọi API
+      const getUserPromise = db.users() // Sử dụng db.users() thay vì supabase.from('users')
+        .select('credits, email_verified, subscription, role')
         .eq('id', targetUserId as any)
         .single();
         
@@ -82,8 +81,7 @@ export function useAuthSession() {
       let subData = null;
       
       if (!userData?.subscription || userData.subscription === "Không có") {
-        const getSubPromise = supabase
-          .from('user_subscriptions')
+        const getSubPromise = db.user_subscriptions() // Sử dụng db.user_subscriptions()
           .select(`
             subscription_id,
             end_date,
@@ -169,7 +167,7 @@ export function useAuthSession() {
       
       // Thử gọi RPC is_admin từ database - nhanh nhất
       try {
-        const { data: isAdmin, error: rpcError } = await supabase.rpc('is_admin', { uid: targetUserId });
+        const { data: isAdmin, error: rpcError } = await db.rpc('is_admin', { uid: targetUserId });
         
         if (!rpcError && isAdmin === true) {
           console.log("Xác định quyền admin qua RPC function");
@@ -185,8 +183,7 @@ export function useAuthSession() {
       
       // Kiểm tra từ user_roles nếu RPC không thành công
       try {
-        const { data: roleData, error: roleError } = await supabase
-          .from('user_roles')
+        const { data: roleData, error: roleError } = await db.user_roles() // Sử dụng db.user_roles()
           .select('*')
           .eq('user_id', targetUserId as any)
           .eq('role', 'admin' as any)

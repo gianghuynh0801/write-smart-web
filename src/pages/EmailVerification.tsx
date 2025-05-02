@@ -1,7 +1,7 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/integrations/supabase/typeSafeClient";
 import { Button } from "@/components/ui/button";
 import Navbar from "@/components/common/Navbar";
 import Footer from "@/components/common/Footer";
@@ -25,11 +25,10 @@ const EmailVerification = () => {
         }
 
         // Verify token
-        const { data, error } = await supabase
-          .from('verification_tokens' as any)
+        const { data, error } = await db.verification_tokens()
           .select('*')
-          .eq('token', token as any)
-          .eq('type', 'email_verification' as any)
+          .eq('token', token)
+          .eq('type', 'email_verification')
           .single();
 
         if (error || !data) {
@@ -48,27 +47,25 @@ const EmailVerification = () => {
         }
 
         // Update user's email_verified status
-        if (!dataAny || typeof dataAny !== 'object' || !('user_id' in dataAny)) {
+        if (!data || typeof data !== 'object' || !('user_id' in data)) {
           throw new Error("Không tìm thấy ID người dùng");
         }
         
-        const { error: updateError } = await supabase
-          .from('users' as any)
-          .update({ email_verified: true } as any)
-          .eq('id', dataAny.user_id as any);
+        const { error: updateError } = await db.users()
+          .update({ email_verified: true })
+          .eq('id', data.user_id);
 
         if (updateError) {
           throw updateError;
         }
 
         // Delete the used token
-        if (!dataAny || typeof dataAny !== 'object' || !('id' in dataAny)) {
+        if (!data || typeof data !== 'object' || !('id' in data)) {
           console.warn("Không thể xóa token đã sử dụng (không có ID)");
         } else {
-          await supabase
-            .from('verification_tokens' as any)
+          await db.verification_tokens()
             .delete()
-            .eq('id', dataAny.id as any);
+            .eq('id', data.id);
         }
 
         setStatus("success");

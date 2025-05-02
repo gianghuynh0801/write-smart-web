@@ -12,6 +12,7 @@ export type TableType = {
   system_configurations: any;
   articles: any;
   profiles: any;
+  verification_tokens: any; // Thêm verification_tokens vào danh sách bảng
 }
 
 // Wrapper cải tiến để truy cập các bảng trong Supabase mà không gặp lỗi TypeScript
@@ -25,6 +26,7 @@ export const db = {
   system_configurations: () => supabase.from('system_configurations') as unknown as PostgrestQueryBuilder<any, any, any>,
   articles: () => supabase.from('articles') as unknown as PostgrestQueryBuilder<any, any, any>,
   profiles: () => supabase.from('profiles') as unknown as PostgrestQueryBuilder<any, any, any>,
+  verification_tokens: () => supabase.from('verification_tokens') as unknown as PostgrestQueryBuilder<any, any, any>,
   
   // Helper để truy cập bảng tùy chỉnh
   table: (tableName: string) => supabase.from(tableName) as unknown as PostgrestQueryBuilder<any, any, any>,

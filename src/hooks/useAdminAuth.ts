@@ -1,8 +1,8 @@
-
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/integrations/supabase/typeSafeClient";
 import { useAuth } from "@/contexts/auth";
 
 // Thông tin đăng nhập mặc định cho quản trị viên - Xuất ra để LoginForm có thể sử dụng
@@ -34,11 +34,10 @@ export const useAdminAuth = () => {
       console.log("Kiểm tra quyền admin cho user:", auth.user.id);
       
       // Kiểm tra quyền admin trong bảng user_roles
-      const { data, error } = await supabase
-        .from('user_roles' as any)
+      const { data, error } = await db.user_roles()
         .select('*')
-        .eq('user_id', auth.user.id as any)
-        .eq('role', 'admin' as any)
+        .eq('user_id', auth.user.id)
+        .eq('role', 'admin')
         .maybeSingle();
         
       if (error) {

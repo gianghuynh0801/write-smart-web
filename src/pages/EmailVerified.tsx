@@ -1,7 +1,7 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/integrations/supabase/typeSafeClient";
 import { Button } from "@/components/ui/button";
 import Navbar from "@/components/common/Navbar";
 import Footer from "@/components/common/Footer";
@@ -31,11 +31,10 @@ const EmailVerified = () => {
         console.log("Found verification token:", token);
 
         // Xác minh token trong bảng verification_tokens
-        const { data: tokenData, error: tokenError } = await supabase
-          .from('verification_tokens')
+        const { data: tokenData, error: tokenError } = await db.verification_tokens()
           .select('*')
-          .eq('token', token as any)
-          .eq('type', 'email_verification' as any)
+          .eq('token', token)
+          .eq('type', 'email_verification')
           .maybeSingle();
 
         if (tokenError) {
@@ -67,10 +66,9 @@ const EmailVerified = () => {
         }
         
         console.log("Updating user verification status for user:", tokenData.user_id);
-        const { error: updateError } = await supabase
-          .from('users')
-          .update({ email_verified: true } as any)
-          .eq('id', tokenData.user_id as any);
+        const { error: updateError } = await db.users()
+          .update({ email_verified: true })
+          .eq('id', tokenData.user_id);
 
         if (updateError) {
           console.error("Error updating user verification status:", updateError);
@@ -82,17 +80,16 @@ const EmailVerified = () => {
           console.warn("Không thể xóa token đã sử dụng (không có ID)");
         } else {
           console.log("Deleting used verification token");
-          await supabase
-            .from('verification_tokens')
+          await db.verification_tokens()
             .delete()
-            .eq('id', tokenData.id as any);
+            .eq('id', tokenData.id);
         }
 
         console.log("Email verification completed successfully!");
         setStatus("success");
         setMessage("Email của bạn đã được xác thực thành công!");
         
-        // Chuyển hướng đến trang đăng nhập sau 3 giây
+        // Chuyển hướng đến trang đăng nh���p sau 3 giây
         setTimeout(() => {
           navigate("/login");
         }, 3000);

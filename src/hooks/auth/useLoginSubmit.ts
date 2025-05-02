@@ -1,7 +1,7 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/integrations/supabase/typeSafeClient";
 import { useAuth } from "@/contexts/auth";
 import { useToast } from "@/hooks/use-toast";
 import { setItem, LOCAL_STORAGE_KEYS } from "@/utils/localStorageService";
@@ -84,10 +84,9 @@ export function useLoginSubmit() {
   const markEmailAsVerified = async (email: string) => {
     try {
       // Lấy thông tin người dùng từ email
-      const { data: userData, error: userError } = await supabase
-        .from('users')
+      const { data: userData, error: userError } = await db.users()
         .select('id')
-        .eq('email', email as any)
+        .eq('email', email)
         .maybeSingle();
       
       if (userError || !userData) {
@@ -105,10 +104,9 @@ export function useLoginSubmit() {
       }
       
       // Cập nhật trạng thái xác thực email
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({ email_verified: true } as any)
-        .eq('id', userId as any);
+      const { error: updateError } = await db.users()
+        .update({ email_verified: true })
+        .eq('id', userId);
       
       if (updateError) {
         console.error("Lỗi khi cập nhật trạng thái xác thực email:", updateError);
