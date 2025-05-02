@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth";
+import { adminRoleService } from "@/services/auth/adminRoleService";
 
 export const useAdminRequired = () => {
   const navigate = useNavigate();
@@ -40,7 +41,10 @@ export const useAdminRequired = () => {
 
         console.log("Đã tìm thấy session, user ID:", user.id);
         
-        // Kiểm tra vai trò admin - chức năng này đã được cải thiện trong AuthContext
+        // Xóa cache để đảm bảo luôn kiểm tra lại quyền admin từ database
+        adminRoleService.clearCache(user.id);
+        
+        // Kiểm tra vai trò admin - sử dụng adminRoleService
         const isUserAdmin = await checkAdminStatus(user.id);
 
         if (!isUserAdmin) {

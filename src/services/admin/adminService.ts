@@ -1,5 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { adminRoleService } from "@/services/auth/adminRoleService";
 
 export const defaultAdmin = {
   username: "admin",
@@ -8,119 +9,105 @@ export const defaultAdmin = {
 };
 
 /**
- * Checks if a user has admin role by querying multiple sources
- * @param userId The user ID to check
- * @returns Object containing role data and any error
+ * Kiểm tra quyền admin đầy đủ cho một người dùng
+ * Hàm này sử dụng AdminRoleService để tận dụng cơ chế cache và fallback
+ * @param userId ID người dùng cần kiểm tra
+ * @returns Thông tin về quyền admin và lỗi nếu có
  */
 export const checkAdminRole = async (userId: string) => {
-  console.log("Checking admin role for user:", userId);
-  
-  try {
-    // Thử từng phương thức kiểm tra admin một cách tuần tự với cơ chế fallback
-    
-    // 1. Kiểm tra từ bảng users trước (nhanh nhất)
-    try {
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('role')
-        .eq('id', userId)
-        .maybeSingle();
-      
-      if (!userError && userData?.role === 'admin') {
-        console.log("Admin role found in users table:", userData);
-        return { 
-          roleData: { user_id: userId, role: 'admin' }, 
-          roleError: null 
-        };
-      }
-    } catch (err) {
-      console.log("Error checking admin role in users table:", err);
-      // Tiếp tục với phương thức tiếp theo nếu lỗi
-    }
-    
-    // 1.5. Kiểm tra từ bảng seo_project.users
-    try {
-      const { data: userData, error: userError } = await supabase
-        .from('seo_project.users')
-        .select('role')
-        .eq('id', userId)
-        .maybeSingle();
-      
-      if (!userError && userData?.role === 'admin') {
-        console.log("Admin role found in seo_project.users table:", userData);
-        return { 
-          roleData: { user_id: userId, role: 'admin' }, 
-          roleError: null 
-        };
-      }
-    } catch (err) {
-      console.log("Error checking admin role in seo_project.users table:", err);
-      // Tiếp tục với phương thức tiếp theo nếu lỗi
-    }
-    
-    // 2. Kiểm tra từ bảng user_roles (chính thức)
-    try {
-      const { data: roleData, error: roleError } = await supabase
-        .from('user_roles')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('role', 'admin')
-        .single();
-      
-      console.log("Admin role check in user_roles:", { roleData, roleError });
-      
-      if (!roleError && roleData) {
-        return { roleData, roleError: null };
-      }
-    } catch (err) {
-      console.log("Error checking admin role in user_roles table:", err);
-      // Tiếp tục với phương thức tiếp theo nếu lỗi
-    }
-    
-    // 2.5 Kiểm tra trong bảng seo_project.user_roles
-    try {
-      const { data: roleData, error: roleError } = await supabase
-        .from('seo_project.user_roles')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('role', 'admin')
-        .single();
-      
-      console.log("Admin role check in seo_project.user_roles:", { roleData, roleError });
-      
-      if (!roleError && roleData) {
-        return { roleData, roleError: null };
-      }
-    } catch (err) {
-      console.log("Error checking admin role in seo_project.user_roles table:", err);
-      // Tiếp tục với phương thức tiếp theo nếu lỗi
-    }
-    
-    // 3. Sử dụng RPC function is_admin nếu có (hiệu quả nhất nhưng có thể không có sẵn)
-    try {
-      const { data: isAdmin, error: rpcError } = await supabase.rpc('is_admin', { uid: userId });
-      
-      console.log("Admin role check with RPC:", { isAdmin, rpcError });
-      
-      if (!rpcError && isAdmin === true) {
-        return { 
-          roleData: { user_id: userId, role: 'admin' }, 
-          roleError: null 
-        };
-      }
-    } catch (err) {
-      console.log("Error checking admin role with RPC:", err);
-      // Đây là phương thức cuối cùng, không có fallback nữa
-    }
-    
-    // Nếu tất cả các phương thức đều thất bại hoặc không tìm thấy vai trò admin
-    return { roleData: null, roleError: "Không tìm thấy quyền admin cho người dùng này" };
-    
-  } catch (error) {
-    console.error("Error checking admin role:", error);
-    return { 
-      roleData: null, 
-      roleError: error instanceof Error ? error.message : new Error('Unknown error checking admin role')
+  if (!userId) {
+    return {
+      roleData: null,
+      roleError: "Không có ID người dùng"
     };
   }
-}
+  
+  return await adminRoleService.getAdminRoleData(userId);
+};
+
+/**
+ * Thêm quyền admin cho một người dùng
+ * @param userId ID người dùng cần thêm quyền
+ * @returns Kết quả thêm quyền
+ */
+export const addAdminRole = async (userId: string) => {
+  if (!userId) return { success: false, error: "Không có ID người dùng" };
+  
+  try {
+    // Thêm vào bảng seo_project.user_roles
+    const { error: projectRoleError } = await supabase
+      .from('seo_project.user_roles')
+      .insert({
+        user_id: userId,
+        role: 'admin'
+      });
+    
+    if (projectRoleError) {
+      console.error("Lỗi khi thêm quyền admin vào seo_project.user_roles:", projectRoleError);
+    }
+    
+    // Cập nhật trường role trong bảng seo_project.users nếu có
+    const { error: projectUserError } = await supabase
+      .from('seo_project.users')
+      .update({ role: 'admin' })
+      .eq('id', userId);
+    
+    if (projectUserError) {
+      console.error("Lỗi khi cập nhật role trong seo_project.users:", projectUserError);
+    }
+    
+    // Xóa cache để đảm bảo lần kiểm tra tiếp theo sẽ lấy dữ liệu mới từ database
+    adminRoleService.clearCache(userId);
+    
+    return { success: true };
+  } catch (error) {
+    console.error("Lỗi không mong đợi khi thêm quyền admin:", error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : "Lỗi không xác định khi thêm quyền admin"
+    };
+  }
+};
+
+/**
+ * Xóa quyền admin của một người dùng
+ * @param userId ID người dùng cần xóa quyền
+ * @returns Kết quả xóa quyền
+ */
+export const removeAdminRole = async (userId: string) => {
+  if (!userId) return { success: false, error: "Không có ID người dùng" };
+  
+  try {
+    // Xóa từ bảng seo_project.user_roles
+    const { error: projectRoleError } = await supabase
+      .from('seo_project.user_roles')
+      .delete()
+      .eq('user_id', userId)
+      .eq('role', 'admin');
+    
+    if (projectRoleError) {
+      console.error("Lỗi khi xóa quyền admin từ seo_project.user_roles:", projectRoleError);
+    }
+    
+    // Cập nhật trường role trong bảng seo_project.users nếu có
+    const { error: projectUserError } = await supabase
+      .from('seo_project.users')
+      .update({ role: 'user' })
+      .eq('id', userId);
+    
+    if (projectUserError) {
+      console.error("Lỗi khi cập nhật role trong seo_project.users:", projectUserError);
+    }
+    
+    // Xóa cache để đảm bảo lần kiểm tra tiếp theo sẽ lấy dữ liệu mới từ database
+    adminRoleService.clearCache(userId);
+    
+    return { success: true };
+  } catch (error) {
+    console.error("Lỗi không mong đợi khi xóa quyền admin:", error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : "Lỗi không xác định khi xóa quyền admin"
+    };
+  }
+};

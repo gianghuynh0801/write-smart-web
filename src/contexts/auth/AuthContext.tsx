@@ -3,6 +3,7 @@ import React, { createContext, useContext } from "react";
 import { useAuthSession } from "./useAuthSession";
 import { useAuthActions } from "./useAuthActions";
 import { AuthContextType, AuthState } from "./types";
+import { adminRoleService } from "@/services/auth/adminRoleService";
 
 const initialAuthState: AuthState = {
   session: null,
@@ -31,10 +32,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     state, 
     setState,
     updateUserDetails, 
-    fetchUserDetails, 
-    checkAdminStatus, 
-    refreshSession 
+    fetchUserDetails
   } = useAuthSession();
+  
+  const checkAdminStatus = async (userId: string): Promise<boolean> => {
+    if (!userId) return false;
+    
+    try {
+      // Sử dụng AdminRoleService để kiểm tra quyền admin
+      return await adminRoleService.checkAdminStatus(userId);
+    } catch (error) {
+      console.error("Lỗi khi kiểm tra quyền admin:", error);
+      return false;
+    }
+  };
+  
+  const refreshSession = async (): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase.auth.refreshSession();
+      
+      if (error || !data.session) {
+        console.error("Lỗi khi làm mới session:", error);
+        return false;
+      }
+      
+      // Cập nhật state với session mới
+      setState(prev => ({
+        ...prev,
+        session: data.session,
+        user: data.session.user
+      }));
+      
+      // Kiểm tra lại quyền admin với user id mới
+      if (data.session.user) {
+        const isAdmin = await checkAdminStatus(data.session.user.id);
+        setState(prev => ({ ...prev, isAdmin }));
+      }
+      
+      return true;
+    } catch (error) {
+      console.error("Lỗi không mong đợi khi làm mới session:", error);
+      return false;
+    }
+  };
   
   const { login, logout } = useAuthActions({
     state,

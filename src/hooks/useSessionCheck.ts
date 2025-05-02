@@ -3,7 +3,8 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { setItem, LOCAL_STORAGE_KEYS } from "@/utils/localStorageService";
-import { useAuth } from "@/contexts/auth"; // Sửa import path
+import { useAuth } from "@/contexts/auth";
+import { adminRoleService } from "@/services/auth/adminRoleService";
 
 export function useSessionCheck() {
   const navigate = useNavigate();
@@ -38,6 +39,9 @@ export function useSessionCheck() {
         
         // Lưu token vào localStorage
         setItem(LOCAL_STORAGE_KEYS.SESSION_TOKEN, session.access_token);
+        
+        // Xóa cache để đảm bảo luôn kiểm tra lại quyền admin từ database
+        adminRoleService.clearCache(user.id);
         
         const isUserAdmin = await checkAdminStatus(user.id);
 

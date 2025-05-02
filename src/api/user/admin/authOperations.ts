@@ -1,5 +1,4 @@
 
-import { authService } from "@/services/authService";
 import { supabase } from "@/integrations/supabase/client";
 
 /**
@@ -8,9 +7,47 @@ import { supabase } from "@/integrations/supabase/client";
  */
 export const getAdminToken = async (): Promise<string | null> => {
   try {
-    return await authService.getAdminToken();
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session) {
+      console.log("[getAdminToken] Không có session hiện tại");
+      return null;
+    }
+    
+    // Thử kiểm tra quyền admin
+    try {
+      const { data: isAdmin, error: rpcError } = await supabase.rpc('is_admin', { uid: session.user.id });
+      
+      if (rpcError || !isAdmin) {
+        console.log("[getAdminToken] Người dùng không phải là admin hoặc lỗi khi kiểm tra:", rpcError);
+        return null;
+      }
+    } catch (error) {
+      console.error("[getAdminToken] Lỗi khi kiểm tra quyền admin:", error);
+      
+      // Thử phương pháp khác nếu không thể sử dụng RPC
+      try {
+        const { data, error } = await supabase
+          .from('seo_project.user_roles')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .eq('role', 'admin')
+          .maybeSingle();
+        
+        if (error || !data) {
+          console.log("[getAdminToken] Người dùng không phải là admin hoặc lỗi khi kiểm tra:", error);
+          return null;
+        }
+      } catch (innerError) {
+        console.error("[getAdminToken] Lỗi khi kiểm tra quyền admin (phương pháp thay thế):", innerError);
+        return null;
+      }
+    }
+    
+    // Nếu đã vượt qua các kiểm tra trên, người dùng là admin
+    return session.access_token;
   } catch (error) {
-    console.error("[getAdminToken] Lỗi khi lấy token admin:", error);
+    console.error("[getAdminToken] Lỗi không mong đợi:", error);
     return null;
   }
 };

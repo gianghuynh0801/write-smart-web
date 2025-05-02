@@ -1,6 +1,9 @@
 
 import { supabase } from "@/integrations/supabase/client";
 
+/**
+ * Dịch vụ quản lý và kiểm tra quyền admin - sử dụng mẫu Singleton
+ */
 class AdminRoleService {
   private static instance: AdminRoleService;
   private adminUserIds: Map<string, boolean> = new Map();
@@ -9,7 +12,9 @@ class AdminRoleService {
   
   private constructor() {}
 
-  // Singleton pattern
+  /**
+   * Lấy instance của dịch vụ AdminRoleService (Singleton pattern)
+   */
   public static getInstance(): AdminRoleService {
     if (!AdminRoleService.instance) {
       AdminRoleService.instance = new AdminRoleService();
@@ -17,8 +22,14 @@ class AdminRoleService {
     return AdminRoleService.instance;
   }
 
-  // Kiểm tra quyền admin cho một người dùng
+  /**
+   * Kiểm tra nhanh quyền admin cho một người dùng (sử dụng cache)
+   * @param userId ID của người dùng cần kiểm tra
+   * @returns Promise<boolean> True nếu là admin, false nếu không phải
+   */
   public async checkAdminStatus(userId: string): Promise<boolean> {
+    if (!userId) return false;
+    
     // Kiểm tra cache trước
     if (this.adminUserIds.has(userId)) {
       const lastCheck = this.lastChecks.get(userId) || 0;
@@ -35,7 +46,7 @@ class AdminRoleService {
       
       // Thử từng phương thức kiểm tra admin một cách tuần tự với cơ chế fallback
       
-      // 1. Gọi RPC function is_admin từ database
+      // 1. Gọi RPC function is_admin từ database (nếu có)
       try {
         const { data, error } = await supabase.rpc('is_admin', { uid: userId });
         
@@ -72,7 +83,7 @@ class AdminRoleService {
         console.error("Lỗi ngoại lệ khi kiểm tra bảng seo_project.user_roles:", error);
       }
       
-      // 3. Kiểm tra từ bảng user_roles trong schema public nếu trước đó không tìm thấy
+      // 3. Kiểm tra từ bảng user_roles trong schema public nếu có
       try {
         const { data, error } = await supabase
           .from('user_roles')
@@ -81,7 +92,7 @@ class AdminRoleService {
           .eq('role', 'admin')
           .maybeSingle();
         
-        if (error) {
+        if (error && !error.message.includes("does not exist")) {
           console.error("Lỗi khi kiểm tra bảng public.user_roles:", error);
         } else if (data) {
           // Cache kết quả để sử dụng lại
@@ -93,7 +104,7 @@ class AdminRoleService {
         console.error("Lỗi ngoại lệ khi kiểm tra bảng public.user_roles:", error);
       }
       
-      // 4. Kiểm tra từ bảng users trong schema public
+      // 4. Kiểm tra từ bảng users trong schema public nếu các phương thức trước không thành công
       try {
         const { data, error } = await supabase
           .from('users')
@@ -101,7 +112,7 @@ class AdminRoleService {
           .eq('id', userId)
           .maybeSingle();
         
-        if (error) {
+        if (error && !error.message.includes("does not exist")) {
           console.error("Lỗi khi kiểm tra bảng users:", error);
         } else if (data?.role === 'admin') {
           // Cache kết quả để sử dụng lại
@@ -143,19 +154,133 @@ class AdminRoleService {
     }
   }
 
-  // Xóa cache cho một user ID cụ thể
+  /**
+   * Lấy dữ liệu đầy đủ về quyền admin
+   * @param userId ID người dùng cần kiểm tra
+   * @returns Object chứa thông tin về quyền admin và lỗi nếu có
+   */
+  public async getAdminRoleData(userId: string) {
+    console.log("Lấy dữ liệu quyền admin cho user:", userId);
+    
+    try {
+      // Thử từng phương thức kiểm tra admin một cách tuần tự với cơ chế fallback
+      
+      // 1. Kiểm tra từ bảng users trước (nhanh nhất)
+      try {
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', userId)
+          .maybeSingle();
+        
+        if (!userError && userData?.role === 'admin') {
+          console.log("Admin role found in users table:", userData);
+          return { 
+            roleData: { user_id: userId, role: 'admin' }, 
+            roleError: null 
+          };
+        }
+      } catch (err) {
+        console.log("Error checking admin role in users table:", err);
+      }
+      
+      // 1.5. Kiểm tra từ bảng seo_project.users
+      try {
+        const { data: userData, error: userError } = await supabase
+          .from('seo_project.users')
+          .select('role')
+          .eq('id', userId)
+          .maybeSingle();
+        
+        if (!userError && userData?.role === 'admin') {
+          console.log("Admin role found in seo_project.users table:", userData);
+          return { 
+            roleData: { user_id: userId, role: 'admin' }, 
+            roleError: null 
+          };
+        }
+      } catch (err) {
+        console.log("Error checking admin role in seo_project.users table:", err);
+      }
+      
+      // 2. Kiểm tra từ bảng user_roles trong schema public nếu có
+      try {
+        const { data: roleData, error: roleError } = await supabase
+          .from('user_roles')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('role', 'admin')
+          .maybeSingle();
+        
+        if (!roleError && roleData) {
+          return { roleData, roleError: null };
+        }
+      } catch (err) {
+        console.log("Error checking admin role in user_roles table:", err);
+      }
+      
+      // 2.5 Kiểm tra trong bảng seo_project.user_roles
+      try {
+        const { data: roleData, error: roleError } = await supabase
+          .from('seo_project.user_roles')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('role', 'admin')
+          .maybeSingle();
+        
+        if (!roleError && roleData) {
+          return { roleData, roleError: null };
+        }
+      } catch (err) {
+        console.log("Error checking admin role in seo_project.user_roles table:", err);
+      }
+      
+      // 3. Sử dụng RPC function is_admin nếu có
+      try {
+        const { data: isAdmin, error: rpcError } = await supabase.rpc('is_admin', { uid: userId });
+        
+        if (!rpcError && isAdmin === true) {
+          return { 
+            roleData: { user_id: userId, role: 'admin' }, 
+            roleError: null 
+          };
+        }
+      } catch (err) {
+        console.log("Error checking admin role with RPC:", err);
+      }
+      
+      // Nếu tất cả các phương thức đều thất bại hoặc không tìm thấy vai trò admin
+      return { roleData: null, roleError: "Không tìm thấy quyền admin cho người dùng này" };
+      
+    } catch (error) {
+      console.error("Error checking admin role:", error);
+      return { 
+        roleData: null, 
+        roleError: error instanceof Error ? error.message : "Lỗi không xác định khi kiểm tra quyền admin"
+      };
+    }
+  }
+
+  /**
+   * Xóa cache cho một user ID cụ thể
+   */
   public clearCache(userId: string): void {
     this.adminUserIds.delete(userId);
     this.lastChecks.delete(userId);
   }
 
-  // Xóa toàn bộ cache
+  /**
+   * Xóa toàn bộ cache
+   */
   public clearAllCache(): void {
     this.adminUserIds.clear();
     this.lastChecks.clear();
   }
 
-  // Thay đổi thời gian cache tùy chỉnh (đơn vị: mili giây)
+  /**
+   * Thay đổi thời gian cache tùy chỉnh
+   * @param durationMs Thời gian cache tính bằng mili giây
+   */
   public setCacheDuration(durationMs: number): void {
     if (durationMs > 0) {
       this.cacheDuration = durationMs;
