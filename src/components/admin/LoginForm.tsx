@@ -4,13 +4,24 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { defaultAdmin } from "@/hooks/useAdminAuth"; // Sửa import để sử dụng defaultAdmin từ useAdminAuth
 import { Eye, EyeOff } from "lucide-react";
 
-const LoginForm = () => {
+// Thông tin đăng nhập mặc định cho quản trị viên
+export const defaultAdmin = {
+  username: "admin",
+  email: "admin@example.com",
+  password: "Admin123!"
+};
+
+export interface LoginFormProps {
+  onSubmit: (email: string, password: string) => Promise<void>;
+  isLoading?: boolean;
+  error?: string | null;
+}
+
+export const LoginForm = ({ onSubmit, isLoading = false, error }: LoginFormProps) => {
   const [email, setEmail] = useState(defaultAdmin.email);
   const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -18,19 +29,17 @@ const LoginForm = () => {
   // Xử lý đăng nhập
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Kiểm tra thông tin đăng nhập với thông tin mặc định
-    if (email !== defaultAdmin.email || password !== defaultAdmin.password) {
+    
+    try {
+      await onSubmit(email, password);
+    } catch (error) {
+      console.error("Lỗi trong quá trình đăng nhập:", error);
       toast({
         title: "Lỗi đăng nhập",
-        description: "Thông tin đăng nhập không chính xác",
+        description: "Đã xảy ra lỗi trong quá trình đăng nhập",
         variant: "destructive",
       });
-      return;
     }
-
-    // Chuyển hướng đến trang quản trị
-    navigate("/admin");
   };
 
   return (

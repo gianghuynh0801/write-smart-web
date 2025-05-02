@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
-import { LoginForm } from "@/components/admin/LoginForm";
+import LoginForm from "@/components/admin/LoginForm"; // Thay đổi cách import
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { ArrowLeft, AlertCircle } from "lucide-react";
@@ -177,7 +177,10 @@ const AdminLogin = () => {
           </Alert>
         )}
         
-        <LoginForm onSubmit={handleAdminLogin} isLoading={isLoading} />
+        <div className="bg-white shadow-md rounded-lg p-6 mb-6">
+          <h2 className="text-2xl font-bold text-center mb-6">Đăng nhập quản trị</h2>
+          <LoginForm onSubmit={handleAdminLogin} isLoading={isLoading} />
+        </div>
       </div>
     </div>
   );

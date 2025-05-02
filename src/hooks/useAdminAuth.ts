@@ -84,3 +84,5 @@ export const useAdminAuth = () => {
     checkAdminAccess
   };
 };
+
+export default useAdminAuth;
