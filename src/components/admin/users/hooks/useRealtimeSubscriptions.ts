@@ -84,16 +84,20 @@ export const useRealtimeSubscriptions = (userIds: (string | number)[]) => {
       const { data, error } = await supabase
         .from('subscriptions')
         .select('name')
-        .eq('id', subscriptionId)
+        .eq('id', subscriptionId as any)
         .single();
         
       if (error || !data) {
         throw error || new Error("Không tìm thấy dữ liệu");
       }
       
+      // Kiểm tra và truy cập an toàn thuộc tính name
+      const subscriptionName = data && typeof data === 'object' && 'name' in data && data.name ? 
+        data.name : "Không có";
+      
       // Cập nhật cache
       subscriptionCache[subscriptionId] = {
-        name: data.name,
+        name: subscriptionName,
         timestamp: now
       };
       
@@ -104,7 +108,7 @@ export const useRealtimeSubscriptions = (userIds: (string | number)[]) => {
         console.error("[useRealtimeSubscriptions] Lỗi khi lưu cache:", err);
       }
       
-      return data.name;
+      return subscriptionName;
     } catch (error) {
       console.error("[useRealtimeSubscriptions] Lỗi khi lấy tên gói đăng ký:", error);
       return "Không có";

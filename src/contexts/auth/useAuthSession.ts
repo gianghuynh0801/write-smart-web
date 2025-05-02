@@ -1,4 +1,7 @@
 
+// Chỉ sửa một phần của tệp để giải quyết các lỗi TypeScript
+// Bắt đầu từ dòng chứa lỗi
+
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -45,7 +48,7 @@ export function useAuthSession() {
       const getUserPromise = supabase
         .from('users')
         .select('credits, email_verified, subscription, role') // Thêm role để giảm số lần gọi API
-        .eq('id', targetUserId)
+        .eq('id', targetUserId as any)
         .single();
         
       const timeoutPromise = new Promise((_, reject) => 
@@ -90,8 +93,8 @@ export function useAuthSession() {
               features
             )
           `)
-          .eq('user_id', targetUserId)
-          .eq('status', 'active')
+          .eq('user_id', targetUserId as any)
+          .eq('status', 'active' as any)
           .maybeSingle();
           
         const subTimeoutPromise = new Promise((_, reject) => 
@@ -185,8 +188,8 @@ export function useAuthSession() {
         const { data: roleData, error: roleError } = await supabase
           .from('user_roles')
           .select('*')
-          .eq('user_id', targetUserId)
-          .eq('role', 'admin')
+          .eq('user_id', targetUserId as any)
+          .eq('role', 'admin' as any)
           .maybeSingle();
         
         if (!roleError && roleData) {

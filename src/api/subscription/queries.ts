@@ -14,11 +14,14 @@ export const fetchSubscriptionPlans = async (): Promise<Subscription[]> => {
     throw new Error(`Error fetching subscription plans: ${error.message}`);
   }
 
-  return (data || []).map((row) => ({
-    ...(row as any),
-    features: row && typeof row === 'object' && 'features' in row ? 
-      parseSubscriptionFeatures(row.features as any) : []
-  })) as Subscription[];
+  return (data || []).map((row) => {
+    if (!row) return {} as Subscription;
+    return {
+      ...(row as any),
+      features: row && typeof row === 'object' && 'features' in row ? 
+        parseSubscriptionFeatures(row.features as any) : []
+    } as Subscription;
+  });
 };
 
 export const fetchUserSubscription = async (userId: string) => {

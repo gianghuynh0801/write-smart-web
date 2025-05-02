@@ -11,7 +11,7 @@ export const useEmailCheck = () => {
       const { data, error } = await supabase
         .from('users')
         .select('email')
-        .eq('email', email.trim().toLowerCase())
+        .eq('email', email.trim().toLowerCase() as any)
         .maybeSingle();
       
       if (error) {

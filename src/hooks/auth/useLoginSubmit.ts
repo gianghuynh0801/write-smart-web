@@ -87,7 +87,7 @@ export function useLoginSubmit() {
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('id')
-        .eq('email', email)
+        .eq('email', email as any)
         .maybeSingle();
       
       if (userError || !userData) {
@@ -95,11 +95,20 @@ export function useLoginSubmit() {
         return false;
       }
       
+      // Kiểm tra và truy cập an toàn thuộc tính id
+      const userId = userData && typeof userData === 'object' && 'id' in userData ? 
+        userData.id : null;
+        
+      if (!userId) {
+        console.error("ID người dùng không hợp lệ");
+        return false;
+      }
+      
       // Cập nhật trạng thái xác thực email
       const { error: updateError } = await supabase
         .from('users')
-        .update({ email_verified: true })
-        .eq('id', userData.id);
+        .update({ email_verified: true } as any)
+        .eq('id', userId as any);
       
       if (updateError) {
         console.error("Lỗi khi cập nhật trạng thái xác thực email:", updateError);

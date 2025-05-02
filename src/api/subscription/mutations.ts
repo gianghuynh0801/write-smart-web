@@ -50,7 +50,7 @@ export const updateUserSubscription = async (userId: string, planId: number): Pr
         const { error: updateError } = await supabase
           .from("user_subscriptions")
           .update({ status: "inactive" } as any)
-          .eq("id", subscriptionId);
+          .eq("id", subscriptionId as any);
 
         if (updateError) throw new Error(`Error updating old subscription: ${updateError.message}`);
       }
@@ -77,7 +77,7 @@ export const updateUserSubscription = async (userId: string, planId: number): Pr
         amount: typedPlanData.price,
         status: "success",
         description: `Thanh toán gói ${typedPlanData.name}`,
-        payment_at: new Date().toISOString(), // Thêm trường bắt buộc payment_at
+        payment_at: new Date().toISOString(),
       } as any);
 
     if (paymentError) throw new Error(`Error recording payment: ${paymentError.message}`);
@@ -119,7 +119,7 @@ export const cancelUserSubscription = async (userId: string): Promise<Subscripti
   const { error: updateError } = await supabase
     .from("user_subscriptions")
     .update({ status: "canceled" } as any)
-    .eq("id", subscriptionId);
+    .eq("id", subscriptionId as any);
 
   if (updateError) {
     throw new Error(`Error canceling subscription: ${updateError.message}`);

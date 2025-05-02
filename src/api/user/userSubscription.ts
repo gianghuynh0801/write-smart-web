@@ -108,7 +108,13 @@ export const getSubscriptionOptions = async (): Promise<string[]> => {
     }
     
     // Luôn đảm bảo "Không có" (None) là một tùy chọn
-    const options = data ? data.map(row => row.name) : [];
+    const options = data ? data.map(row => {
+      if (!row || typeof row !== 'object' || !('name' in row) || !row.name) {
+        return "Không xác định";
+      }
+      return row.name as string;
+    }) : [];
+    
     if (!options.includes("Không có")) {
       options.unshift("Không có");
     }

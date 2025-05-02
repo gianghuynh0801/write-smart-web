@@ -165,7 +165,7 @@ export const useRegisterUser = () => {
         const { data: user, error } = await supabase
           .from('users')
           .select('*')
-          .eq('id', userId)
+          .eq('id', userId as any)
           .maybeSingle();
         
         if (error) {
