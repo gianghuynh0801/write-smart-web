@@ -74,7 +74,7 @@ export async function handleSubscriptionChange(userId: string, subscriptionName:
       'active'
     );
 
-    // Truy cập an toàn thuộc tính name
+    // Hiển thị tên gói đăng ký an toàn
     const displayName = subscriptionName || "Không xác định";
     console.log("Đã hoàn thành việc cập nhật gói đăng ký thành:", displayName);
     

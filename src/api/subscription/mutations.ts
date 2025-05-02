@@ -18,6 +18,7 @@ export const updateUserSubscription = async (userId: string, planId: number): Pr
   // Type safe features
   const typedPlanData: Subscription = {
     ...(planData as any), 
+    // Kiểm tra null trước khi truy cập thuộc tính
     features: planData && typeof planData === 'object' && 'features' in planData ? 
       parseSubscriptionFeatures(planData.features as any) : [],
   };

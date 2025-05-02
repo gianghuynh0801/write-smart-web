@@ -7,6 +7,7 @@ import { useSessionCheck } from "./useSessionCheck";
 import { useAuthListener } from "./useAuthListener";
 
 export function useLogin() {
+  // Truy cập đầy đủ các thuộc tính và phương thức từ useEmailVerification
   const { 
     unconfirmedEmail, 
     setUnconfirmedEmail,

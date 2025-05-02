@@ -1,210 +1,203 @@
 
-import { useEffect, useState, useRef } from "react";
-import { User } from "@/types/user";
-import { supabase } from "@/integrations/supabase/client";
-import { featureFlags } from "@/config/featureFlags";
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
-// Singleton để lưu trữ kênh realtime được chia sẻ giữa các component
-const channelSingleton = {
-  channel: null as ReturnType<typeof supabase.channel> | null,
-  userIds: [] as (string | number)[],
-  subscriberCount: 0
-};
+interface Subscription {
+  id: number;
+  name: string;
+  price: number;
+  period: string;
+  features?: string[];
+  description?: string;
+}
 
-// Cache cho subscription
-const subscriptionCache: Record<number, { name: string; timestamp: number }> = {};
-const CACHE_TTL = 1000 * 60 * 5; // 5 phút
+export const useRealtimeSubscriptions = () => {
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-type RealtimeUserUpdate = {
-  subscription?: string;
-};
-
-export const useRealtimeSubscriptions = (userIds: (string | number)[]) => {
-  const [realtimeUsers, setRealtimeUsers] = useState<Record<string | number, RealtimeUserUpdate>>({});
-  const updateTimeoutsRef = useRef<Record<string | number, NodeJS.Timeout>>({});
-  const pendingUpdatesRef = useRef<Set<string>>(new Set<string>());
-  const isMountedRef = useRef<boolean>(true);
-
-  // Nếu tính năng realtime bị tắt, trả về object rỗng
-  if (!featureFlags.enableRealtimeUpdates) {
-    return {};
-  }
-
-  // Debounced update function
-  const debouncedUpdateUser = (userId: string | number, data: RealtimeUserUpdate) => {
-    if (!isMountedRef.current) return;
-
-    // Xóa timeout cũ nếu có
-    if (updateTimeoutsRef.current[userId]) {
-      clearTimeout(updateTimeoutsRef.current[userId]);
-    }
-    
-    // Tạo timeout mới để cập nhật sau 100ms
-    updateTimeoutsRef.current[userId] = setTimeout(() => {
-      if (!isMountedRef.current) return;
-      
-      setRealtimeUsers(prev => ({
-        ...prev,
-        [userId]: { ...(prev[userId] || {}), ...data }
-      }));
-      
-      delete updateTimeoutsRef.current[userId];
-    }, 100);
-  };
-
-  // Lấy thông tin subscription từ cache hoặc API
-  const getSubscriptionName = async (subscriptionId: number) => {
-    const now = Date.now();
-    
-    // Kiểm tra cache
-    if (subscriptionCache[subscriptionId] && now - subscriptionCache[subscriptionId].timestamp < CACHE_TTL) {
-      return subscriptionCache[subscriptionId].name;
-    }
-    
-    // Nếu không có trong cache hoặc đã hết hạn, gọi API
+  // Khởi tạo dữ liệu
+  const fetchSubscriptions = useCallback(async () => {
     try {
-      const key = `subscription-${subscriptionId}`;
+      setIsLoading(true);
+      setError(null);
       
-      // Thử lấy từ sessionStorage trước
-      const storedData = sessionStorage.getItem(key);
-      if (storedData) {
-        try {
-          const parsedData = JSON.parse(storedData);
-          subscriptionCache[subscriptionId] = { 
-            name: parsedData.name,
-            timestamp: now
+      console.log('Fetching subscription plans...');
+      const { data, error: fetchError } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .order('price', { ascending: true });
+      
+      if (fetchError) {
+        console.error('Error fetching subscriptions:', fetchError);
+        setError('Không thể tải danh sách gói đăng ký');
+        setSubscriptions([]);
+        return;
+      }
+      
+      // Đảm bảo luôn có gói "Không có"
+      const hasNoneOption = data?.some(sub => 
+        typeof sub === 'object' && 'name' in sub && sub.name === 'Không có'
+      );
+      
+      let processedData = [...(data || [])];
+      
+      if (!hasNoneOption) {
+        processedData.unshift({
+          id: -1,
+          name: 'Không có',
+          price: 0,
+          period: 'month',
+          description: 'Không sử dụng gói đăng ký',
+          features: []
+        });
+      }
+      
+      // Đảm bảo dữ liệu hợp lệ
+      const validSubscriptions = processedData.map(sub => {
+        // Nếu là null hoặc không phải object
+        if (!sub || typeof sub !== 'object') {
+          return {
+            id: -999,
+            name: 'Lỗi dữ liệu',
+            price: 0,
+            period: 'month',
+            features: []
           };
-          return parsedData.name;
-        } catch (error) {
-          console.error("[useRealtimeSubscriptions] Lỗi khi parse dữ liệu cache:", error);
+        }
+        
+        // Xử lý features nếu có
+        let features: string[] = [];
+        if ('features' in sub && sub.features) {
+          try {
+            if (Array.isArray(sub.features)) {
+              features = sub.features;
+            } else if (typeof sub.features === 'string') {
+              features = JSON.parse(sub.features);
+            }
+          } catch (e) {
+            console.warn('Error parsing features for subscription:', sub.id, e);
+          }
+        }
+        
+        return {
+          id: 'id' in sub ? (sub.id as number) : -999,
+          name: 'name' in sub ? (sub.name as string) : 'Không xác định',
+          price: 'price' in sub ? Number(sub.price) : 0,
+          period: 'period' in sub ? (sub.period as string) : 'month',
+          description: 'description' in sub ? (sub.description as string) : '',
+          features
+        };
+      });
+      
+      setSubscriptions(validSubscriptions);
+      console.log('Subscription plans loaded:', validSubscriptions.length);
+    } catch (error) {
+      console.error('Unexpected error in fetchSubscriptions:', error);
+      setError('Lỗi không xác định khi tải dữ liệu');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+  
+  // Lấy thông tin gói đăng ký theo ID
+  const getSubscriptionById = useCallback(async (id: number): Promise<Subscription | null> => {
+    try {
+      const cached = subscriptions.find(sub => sub.id === id);
+      if (cached) return cached;
+      
+      console.log(`Fetching subscription with ID ${id}...`);
+      const { data, error } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('id', id as any)
+        .maybeSingle();
+      
+      if (error) {
+        console.error(`Error fetching subscription ${id}:`, error);
+        return null;
+      }
+      
+      if (!data) return null;
+      
+      // Kiểm tra và truy cập an toàn
+      const name = data && typeof data === 'object' && 'name' in data ? 
+        data.name as string : 'Không xác định';
+        
+      const price = data && typeof data === 'object' && 'price' in data ? 
+        Number(data.price) : 0;
+        
+      const period = data && typeof data === 'object' && 'period' in data ? 
+        data.period as string : 'month';
+      
+      const description = data && typeof data === 'object' && 'description' in data ? 
+        data.description as string : '';
+      
+      let features: string[] = [];
+      if (data && typeof data === 'object' && 'features' in data && data.features) {
+        try {
+          if (Array.isArray(data.features)) {
+            features = data.features;
+          } else if (typeof data.features === 'string') {
+            features = JSON.parse(data.features as string);
+          }
+        } catch (e) {
+          console.warn(`Error parsing features for subscription ${id}:`, e);
         }
       }
       
-      // Nếu không có trong sessionStorage, gọi API
-      const { data, error } = await supabase
-        .from('subscriptions')
-        .select('name')
-        .eq('id', subscriptionId as any)
-        .single();
-        
-      if (error || !data) {
-        throw error || new Error("Không tìm thấy dữ liệu");
-      }
-      
-      // Kiểm tra và truy cập an toàn thuộc tính name
-      const subscriptionName = data && typeof data === 'object' && 'name' in data && data.name ? 
-        data.name : "Không có";
-      
-      // Cập nhật cache
-      subscriptionCache[subscriptionId] = {
-        name: subscriptionName,
-        timestamp: now
+      return {
+        id,
+        name,
+        price,
+        period,
+        description,
+        features
       };
-      
-      // Lưu vào sessionStorage
-      try {
-        sessionStorage.setItem(key, JSON.stringify(data));
-      } catch (err) {
-        console.error("[useRealtimeSubscriptions] Lỗi khi lưu cache:", err);
-      }
-      
-      return subscriptionName;
     } catch (error) {
-      console.error("[useRealtimeSubscriptions] Lỗi khi lấy tên gói đăng ký:", error);
-      return "Không có";
+      console.error(`Unexpected error getting subscription ${id}:`, error);
+      return null;
     }
-  };
-
-  // Xử lý cập nhật thông tin subscription
-  const handleSubscriptionChange = async (userId: string | number, subscriptionId: number) => {
-    const cacheKey = `${userId}-${subscriptionId}`;
+  }, [subscriptions]);
+  
+  // Lấy tên gói đăng ký theo ID
+  const getSubscriptionNameById = useCallback(async (id: number): Promise<string> => {
+    if (id === -1 || id === 0) return "Không có";
     
-    // Nếu đang xử lý rồi thì bỏ qua
-    if (pendingUpdatesRef.current.has(cacheKey)) return;
+    const cached = subscriptions.find(sub => sub.id === id);
+    if (cached) return cached.name;
     
-    pendingUpdatesRef.current.add(cacheKey);
-    
-    try {
-      const subscriptionName = await getSubscriptionName(subscriptionId);
-      
-      if (isMountedRef.current) {
-        debouncedUpdateUser(userId, { subscription: subscriptionName });
-      }
-    } catch (error) {
-      console.error("[useRealtimeSubscriptions] Lỗi xử lý thay đổi gói đăng ký:", error);
-    } finally {
-      pendingUpdatesRef.current.delete(cacheKey);
-    }
-  };
-
-  // Thiết lập và xử lý kênh realtime chung
+    const subscription = await getSubscriptionById(id);
+    return subscription?.name || "Không xác định";
+  }, [subscriptions, getSubscriptionById]);
+  
+  // Lắng nghe thay đổi trong realtime
   useEffect(() => {
-    if (!featureFlags.enableRealtimeUpdates) return; // Thoát nếu tính năng bị tắt
+    fetchSubscriptions();
     
-    isMountedRef.current = true;
+    // Thiết lập channel realtime để theo dõi thay đổi
+    const subscriptionsChannel = supabase
+      .channel('subscriptions_changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'subscriptions' }, 
+        () => {
+          console.log('Subscription data changed, reloading...');
+          fetchSubscriptions();
+        }
+      )
+      .subscribe();
     
-    if (userIds.length === 0) return;
-
-    // Cập nhật danh sách userIds trong singleton
-    channelSingleton.userIds = Array.from(new Set([...channelSingleton.userIds, ...userIds]));
-    channelSingleton.subscriberCount++;
-    
-    // Nếu chưa có kênh, tạo kênh mới
-    if (!channelSingleton.channel) {
-      console.log("[useRealtimeSubscriptions] Tạo kênh realtime mới cho gói đăng ký");
-      
-      const channel = supabase
-        .channel('shared-subscription-changes-channel')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'user_subscriptions'
-          },
-          async (payload) => {
-            const newData = payload.new as { user_id?: string | number; subscription_id?: number };
-            
-            if (newData && typeof newData.user_id !== 'undefined' && 
-                channelSingleton.userIds.includes(newData.user_id) && 
-                typeof newData.subscription_id !== 'undefined') {
-                  
-              console.log("[useRealtimeSubscriptions] Nhận thay đổi realtime cho gói đăng ký:", 
-                { userId: newData.user_id, subscriptionId: newData.subscription_id });
-              
-              // Xử lý thay đổi subscription
-              handleSubscriptionChange(newData.user_id, newData.subscription_id);
-            }
-          }
-        )
-        .subscribe((status) => {
-          console.log("[useRealtimeSubscriptions] Trạng thái đăng ký kênh realtime chung:", status);
-        });
-        
-      channelSingleton.channel = channel;
-    }
-
-    // Cleanup khi component unmount
     return () => {
-      isMountedRef.current = false;
-      
-      // Xóa tất cả timeout
-      Object.values(updateTimeoutsRef.current).forEach(timeout => {
-        clearTimeout(timeout);
-      });
-      
-      // Giảm số lượng subscriber
-      channelSingleton.subscriberCount--;
-      
-      // Nếu không còn subscriber nào, hủy kênh và reset singleton
-      if (channelSingleton.subscriberCount === 0 && channelSingleton.channel) {
-        console.log("[useRealtimeSubscriptions] Hủy kênh realtime chung vì không còn subscriber");
-        supabase.removeChannel(channelSingleton.channel);
-        channelSingleton.channel = null;
-        channelSingleton.userIds = [];
-      }
+      supabase.removeChannel(subscriptionsChannel);
     };
-  }, [userIds.length]); // Chỉ phụ thuộc vào độ dài của danh sách
-
-  return realtimeUsers;
+  }, [fetchSubscriptions]);
+  
+  return {
+    subscriptions,
+    isLoading,
+    error,
+    fetchSubscriptions,
+    getSubscriptionById,
+    getSubscriptionNameById
+  };
 };

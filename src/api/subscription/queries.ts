@@ -16,6 +16,8 @@ export const fetchSubscriptionPlans = async (): Promise<Subscription[]> => {
 
   return (data || []).map((row) => {
     if (!row) return {} as Subscription;
+    
+    // Kiểm tra null trước khi truy cập thuộc tính
     return {
       ...(row as any),
       features: row && typeof row === 'object' && 'features' in row ? 
