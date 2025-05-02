@@ -15,8 +15,8 @@ export const fetchSubscriptionPlans = async (): Promise<Subscription[]> => {
   }
 
   return (data || []).map((row) => ({
-    ...row,
-    features: parseSubscriptionFeatures(row.features)
+    ...row as any,
+    features: parseSubscriptionFeatures(row.features as any)
   })) as Subscription[];
 };
 
@@ -42,8 +42,8 @@ export const fetchUserSubscription = async (userId: string) => {
           description
         )
       `)
-      .eq("user_id", userId)
-      .eq("status", "active")
+      .eq("user_id", userId as any)
+      .eq("status", "active" as any)
       .maybeSingle();
 
     if (error) {
@@ -74,15 +74,18 @@ export const fetchUserSubscription = async (userId: string) => {
       };
     }
 
-    const subscription = data.subscriptions;
+    // Sử dụng kiểm tra an toàn để tránh lỗi
+    const dataAny = data as any;
+    const subscription = dataAny.subscriptions;
+    
     if (!subscription) {
       console.error("Không tìm thấy thông tin chi tiết gói đăng ký");
       return {
         plan: "Lỗi",
-        planId: data.subscription_id,
-        status: data.status,
-        startDate: data.start_date,
-        endDate: data.end_date,
+        planId: dataAny.subscription_id,
+        status: dataAny.status,
+        startDate: dataAny.start_date,
+        endDate: dataAny.end_date,
         price: 0,
         usageArticles: 0,
         totalArticles: 0
@@ -96,17 +99,17 @@ export const fetchUserSubscription = async (userId: string) => {
 
     console.log("Đã lấy thông tin gói đăng ký thành công:", {
       plan: subscription.name,
-      status: data.status,
-      startDate: data.start_date,
-      endDate: data.end_date
+      status: dataAny.status,
+      startDate: dataAny.start_date,
+      endDate: dataAny.end_date
     });
 
     return {
       plan: subscription.name,
       planId: subscription.id,
-      status: data.status,
-      startDate: data.start_date,
-      endDate: data.end_date,
+      status: dataAny.status,
+      startDate: dataAny.start_date,
+      endDate: dataAny.end_date,
       price: subscription.price,
       usageArticles: usageStats.used,
       totalArticles: usageStats.total

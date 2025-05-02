@@ -22,7 +22,7 @@ const PaymentHistoryCard = () => {
         const { data, error } = await supabase
           .from('payment_history')
           .select('*')
-          .eq('user_id', user.id)
+          .eq('user_id', user.id as any)
           .order('created_at', { ascending: false })
           .limit(3);
 
@@ -34,7 +34,7 @@ const PaymentHistoryCard = () => {
           payment_at: item.payment_at || item.created_at // Sử dụng payment_at nếu có, nếu không thì dùng created_at
         })) || [];
         
-        setPayments(transformedData);
+        setPayments(transformedData as PaymentHistory[]);
       } catch (error: any) {
         console.error("Error fetching payment history:", error);
         toast({
@@ -84,7 +84,7 @@ const PaymentHistoryCard = () => {
               {payments.length > 0 ? (
                 payments.map((payment) => (
                   <div key={payment.id} className="grid grid-cols-4 p-4">
-                    <div className="font-medium">INV-{payment.id.toString().padStart(3, '0')}</div>
+                    <div className="font-medium">INV-{payment.id.toString().substring(0, 3).padStart(3, '0')}</div>
                     <div className="text-gray-500">{formatDate(payment.payment_at)}</div>
                     <div>{formatAmount(payment.amount)}</div>
                     <div>
