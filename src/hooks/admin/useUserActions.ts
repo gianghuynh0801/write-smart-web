@@ -4,6 +4,7 @@ import { User } from "@/types/user";
 import { useToast } from "@/hooks/use-toast";
 import { deleteUser, addUserCredits } from "@/api/userService";
 import { useEmailVerification } from "@/hooks/useEmailVerification";
+import { clearAllUserCache } from "@/utils/api/userApiUtils";
 
 export const useUserActions = (refreshUsers: () => Promise<void>) => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -12,6 +13,7 @@ export const useUserActions = (refreshUsers: () => Promise<void>) => {
   const [userDialogOpen, setUserDialogOpen] = useState(false);
   const [editUserId, setEditUserId] = useState<string | number | undefined>(undefined);
   const [isCreditUpdating, setIsCreditUpdating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const { toast } = useToast();
   const { sendVerificationEmail } = useEmailVerification();
@@ -42,55 +44,61 @@ export const useUserActions = (refreshUsers: () => Promise<void>) => {
 
   // Xác nhận xóa người dùng
   const confirmDeleteUser = async () => {
-    if (!selectedUser) return;
+    if (!selectedUser) {
+      throw new Error("Không có người dùng được chọn để xóa");
+    }
     
     try {
+      setIsDeleting(true);
+      
       await deleteUser(selectedUser.id);
       
-      toast({
-        title: "Đã xóa người dùng",
-        description: `Đã xóa người dùng ${selectedUser.name} thành công.`,
-      });
+      clearAllUserCache(); // Xóa cache để đảm bảo dữ liệu mới
+      
+      // Làm mới danh sách người dùng
+      try {
+        await refreshUsers();
+      } catch (refreshError) {
+        console.error("Lỗi khi làm mới danh sách sau khi xóa:", refreshError);
+        // Không throw lỗi ở đây vì người dùng đã được xóa thành công
+      }
       
       setDeleteDialogOpen(false);
-      refreshUsers();
-    } catch (error: any) {
-      console.error("Lỗi khi xóa người dùng:", error);
+      setIsDeleting(false);
       
-      toast({
-        title: "Lỗi",
-        description: error.message || "Không thể xóa người dùng.",
-        variant: "destructive"
-      });
+      return Promise.resolve(); // Trả về Promise hoàn thành để xử lý tiếp theo
+    } catch (error) {
+      console.error("Lỗi khi xóa người dùng:", error);
+      setIsDeleting(false);
+      throw error; // Throw lỗi để xử lý ở DeleteUserDialog
     }
   };
 
   // Xác nhận thêm tín dụng
   const confirmAddCredits = async (amount: number) => {
-    if (!selectedUser || amount <= 0) return;
+    if (!selectedUser || amount <= 0) {
+      throw new Error("Không thể thêm số tín dụng không hợp lệ");
+    }
     
     try {
       setIsCreditUpdating(true);
       
       await addUserCredits(selectedUser.id, amount);
       
-      toast({
-        title: "Đã thêm tín dụng",
-        description: `Đã thêm ${amount} tín dụng cho ${selectedUser.name}.`,
-      });
+      clearAllUserCache(); // Xóa cache để đảm bảo dữ liệu mới
       
-      setAddCreditsDialogOpen(false);
-      refreshUsers();
-    } catch (error: any) {
-      console.error("Lỗi khi thêm tín dụng:", error);
+      // Làm mới danh sách người dùng
+      try {
+        await refreshUsers();
+      } catch (refreshError) {
+        console.error("Lỗi khi làm mới danh sách sau khi thêm credits:", refreshError);
+      }
       
-      toast({
-        title: "Lỗi",
-        description: error.message || "Không thể thêm tín dụng.",
-        variant: "destructive"
-      });
-    } finally {
       setIsCreditUpdating(false);
+      return Promise.resolve();
+    } catch (error) {
+      setIsCreditUpdating(false);
+      throw error;
     }
   };
 
@@ -128,6 +136,7 @@ export const useUserActions = (refreshUsers: () => Promise<void>) => {
     userDialogOpen,
     editUserId,
     isCreditUpdating,
+    isDeleting,
     handleDeleteUser,
     handleAddCredits,
     handleEditUser,

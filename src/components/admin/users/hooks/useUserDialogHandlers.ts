@@ -24,7 +24,6 @@ export const useUserDialogHandlers = ({
   const handleConfirmDeleteUser = useCallback(async () => {
     try {
       await confirmDeleteUser();
-      setDeleteDialogOpen(false);
       
       // Xóa toàn bộ cache - sử dụng clearAllUserCache thay vì chỉ xóa users cache
       clearAllUserCache();
@@ -41,22 +40,14 @@ export const useUserDialogHandlers = ({
       setTimeout(() => {
         toast({
           title: "Đang làm mới dữ liệu",
-          description: "Trang sẽ được tải lại để cập nhật danh sách người dùng",
+          description: "Đang cập nhật danh sách người dùng...",
         });
-        
-        setTimeout(() => {
-          window.location.reload();
-        }, 500);
-      }, 1000);
+      }, 500);
     } catch (error) {
       console.error("Lỗi khi xóa người dùng:", error);
-      toast({
-        title: "Lỗi",
-        description: error instanceof Error ? error.message : "Không thể xóa người dùng",
-        variant: "destructive"
-      });
+      // Không cần xử lý lỗi ở đây vì đã xử lý trong DeleteUserDialog
     }
-  }, [confirmDeleteUser, setDeleteDialogOpen, handleUserActionComplete, toast]);
+  }, [confirmDeleteUser, handleUserActionComplete, toast]);
 
   // Xác nhận thêm credits với cải thiện xử lý cache
   const handleConfirmAddCredits = useCallback(async (amount: number) => {
@@ -74,18 +65,6 @@ export const useUserDialogHandlers = ({
         title: "Thành công",
         description: "Đã thêm credits thành công",
       });
-      
-      // Tải lại trang sau 1 giây để đảm bảo dữ liệu mới nhất
-      setTimeout(() => {
-        toast({
-          title: "Đang làm mới dữ liệu",
-          description: "Trang sẽ được tải lại để cập nhật danh sách người dùng",
-        });
-        
-        setTimeout(() => {
-          window.location.reload();
-        }, 500);
-      }, 1000);
     } catch (error) {
       console.error("Lỗi khi thêm credits:", error);
       toast({

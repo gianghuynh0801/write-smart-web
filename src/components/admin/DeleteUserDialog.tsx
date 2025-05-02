@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Loader } from "lucide-react";
+import { Loader, AlertTriangle } from "lucide-react";
 
 import {
   AlertDialog,
@@ -23,19 +23,31 @@ interface DeleteUserDialogProps {
 
 const DeleteUserDialog = ({ isOpen, onClose, onConfirm, userName }: DeleteUserDialogProps) => {
   const [isDeleting, setIsDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleConfirm = async () => {
     setIsDeleting(true);
+    setError(null);
     try {
       await onConfirm();
-    } finally {
+      onClose();
+    } catch (err) {
+      console.error("Lỗi khi xóa người dùng:", err);
+      setError(err instanceof Error ? err.message : "Lỗi không xác định khi xóa người dùng");
       setIsDeleting(false);
+      // Không đóng dialog khi có lỗi
+    }
+  };
+
+  const handleClose = () => {
+    if (!isDeleting) {
+      setError(null);
       onClose();
     }
   };
 
   return (
-    <AlertDialog open={isOpen} onOpenChange={onClose}>
+    <AlertDialog open={isOpen} onOpenChange={handleClose}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Xác nhận xóa người dùng</AlertDialogTitle>
@@ -44,6 +56,19 @@ const DeleteUserDialog = ({ isOpen, onClose, onConfirm, userName }: DeleteUserDi
             Hành động này không thể hoàn tác và tất cả dữ liệu liên quan sẽ bị xóa vĩnh viễn.
           </AlertDialogDescription>
         </AlertDialogHeader>
+        
+        {error && (
+          <div className="bg-red-50 p-3 rounded-md border border-red-200 mb-4">
+            <div className="flex items-start">
+              <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5 mr-2" />
+              <div>
+                <p className="text-sm font-medium text-red-800">Có lỗi xảy ra</p>
+                <p className="text-sm text-red-700 mt-1">{error}</p>
+              </div>
+            </div>
+          </div>
+        )}
+        
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isDeleting}>Hủy bỏ</AlertDialogCancel>
           <Button 

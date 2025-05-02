@@ -14,8 +14,12 @@ export const deleteUser = async (id: string | number): Promise<void> => {
     // Lấy token admin
     const adminToken = await authService.getAdminToken();
     
+    if (!adminToken) {
+      throw new Error("Không có quyền xóa người dùng");
+    }
+    
     // Gọi Edge Function với token xác thực
-    const { error: invocationError } = await supabase.functions.invoke(
+    const { data, error: invocationError } = await supabase.functions.invoke(
       'delete-user',
       {
         body: { userId },
@@ -36,7 +40,7 @@ export const deleteUser = async (id: string | number): Promise<void> => {
         if (newToken) {
           console.log("[deleteUser] Thử lại với token mới");
           
-          const { error: retryError } = await supabase.functions.invoke(
+          const { data: retryData, error: retryError } = await supabase.functions.invoke(
             'delete-user',
             {
               body: { userId },
@@ -47,15 +51,30 @@ export const deleteUser = async (id: string | number): Promise<void> => {
           );
           
           if (retryError) {
-            throw new Error(`Lỗi xóa user: ${retryError.message}`);
+            if (typeof retryError === 'object' && retryError !== null) {
+              const errorMessage = (retryError as any).message || "Lỗi không xác định";
+              throw new Error(`Lỗi xóa user: ${errorMessage}`);
+            } else {
+              throw new Error(`Lỗi xóa user: ${String(retryError)}`);
+            }
           }
           
           return; // Thành công
         }
       }
       
-      throw new Error(`Lỗi xóa user: ${invocationError.message}`);
+      if (typeof invocationError === 'object' && invocationError !== null) {
+        const errorMessage = (invocationError as any).message || "Lỗi không xác định";
+        throw new Error(`Lỗi xóa user: ${errorMessage}`);
+      } else {
+        throw new Error(`Lỗi xóa user: ${String(invocationError)}`);
+      }
     }
+    
+    if (data?.error) {
+      throw new Error(`Lỗi xóa user: ${data.error}`);
+    }
+    
   } catch (error) {
     console.error("[deleteUser] Lỗi không mong đợi:", error);
     
