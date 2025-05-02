@@ -1,3 +1,5 @@
+
+// Sử dụng mã tương tự từ hook auth/useEmailVerification.ts
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { db } from "@/integrations/supabase/typeSafeClient";
@@ -67,6 +69,7 @@ export const useEmailVerification = () => {
   
   // Xử lý gửi lại email xác thực
   const handleResendVerification = useCallback(async () => {
+    // ... nội dung tương tự như trong hooks/auth/useEmailVerification.ts
     if (!unconfirmedEmail) {
       console.error("Email không hợp lệ khi thử gửi lại xác thực");
       toast({
@@ -135,6 +138,7 @@ export const useEmailVerification = () => {
   }, [unconfirmedEmail, toast]);
 
   const sendVerificationEmail = useCallback(async (params: VerificationParams) => {
+    // ... nội dung tương tự như trong hooks/auth/useEmailVerification.ts
     try {
       console.log("Sending verification email for:", params.email, "userId:", params.userId);
       
@@ -219,7 +223,7 @@ export const useEmailVerification = () => {
           token: token,
           type: params.type,
           expires_at: expiresAt.toISOString()
-        } as any);
+        });
 
       if (tokenError) {
         throw tokenError;
