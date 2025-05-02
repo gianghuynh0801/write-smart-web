@@ -10,7 +10,8 @@ export const useUserList = () => {
     checkRefreshThrottle, 
     hasCachedData, 
     getCachedParams,
-    initialLoadDone
+    initialLoadDone,
+    forceClearCache
   } = useUserCache();
   
   const { 
@@ -52,7 +53,7 @@ export const useUserList = () => {
     isLoading, 
     isError, 
     error, 
-    refreshUsers,
+    refreshUsers: baseRefreshUsers,
     isMounted,
     hasInitialFetch
   } = useUserFetch(
@@ -62,6 +63,24 @@ export const useUserList = () => {
     searchTerm,
     checkRefreshThrottle
   );
+
+  // Tạo một wrapper cho refreshUsers để xử lý các trường hợp đặc biệt
+  const refreshUsers = async (forceRefresh = false) => {
+    console.log("[useUserList] Yêu cầu làm mới dữ liệu, forceRefresh =", forceRefresh);
+    
+    // Nếu yêu cầu làm mới bắt buộc, xóa cache trước
+    if (forceRefresh) {
+      console.log("[useUserList] Xóa cache và làm mới dữ liệu bắt buộc");
+      forceClearCache();
+    }
+    
+    try {
+      return await baseRefreshUsers();
+    } catch (err) {
+      console.error("[useUserList] Lỗi khi làm mới dữ liệu:", err);
+      return false;
+    }
+  };
 
   return {
     users: (data?.users ?? []),

@@ -19,6 +19,7 @@ export const useUserFetch = (
   const hasInitialFetch = useRef(false);
   const [isRefreshingToken, setIsRefreshingToken] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const lastRefreshTimeRef = useRef<number>(0);
   
   // Đảm bảo biến isMounted được set đúng khi component mount/unmount
   useEffect(() => {
@@ -55,11 +56,25 @@ export const useUserFetch = (
       try {
         // Đánh dấu đã thực hiện lần fetch đầu tiên
         hasInitialFetch.current = true;
+        console.log("[useUserFetch] Đang fetch dữ liệu người dùng với params:", {
+          page: currentPage, 
+          pageSize, 
+          status, 
+          searchTerm
+        });
         
-        return await fetchUsers(
+        const result = await fetchUsers(
           { page: currentPage, pageSize, status, searchTerm },
           abortControllerRef.current.signal
         );
+        
+        console.log("[useUserFetch] Fetch thành công, nhận được:", {
+          total: result.total,
+          count: result.users?.length || 0
+        });
+        
+        lastRefreshTimeRef.current = Date.now();
+        return result;
       } catch (error) {
         console.error("[useUserFetch] Lỗi khi fetch dữ liệu:", error);
         throw error;
@@ -94,6 +109,9 @@ export const useUserFetch = (
   // Tạo một phiên bản refetch có kiểm soát
   const refreshUsers = useCallback(async () => {
     try {
+      console.log("[useUserFetch] Đang yêu cầu refreshUsers, thời gian từ lần refresh trước:", 
+        lastRefreshTimeRef.current ? Math.round((Date.now() - lastRefreshTimeRef.current) / 1000) + "s" : "chưa có refresh trước đó");
+      
       // Nếu đang trong lần đầu tiên tải dữ liệu, bỏ qua kiểm tra hạn chế tần suất
       if (!hasInitialFetch.current) {
         console.log("[useUserFetch] Đang thực hiện tải dữ liệu lần đầu tiên");
@@ -111,6 +129,8 @@ export const useUserFetch = (
       
       console.log("[useUserFetch] Bắt đầu làm mới danh sách người dùng");
       await refetch();
+      lastRefreshTimeRef.current = Date.now();
+      console.log("[useUserFetch] Làm mới danh sách người dùng thành công vào:", new Date(lastRefreshTimeRef.current).toLocaleTimeString());
       return true;
     } catch (err) {
       console.error("[useUserFetch] Lỗi khi làm mới dữ liệu:", err);

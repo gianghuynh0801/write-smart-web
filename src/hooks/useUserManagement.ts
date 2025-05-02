@@ -20,10 +20,11 @@ export const useUserManagement = () => {
     handlePageChange,
   } = useUserList();
 
-  // Bọc refreshUsers để đảm bảo tương thích kiểu dữ liệu
-  const refreshUsers = async () => {
+  // Bọc refreshUsers để đảm bảo tương thích kiểu dữ liệu và cho phép force refresh
+  const refreshUsers = async (forceRefresh = false) => {
     try {
-      await rawRefreshUsers();
+      console.log("[useUserManagement] Đang làm mới danh sách người dùng, forceRefresh =", forceRefresh);
+      await rawRefreshUsers(forceRefresh);
     } catch (error) {
       console.error("[useUserManagement] Lỗi khi làm mới danh sách người dùng:", error);
     }
@@ -49,8 +50,6 @@ export const useUserManagement = () => {
   } = useUserActions(refreshUsers);
 
   const { getRoleColor } = useUserStyles();
-
-  // Loại bỏ useEffect tự động gọi refreshUsers() khi component mount
 
   return {
     // User list state and handlers

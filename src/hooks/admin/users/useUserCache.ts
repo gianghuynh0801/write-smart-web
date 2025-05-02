@@ -42,15 +42,25 @@ export const useUserCache = () => {
     }
     
     const now = Date.now();
-    if (now - lastRefreshTime.current < minRefreshInterval) {
-      console.log(`[useUserCache] Hạn chế tần suất refresh: ${Math.round((minRefreshInterval - (now - lastRefreshTime.current)) / 1000)}s còn lại`);
+    const timeSinceLastRefresh = now - lastRefreshTime.current;
+    console.log(`[useUserCache] Kiểm tra tần suất refresh: Đã ${Math.round(timeSinceLastRefresh / 1000)}s từ lần cuối (giới hạn: ${minRefreshInterval / 1000}s)`);
+    
+    if (timeSinceLastRefresh < minRefreshInterval) {
+      console.log(`[useUserCache] Hạn chế tần suất refresh: ${Math.round((minRefreshInterval - timeSinceLastRefresh) / 1000)}s còn lại`);
       // Trả về false nếu chưa đủ thời gian để refresh
       return false;
     }
     
-    lastRefreshTime.current = Date.now();
+    lastRefreshTime.current = now;
     console.log(`[useUserCache] Cho phép refresh lúc ${new Date(lastRefreshTime.current).toLocaleTimeString()}`);
     return true;
+  };
+
+  // Thêm hàm forceClearCache để xóa cache bắt buộc khi cần thiết
+  const forceClearCache = () => {
+    console.log("[useUserCache] Xóa cache bắt buộc");
+    clearUsersCache();
+    lastRefreshTime.current = 0;  // Reset thời gian refresh
   };
 
   return {
@@ -59,6 +69,7 @@ export const useUserCache = () => {
     checkRefreshThrottle,
     lastRefreshTime,
     minRefreshInterval,
-    initialLoadDone
+    initialLoadDone,
+    forceClearCache
   };
 };

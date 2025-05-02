@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -37,11 +37,13 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
   
   const { toast } = useToast();
   const [isClosing, setIsClosing] = useState(false);
+  const [saveSuccessful, setSaveSuccessful] = useState(false);
 
   // Reset dialog khi đóng
   useEffect(() => {
     if (!isOpen) {
       resetDialog();
+      setSaveSuccessful(false);
     }
   }, [isOpen, resetDialog]);
 
@@ -67,6 +69,23 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
     }
   }, [fetchUser, isOpen, userId, isClosing]);
 
+  // Chạy callback onUserSaved khi lưu thành công và dialog đã đóng
+  useEffect(() => {
+    if (!isOpen && saveSuccessful) {
+      console.log("[UserDialog] Dialog đã đóng và đã lưu thành công, gọi onUserSaved");
+      
+      // Tạo delay dài hơn để đảm bảo các tác vụ nền đã hoàn tất
+      const timer = setTimeout(() => {
+        if (isMounted.current) {
+          onUserSaved();
+          setSaveSuccessful(false);
+        }
+      }, 2000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, saveSuccessful, onUserSaved]);
+
   const handleSubmit = async (data: UserFormValues) => {
     if (isSubmitting || isClosing) return;
     setIsSubmitting(true);
@@ -77,24 +96,24 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
       // Lấy token admin trước khi thực hiện
       await authService.getAdminToken();
       
-      let successMessage = "";
       let success = false;
       
       if (userId) {
         // Cập nhật người dùng hiện có
         await updateUser(userId, data);
         console.log("[UserDialog] Đã cập nhật thông tin người dùng thành công");
-        successMessage = "Cập nhật thông tin người dùng thành công";
         success = true;
       } else {
         // Tạo người dùng mới
         await createUser(data);
         console.log("[UserDialog] Đã tạo người dùng mới thành công");
-        successMessage = "Tạo người dùng mới thành công";
         success = true;
       }
       
       if (isMounted.current && success) {
+        // Đánh dấu đã lưu thành công
+        setSaveSuccessful(true);
+        
         // Đánh dấu đang đóng dialog để tránh fetch dữ liệu không cần thiết
         setIsClosing(true);
         
@@ -106,15 +125,8 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
           if (isMounted.current) {
             toast({
               title: "Thành công",
-              description: successMessage
+              description: userId ? "Cập nhật thông tin người dùng thành công" : "Tạo người dùng mới thành công"
             });
-            
-            // Delay refresh dữ liệu để tránh đóng băng UI
-            setTimeout(() => {
-              if (isMounted.current) {
-                onUserSaved();
-              }
-            }, 800);
           }
         }, 300);
       }
@@ -146,6 +158,8 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
               }
               
               if (isMounted.current && success) {
+                // Đánh dấu đã lưu thành công
+                setSaveSuccessful(true);
                 setIsClosing(true);
                 onClose();
                 
@@ -156,13 +170,6 @@ const UserDialog = ({ isOpen, onClose, userId, onUserSaved }: UserDialogProps) =
                       title: "Thành công",
                       description: userId ? "Cập nhật thông tin người dùng thành công" : "Tạo người dùng mới thành công"
                     });
-                    
-                    // Delay refresh dữ liệu để tránh đóng băng UI
-                    setTimeout(() => {
-                      if (isMounted.current) {
-                        onUserSaved();
-                      }
-                    }, 800);
                   }
                 }, 300);
               }

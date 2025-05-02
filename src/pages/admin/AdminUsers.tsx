@@ -48,7 +48,8 @@ const AdminUsers = () => {
   // Handler cập nhật sau khi user được lưu 
   const handleUserSaved = useCallback(() => {
     console.log("[AdminUsers] Đã phát hiện người dùng được lưu, đang làm mới dữ liệu...");
-    refreshUsers();
+    // Sử dụng force refresh để đảm bảo dữ liệu mới nhất
+    refreshUsers(true);
   }, [refreshUsers]);
 
   // Sử dụng effect hooks
@@ -76,14 +77,14 @@ const AdminUsers = () => {
   // Thêm hàm để load dữ liệu ban đầu khi trang được mở - tự động tải dữ liệu khi component mount
   useEffect(() => {
     console.log("[AdminUsers] Trang đã được mở, tự động tải dữ liệu ban đầu");
-    refreshUsers();
+    refreshUsers(false);  // Không cần force refresh khi lần đầu tải
   }, [refreshUsers]);
 
   // Thêm một hàm để refresh dữ liệu thủ công với kiểm soát throttle
   const handleManualRefresh = useCallback(async () => {
     try {
       console.log("[AdminUsers] Đang làm mới dữ liệu thủ công...");
-      await refreshUsers();
+      await refreshUsers(true);  // Force refresh khi làm mới thủ công
       toast({
         title: "Thành công",
         description: "Đã làm mới danh sách người dùng",

@@ -67,6 +67,100 @@ async function checkIsAdmin(userId: string): Promise<boolean> {
   }
 }
 
+// Thêm hàm xử lý cập nhật gói đăng ký - KHÔNG sử dụng background task
+async function updateUserSubscription(userId: string, subscriptionName: string): Promise<void> {
+  try {
+    const timeoutMs = 8000;
+    console.log('[update-user] Đang xử lý cập nhật gói đăng ký cho user:', userId, 'thành', subscriptionName);
+
+    // Hủy tất cả gói đăng ký cũ
+    console.log('[update-user] Hủy các gói đăng ký hiện tại...');
+    const deactivatePromise = supabaseAdmin
+      .from('user_subscriptions')
+      .update({ status: 'inactive' })
+      .eq('user_id', userId)
+      .eq('status', 'active');
+    
+    const { error: deactivateError } = await withTimeout(
+      deactivatePromise,
+      timeoutMs,
+      'Hủy gói đăng ký cũ'
+    );
+
+    if (deactivateError) {
+      console.error('[update-user] Lỗi khi hủy gói đăng ký cũ:', deactivateError);
+    }
+
+    // Nếu chọn "Không có", chỉ hủy các gói cũ và kết thúc
+    if (subscriptionName === 'Không có') {
+      console.log('[update-user] Người dùng chọn "Không có" gói đăng ký, không tạo gói mới');
+      return;
+    }
+
+    // Tìm subscription id
+    console.log('[update-user] Tìm ID cho gói đăng ký:', subscriptionName);
+    const subscriptionPromise = supabaseAdmin
+      .from('subscriptions')
+      .select('id')
+      .eq('name', subscriptionName)
+      .maybeSingle();
+      
+    const { data: subscriptionData, error: subError } = await withTimeout(
+      subscriptionPromise,
+      timeoutMs,
+      'Tìm gói đăng ký'
+    );
+
+    if (subError || !subscriptionData) {
+      console.error('[update-user] Lỗi khi tìm gói đăng ký:', subError || 'Không tìm thấy gói đăng ký');
+      if (!subError) {
+        console.error('[update-user] Không tìm thấy gói đăng ký có tên:', subscriptionName);
+      }
+      return;
+    }
+
+    // Tạo gói đăng ký mới
+    const startDate = new Date().toISOString().split('T')[0];
+    const endDate = new Date();
+    endDate.setMonth(endDate.getMonth() + 1);
+    const endDateStr = endDate.toISOString().split('T')[0];
+
+    console.log('[update-user] Tạo gói đăng ký mới với thông tin:', {
+      user_id: userId,
+      subscription_id: subscriptionData.id,
+      start_date: startDate,
+      end_date: endDateStr,
+      status: 'active'
+    });
+
+    const insertPromise = supabaseAdmin
+      .from('user_subscriptions')
+      .insert({
+        user_id: userId,
+        subscription_id: subscriptionData.id,
+        start_date: startDate,
+        end_date: endDateStr,
+        status: 'active'
+      });
+    
+    const { error: insertError } = await withTimeout(
+      insertPromise,
+      timeoutMs,
+      'Tạo gói đăng ký mới'
+    );
+
+    if (insertError) {
+      console.error('[update-user] Lỗi khi tạo gói đăng ký mới:', insertError);
+      throw insertError;
+    }
+
+    console.log('[update-user] Đã cập nhật gói đăng ký thành công');
+  } catch (error) {
+    console.error('[update-user] Lỗi khi xử lý gói đăng ký:', error);
+    throw error;
+  }
+}
+
 Deno.serve(async (req) => {
   // Xử lý CORS
   if (req.method === 'OPTIONS') {
@@ -177,6 +271,23 @@ Deno.serve(async (req) => {
     const newSubscription = userData.subscription;
     const subscriptionChanged = oldSubscription !== newSubscription;
 
+    try {
+      // Xử lý thay đổi gói đăng ký TRƯỚC khi cập nhật user
+      // Không sử dụng background task để đảm bảo hoàn tất trước khi trả về kết quả
+      if (subscriptionChanged) {
+        console.log('[update-user] Phát hiện thay đổi gói đăng ký:', {
+          from: oldSubscription,
+          to: newSubscription
+        });
+        
+        // Xử lý đồng bộ, không sử dụng background task
+        await updateUserSubscription(id, newSubscription);
+      }
+    } catch (subError) {
+      console.error('[update-user] Lỗi khi cập nhật gói đăng ký:', subError);
+      // Không throw error, tiếp tục cập nhật thông tin user
+    }
+
     // Cập nhật thông tin user
     const updatePromise = supabaseAdmin
       .from('users')
@@ -207,44 +318,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Xử lý thay đổi gói đăng ký trong background để không chặn response
-    if (subscriptionChanged) {
-      try {
-        console.log('[update-user] Phát hiện thay đổi gói đăng ký:', {
-          from: oldSubscription,
-          to: newSubscription
-        });
-        
-        // Sử dụng EdgeRuntime.waitUntil để xử lý subscription trong background
-        if (typeof EdgeRuntime !== 'undefined') {
-          EdgeRuntime.waitUntil((async () => {
-            try {
-              await updateUserSubscription(id, newSubscription);
-              console.log('[update-user] Đã cập nhật gói đăng ký thành công trong background');
-            } catch (err) {
-              console.error('[update-user] Lỗi khi cập nhật gói đăng ký trong background:', err);
-            }
-          })());
-          
-          console.log('[update-user] Đã gửi cập nhật gói đăng ký để xử lý trong background');
-        } else {
-          // Không block response, trả về trước và xử lý sau
-          console.log('[update-user] EdgeRuntime.waitUntil không khả dụng, xử lý đồng bộ');
-          setTimeout(async () => {
-            try {
-              await updateUserSubscription(id, newSubscription);
-              console.log('[update-user] Đã cập nhật gói đăng ký thành công (async)');
-            } catch (err) {
-              console.error('[update-user] Lỗi khi cập nhật gói đăng ký (async):', err);
-            }
-          }, 0);
-        }
-      } catch (subProcessError) {
-        console.error('[update-user] Lỗi khi khởi tạo xử lý gói đăng ký:', subProcessError);
-        // Không ảnh hưởng đến response chính, chỉ log lỗi
-      }
-    }
-
     // Trả về kết quả thành công
     console.log('[update-user] Cập nhật thành công, đang trả về kết quả');
     return standardResponse(updatedUser, null, 200);
@@ -258,67 +331,3 @@ Deno.serve(async (req) => {
     );
   }
 });
-
-// Hàm xử lý cập nhật gói đăng ký - đã tối ưu để không block main thread
-async function updateUserSubscription(userId: string, subscriptionName: string): Promise<void> {
-  try {
-    const timeoutMs = 5000;
-
-    // Tìm subscription id
-    const subscriptionPromise = supabaseAdmin
-      .from('subscriptions')
-      .select('id')
-      .eq('name', subscriptionName)
-      .maybeSingle();
-      
-    const { data: subscriptionData, error: subError } = await withTimeout(
-      subscriptionPromise,
-      timeoutMs,
-      'Tìm gói đăng ký'
-    );
-
-    if (subError) {
-      throw new Error(`Lỗi khi tìm gói đăng ký: ${subError.message}`);
-    }
-
-    // Hủy các gói đăng ký cũ
-    const deactivatePromise = supabaseAdmin
-      .from('user_subscriptions')
-      .update({ status: 'inactive' })
-      .eq('user_id', userId)
-      .eq('status', 'active');
-    
-    await withTimeout(
-      deactivatePromise,
-      timeoutMs,
-      'Hủy gói đăng ký cũ'
-    );
-
-    // Tạo gói đăng ký mới nếu không phải "Không có" và tìm thấy subscription
-    if (subscriptionName !== 'Không có' && subscriptionData) {
-      const startDate = new Date().toISOString().split('T')[0];
-      const endDate = new Date();
-      endDate.setMonth(endDate.getMonth() + 1);
-      const endDateStr = endDate.toISOString().split('T')[0];
-
-      const insertPromise = supabaseAdmin
-        .from('user_subscriptions')
-        .insert({
-          user_id: userId,
-          subscription_id: subscriptionData.id,
-          start_date: startDate,
-          end_date: endDateStr,
-          status: 'active'
-        });
-      
-      await withTimeout(
-        insertPromise,
-        timeoutMs,
-        'Tạo gói đăng ký mới'
-      );
-    }
-  } catch (error) {
-    console.error('[update-user] Lỗi khi xử lý gói đăng ký:', error);
-    throw error;
-  }
-}
