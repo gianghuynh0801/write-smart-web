@@ -24,6 +24,11 @@ export interface UsersCache {
 export const cacheValidTime = featureFlags.cacheValidTimeMs || 300000; // Mặc định 5 phút
 export let usersCache: UsersCache | null = null;
 
+// Thêm một biến để theo dõi trạng thái cache để tránh xóa cache đồng thời
+let isCacheOperationInProgress = false;
+let lastCacheOperationTime = 0;
+const MIN_CACHE_OPERATION_INTERVAL = 1000; // 1 giây giữa các thao tác cache
+
 // Cố gắng lấy cache từ sessionStorage khi module được import lần đầu
 try {
   const sessionCache = sessionStorage.getItem('users_cache');
@@ -193,36 +198,80 @@ export const fetchUsers = async (params: {
   throw new Error("Lỗi không xác định khi lấy danh sách người dùng");
 };
 
-// Xóa cache
-export const clearUsersCache = () => {
-  usersCache = null;
+// Kiểm tra thời gian giữa các thao tác cache để tránh các thao tác quá nhanh
+const canPerformCacheOperation = () => {
+  const now = Date.now();
+  if (isCacheOperationInProgress) {
+    console.log("[userApiUtils] Có một thao tác cache đang diễn ra, bỏ qua");
+    return false;
+  }
+  
+  if (now - lastCacheOperationTime < MIN_CACHE_OPERATION_INTERVAL) {
+    console.log("[userApiUtils] Thao tác cache quá nhanh, bỏ qua");
+    return false;
+  }
+  
+  return true;
+};
+
+// Xóa cache với cơ chế chống gọi đồng thời
+export const clearUsersCache = async () => {
+  if (!canPerformCacheOperation()) return;
+  
   try {
+    isCacheOperationInProgress = true;
+    lastCacheOperationTime = Date.now();
+    
+    usersCache = null;
     sessionStorage.removeItem('users_cache');
     sessionStorage.removeItem('users_data_loaded');
     sessionStorage.removeItem('dashboard_stats');
     console.log("Đã xóa cache người dùng");
+    
+    // Trì hoãn một chút để cho phép các hoạt động xóa cache hoàn thành
+    await new Promise(resolve => setTimeout(resolve, 300));
   } catch (err) {
     console.warn("[clearUsersCache] Không thể xóa cache từ sessionStorage:", err);
+  } finally {
+    isCacheOperationInProgress = false;
   }
 };
 
-// Xóa cache người dùng cụ thể
-export const clearUserCache = (userId: string | number) => {
-  const cacheKey = `user_details_${userId}`;
+// Xóa cache người dùng cụ thể với cơ chế chống gọi đồng thời
+export const clearUserCache = async (userId: string | number) => {
+  if (!canPerformCacheOperation()) return;
+  
   try {
+    isCacheOperationInProgress = true;
+    lastCacheOperationTime = Date.now();
+    
+    const cacheKey = `user_details_${userId}`;
     sessionStorage.removeItem(cacheKey);
     sessionStorage.removeItem('dashboard_stats');
     console.log(`[clearUserCache] Đã xóa cache cho user ID: ${userId}`);
+    
+    // Trì hoãn một chút để cho phép các hoạt động xóa cache hoàn thành
+    await new Promise(resolve => setTimeout(resolve, 300));
   } catch (err) {
     console.warn(`[clearUserCache] Không thể xóa cache cho user ID: ${userId}`, err);
+  } finally {
+    isCacheOperationInProgress = false;
   }
 };
 
-// Xóa toàn bộ cache liên quan đến người dùng
-export const clearAllUserCache = () => {
+// Xóa toàn bộ cache liên quan đến người dùng với cơ chế chống gọi đồng thời
+export const clearAllUserCache = async () => {
+  if (!canPerformCacheOperation()) return Promise.resolve();
+  
   try {
+    isCacheOperationInProgress = true;
+    lastCacheOperationTime = Date.now();
+    console.log("[clearAllUserCache] Bắt đầu xóa tất cả cache người dùng");
+    
     // Xóa cache danh sách người dùng
-    clearUsersCache();
+    usersCache = null;
+    sessionStorage.removeItem('users_cache');
+    sessionStorage.removeItem('users_data_loaded');
     sessionStorage.removeItem('dashboard_stats');
     
     // Xóa tất cả các mục cache chi tiết người dùng
@@ -234,23 +283,39 @@ export const clearAllUserCache = () => {
       }
     }
     
-    keysToRemove.forEach(key => {
+    // Đặt tốc độ xóa để không làm đóng băng giao diện
+    for (const key of keysToRemove) {
       sessionStorage.removeItem(key);
       console.log(`[clearAllUserCache] Đã xóa cache: ${key}`);
-    });
+    }
     
     console.log(`[clearAllUserCache] Đã xóa ${keysToRemove.length} mục cache chi tiết người dùng`);
+    
+    // Trì hoãn một chút để cho phép các hoạt động xóa cache hoàn thành
+    return new Promise(resolve => setTimeout(resolve, 300));
   } catch (err) {
     console.warn("[clearAllUserCache] Lỗi khi xóa cache:", err);
+  } finally {
+    isCacheOperationInProgress = false;
   }
 };
 
-// Xóa cache dashboard stats
-export const clearDashboardCache = () => {
+// Xóa cache dashboard stats với cơ chế chống gọi đồng thời
+export const clearDashboardCache = async () => {
+  if (!canPerformCacheOperation()) return;
+  
   try {
+    isCacheOperationInProgress = true;
+    lastCacheOperationTime = Date.now();
+    
     sessionStorage.removeItem('dashboard_stats');
     console.log("[clearDashboardCache] Đã xóa cache dashboard stats");
+    
+    // Trì hoãn một chút để cho phép các hoạt động xóa cache hoàn thành
+    await new Promise(resolve => setTimeout(resolve, 300));
   } catch (err) {
     console.warn("[clearDashboardCache] Không thể xóa cache dashboard stats:", err);
+  } finally {
+    isCacheOperationInProgress = false;
   }
 };
