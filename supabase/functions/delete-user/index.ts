@@ -1,6 +1,14 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4'
 import { corsHeaders } from '../_shared/cors.ts'
+import { standardResponse } from './utils.ts'
+import { authenticateUser, verifyAdminRole } from './auth.ts'
+import { 
+  checkUserExists, 
+  deleteRelatedData, 
+  deleteAuthUser, 
+  deletePublicUser 
+} from './user-data.ts'
 
 const supabaseUrl = "https://lxhawtndkubaeljbaylp.supabase.co"
 const supabaseServiceRole = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -10,16 +18,6 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRole, {
     persistSession: false,
   },
 })
-
-const standardResponse = (data: any = null, error: string | null = null, status = 200) => {
-  return new Response(
-    JSON.stringify({ data, error }), 
-    { 
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status
-    }
-  )
-}
 
 Deno.serve(async (req) => {
   // Xử lý CORS
@@ -38,12 +36,9 @@ Deno.serve(async (req) => {
     }
 
     const token = authHeader.replace('Bearer ', '')
-    console.log('[delete-user] Đang xác thực token')
-    
-    const { data: { user: caller }, error: authError } = await supabaseAdmin.auth.getUser(token)
+    const { caller, error: authError } = await authenticateUser(supabaseAdmin, token)
     
     if (authError || !caller) {
-      console.error('[delete-user] Lỗi xác thực:', authError)
       return standardResponse(
         null, 
         `Xác thực không thành công: ${authError?.message || 'Token không hợp lệ'}`,
@@ -51,63 +46,22 @@ Deno.serve(async (req) => {
       )
     }
 
-    console.log('[delete-user] Xác thực thành công cho user:', caller.id)
-    
-    // Kiểm tra quyền admin - kiểm tra nhiều nguồn khác nhau để xác định quyền admin
-    console.log('[delete-user] Đang kiểm tra quyền admin cho user:', caller.id)
-    
-    // Kiểm tra từ bảng user_roles (chính thức)
-    let isAdmin = false;
+    // Kiểm tra quyền admin
     try {
-      const { data: roleData, error: roleError } = await supabaseAdmin
-        .from('user_roles')
-        .select('*')
-        .eq('user_id', caller.id)
-        .eq('role', 'admin')
-        .maybeSingle();
-      
-      if (!roleError && roleData) {
-        console.log('[delete-user] Tìm thấy quyền admin trong user_roles');
-        isAdmin = true;
-      } else {
-        // Kiểm tra từ bảng users (dự phòng)
-        const { data: userData, error: userError } = await supabaseAdmin
-          .from('users')
-          .select('role')
-          .eq('id', caller.id)
-          .maybeSingle();
-        
-        if (!userError && userData?.role === 'admin') {
-          console.log('[delete-user] Tìm thấy quyền admin trong bảng users');
-          isAdmin = true;
-        } else {
-          // Thử dùng RPC function is_admin nếu có
-          try {
-            const { data: isAdminRPC, error: rpcError } = await supabaseAdmin.rpc('is_admin', { uid: caller.id });
-            if (!rpcError && isAdminRPC === true) {
-              console.log('[delete-user] Xác nhận quyền admin qua RPC function');
-              isAdmin = true;
-            }
-          } catch (rpcErr) {
-            console.log('[delete-user] RPC is_admin không khả dụng:', rpcErr);
-            // Không làm gì nếu RPC không khả dụng
-          }
-        }
-      }
-      
+      const isAdmin = await verifyAdminRole(supabaseAdmin, caller.id)
       if (!isAdmin) {
-        console.error('[delete-user] Người dùng không có quyền admin:', caller.id);
-        return standardResponse(null, 'Bạn không có quyền thực hiện thao tác này', 403);
+        console.error('[delete-user] Người dùng không có quyền admin:', caller.id)
+        return standardResponse(null, 'Bạn không có quyền thực hiện thao tác này', 403)
       }
       
-      console.log('[delete-user] Xác nhận quyền admin thành công');
+      console.log('[delete-user] Xác nhận quyền admin thành công')
     } catch (adminError) {
-      console.error('[delete-user] Lỗi khi kiểm tra quyền admin:', adminError);
+      console.error('[delete-user] Lỗi khi kiểm tra quyền admin:', adminError)
       return standardResponse(
         null,
         `Lỗi xác thực quyền: ${adminError instanceof Error ? adminError.message : String(adminError)}`,
         500
-      );
+      )
     }
 
     // Lấy dữ liệu từ request
@@ -129,124 +83,42 @@ Deno.serve(async (req) => {
     console.log("[delete-user] Đang xóa user:", userId);
 
     // Kiểm tra user tồn tại
-    const { data: existingUser, error: getUserError } = await supabaseAdmin
-      .from('users')
-      .select('*')
-      .eq('id', userId)
-      .maybeSingle();
-
-    if (getUserError) {
-      console.error('[delete-user] Lỗi khi kiểm tra user:', getUserError);
-      return standardResponse(
-        null,
-        `Lỗi khi kiểm tra người dùng: ${getUserError.message}`,
-        500
-      );
-    }
-
-    if (!existingUser) {
-      console.error('[delete-user] Không tìm thấy user:', userId);
-      return standardResponse(
-        null,
-        'Không tìm thấy người dùng cần xóa',
-        404
-      );
-    }
-
-    // QUAN TRỌNG: Xóa dữ liệu liên quan trong user_subscriptions trước
     try {
-      console.log('[delete-user] Đang xóa dữ liệu trong bảng user_subscriptions');
-      
-      const { error: deleteSubscriptionsError } = await supabaseAdmin
-        .from('user_subscriptions')
-        .delete()
-        .eq('user_id', userId);
-      
-      if (deleteSubscriptionsError) {
-        console.error('[delete-user] Lỗi khi xóa dữ liệu từ bảng user_subscriptions:', deleteSubscriptionsError);
-        return standardResponse(
-          null,
-          `Lỗi khi xóa dữ liệu đăng ký: ${deleteSubscriptionsError.message}`,
-          500
-        );
+      const existingUser = await checkUserExists(supabaseAdmin, userId);
+      if (!existingUser) {
+        console.error('[delete-user] Không tìm thấy user:', userId);
+        return standardResponse(null, 'Không tìm thấy người dùng cần xóa', 404);
       }
-      console.log('[delete-user] Đã xóa thành công dữ liệu trong bảng user_subscriptions');
-    } catch (subError) {
-      console.error('[delete-user] Lỗi không mong đợi khi xóa dữ liệu đăng ký:', subError);
+    } catch (checkError) {
       return standardResponse(
         null,
-        `Lỗi khi xóa dữ liệu đăng ký: ${subError instanceof Error ? subError.message : String(subError)}`,
+        `Lỗi khi kiểm tra người dùng: ${checkError instanceof Error ? checkError.message : String(checkError)}`,
         500
       );
     }
 
-    // Xóa dữ liệu liên quan khác nếu có
+    // Xóa dữ liệu liên quan
     try {
-      // Xóa trong bảng user_roles nếu có
-      await supabaseAdmin
-        .from('user_roles')
-        .delete()
-        .eq('user_id', userId);
-      
-      console.log('[delete-user] Đã xóa dữ liệu liên quan trong bảng user_roles');
-      
-      // Xóa trong bảng payment_history nếu có
-      await supabaseAdmin
-        .from('payment_history')
-        .delete()
-        .eq('user_id', userId);
-      
-      console.log('[delete-user] Đã xóa dữ liệu liên quan trong bảng payment_history');
-      
-      // Xóa trong bảng articles nếu có
-      await supabaseAdmin
-        .from('articles')
-        .delete()
-        .eq('user_id', userId);
-      
-      console.log('[delete-user] Đã xóa dữ liệu liên quan trong bảng articles');
-      
-      // Xóa trong bảng verification_tokens nếu có
-      await supabaseAdmin
-        .from('verification_tokens')
-        .delete()
-        .eq('user_id', userId);
-      
-      console.log('[delete-user] Đã xóa dữ liệu liên quan trong bảng verification_tokens');
-      
+      await deleteRelatedData(supabaseAdmin, userId);
     } catch (relatedError) {
-      console.log('[delete-user] Lỗi khi xóa một số dữ liệu liên quan (không ảnh hưởng đến quá trình):', relatedError);
-      // Tiếp tục xử lý kể cả khi xóa dữ liệu liên quan thất bại
+      return standardResponse(
+        null,
+        `Lỗi khi xóa dữ liệu liên quan: ${relatedError instanceof Error ? relatedError.message : String(relatedError)}`,
+        500
+      );
     }
     
-    // Xóa user trong auth.users sử dụng admin.deleteUser
-    try {
-      const { data: authDeleteData, error: authDeleteError } = await supabaseAdmin.auth.admin.deleteUser(
-        userId.toString()
-      );
-      
-      if (authDeleteError) {
-        console.error('[delete-user] Lỗi khi xóa user trong auth.users:', authDeleteError);
-        // Không return lỗi ở đây, vẫn tiếp tục xóa trong bảng users public
-      } else {
-        console.log('[delete-user] Đã xóa user trong auth.users thành công');
-      }
-    } catch (authDeleteErr) {
-      console.error('[delete-user] Lỗi khi gọi admin.deleteUser:', authDeleteErr);
-      // Tiếp tục xử lý, vẫn xóa trong bảng users public
-    }
+    // Xóa user trong auth.users
+    await deleteAuthUser(supabaseAdmin, userId);
+    // Chúng ta không return lỗi ở đây vì vẫn muốn tiếp tục xóa trong bảng users public
 
     // Xóa user trong bảng users public
-    const { error: deleteError } = await supabaseAdmin
-      .from('users')
-      .delete()
-      .eq('id', userId);
-
-    if (deleteError) {
-      console.error('[delete-user] Lỗi khi xóa user trong bảng users:', deleteError);
+    try {
+      await deletePublicUser(supabaseAdmin, userId);
+    } catch (publicUserError) {
       return standardResponse(
         null,
-        `Lỗi khi xóa người dùng: ${deleteError.message}`,
+        `Lỗi khi xóa người dùng: ${publicUserError instanceof Error ? publicUserError.message : String(publicUserError)}`,
         500
       );
     }
