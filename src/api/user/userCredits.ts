@@ -22,8 +22,8 @@ export const addUserCredits = async (id: string | number, amount: number): Promi
     throw new Error("Không tìm thấy người dùng");
   }
 
-  // Xử lý an toàn với credits - chắc chắn currentData không null ở điểm này
-  const currentCredits = currentData && typeof currentData === 'object' && 'credits' in currentData ? 
+  // Xử lý an toàn với credits - kiểm tra null/undefined
+  const currentCredits = (currentData && typeof currentData === 'object' && 'credits' in currentData) ? 
     Number(currentData.credits) : 0;
     
   console.log(`[API] Số dư tín dụng hiện tại: ${currentCredits}`);
@@ -67,8 +67,8 @@ export const addUserCredits = async (id: string | number, amount: number): Promi
     console.warn(`[API] Lỗi khi ghi log giao dịch:`, logErr);
   }
   
-  // Xử lý an toàn với credits khi trả về - chắc chắn data không null ở điểm này
-  const credits = data && typeof data === 'object' && 'credits' in data ? 
+  // Xử lý an toàn với credits khi trả về - kiểm tra null/undefined
+  const credits = (data && typeof data === 'object' && 'credits' in data) ? 
     Number(data.credits) : 0;
     
   console.log(`[API] Thêm tín dụng thành công, số dư mới: ${credits}`);

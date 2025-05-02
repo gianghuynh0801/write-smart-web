@@ -1,8 +1,7 @@
 
-import { useCallback } from "react";
+import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { generateRandomToken } from "@/utils/tokenUtils";
 
 export interface VerificationParams {
   email: string;
@@ -31,6 +30,111 @@ const isRetryableError = (error: any): boolean => {
 
 export const useEmailVerification = () => {
   const { toast } = useToast();
+  const [unconfirmedEmail, setUnconfirmedEmail] = useState<string>("");
+  const [isEmailVerificationRequired, setIsEmailVerificationRequired] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  // Lấy cấu hình xác minh email từ DB
+  const fetchEmailVerificationConfig = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      console.log("Đang lấy cấu hình xác minh email...");
+      
+      const { data, error } = await supabase
+        .from('system_configurations')
+        .select('value')
+        .eq('key', 'require_email_verification' as any)
+        .maybeSingle();
+      
+      if (error) {
+        console.error("Lỗi khi lấy cấu hình xác minh email:", error);
+        setIsEmailVerificationRequired(false);
+        return;
+      }
+      
+      // Xử lý dữ liệu nhận được an toàn
+      const configValue = data && typeof data === 'object' && 'value' in data ? data.value : null;
+      const requireVerification = configValue === 'true';
+      
+      console.log("Cấu hình xác minh email:", requireVerification);
+      setIsEmailVerificationRequired(requireVerification);
+    } catch (error) {
+      console.error("Lỗi không xác định khi lấy cấu hình email:", error);
+      setIsEmailVerificationRequired(false);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+  
+  // Xử lý gửi lại email xác thực
+  const handleResendVerification = useCallback(async () => {
+    if (!unconfirmedEmail) {
+      console.error("Email không hợp lệ khi thử gửi lại xác thực");
+      toast({
+        title: "Lỗi",
+        description: "Email không hợp lệ hoặc thiếu.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      setIsLoading(true);
+      console.log("Đang tìm user ID từ email:", unconfirmedEmail);
+      
+      // Tìm ID người dùng từ email
+      const { data: userData, error: userError } = await supabase
+        .from("users")
+        .select("id")
+        .eq("email", unconfirmedEmail.toLowerCase() as any)
+        .maybeSingle();
+        
+      if (userError || !userData) {
+        console.error("Không tìm thấy người dùng với email:", unconfirmedEmail);
+        toast({
+          title: "Lỗi",
+          description: "Không tìm thấy tài khoản với email này.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Truy cập an toàn user ID
+      const userId = userData && typeof userData === 'object' && 'id' in userData ? userData.id : null;
+      
+      if (!userId) {
+        console.error("ID người dùng không hợp lệ");
+        toast({
+          title: "Lỗi",
+          description: "ID người dùng không hợp lệ.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Gọi API để gửi email xác thực
+      await sendVerificationEmail({
+        email: unconfirmedEmail,
+        userId: userId as string,
+        type: "email_verification"
+      });
+      
+      toast({
+        title: "Email xác thực đã được gửi",
+        description: "Vui lòng kiểm tra hộp thư của bạn.",
+      });
+      
+    } catch (error) {
+      console.error("Lỗi khi gửi lại email xác thực:", error);
+      toast({
+        title: "Lỗi",
+        description: `Không thể gửi lại email xác thực: ${error instanceof Error ? error.message : "Lỗi không xác định"}`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [unconfirmedEmail, toast]);
 
   const sendVerificationEmail = useCallback(async (params: VerificationParams) => {
     try {
@@ -105,8 +209,8 @@ export const useEmailVerification = () => {
         supabase
           .from('verification_tokens')
           .delete()
-          .eq('user_id', params.userId)
-          .eq('type', params.type)
+          .eq('user_id', params.userId as any)
+          .eq('type', params.type as any)
       ]);
       
       console.log("Sync user result:", syncResult);
@@ -119,7 +223,7 @@ export const useEmailVerification = () => {
           token: token,
           type: params.type,
           expires_at: expiresAt.toISOString()
-        });
+        } as any);
 
       if (tokenError) {
         throw tokenError;
@@ -129,11 +233,14 @@ export const useEmailVerification = () => {
       const { data: configData, error: configError } = await supabase
         .from('system_configurations')
         .select('value')
-        .eq('key', 'site_url')
+        .eq('key', 'site_url' as any)
         .maybeSingle();
       
-      // Sử dụng origin làm URL trang web mặc định nếu không được cấu hình trong cơ sở dữ liệu
-      const siteUrl = configData?.value || window.location.origin;
+      // Kiểm tra an toàn cho giá trị cấu hình
+      const configValue = configData && typeof configData === 'object' && 'value' in configData ? 
+        configData.value : null;
+        
+      const siteUrl = configValue || window.location.origin;
       console.log("Site URL for verification:", siteUrl);
 
       // Gọi edge function để gửi email
@@ -172,5 +279,30 @@ export const useEmailVerification = () => {
     }
   }, [toast]);
 
-  return { sendVerificationEmail };
+  return { 
+    unconfirmedEmail, 
+    setUnconfirmedEmail,
+    isEmailVerificationRequired, 
+    setIsEmailVerificationRequired,
+    isLoading,
+    setIsLoading,
+    fetchEmailVerificationConfig, 
+    handleResendVerification,
+    sendVerificationEmail 
+  };
 };
+
+// Hàm tiện ích tạo token ngẫu nhiên
+function generateRandomToken(length: number): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  const crypto = window.crypto;
+  const randomValues = new Uint8Array(length);
+  crypto.getRandomValues(randomValues);
+  
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(randomValues[i] % chars.length);
+  }
+  
+  return result;
+}

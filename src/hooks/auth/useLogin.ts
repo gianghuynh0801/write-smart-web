@@ -7,17 +7,23 @@ import { useSessionCheck } from "./useSessionCheck";
 import { useAuthListener } from "./useAuthListener";
 
 export function useLogin() {
+  // Tạo state nội bộ cho email chưa xác thực (nếu hook emailVerification không cung cấp)
+  const [localUnconfirmedEmail, setLocalUnconfirmedEmail] = useState<string>("");
+  const [localIsEmailVerificationRequired, setLocalIsEmailVerificationRequired] = useState<boolean>(false);
+  const [isEmailVerificationLoading, setIsEmailVerificationLoading] = useState<boolean>(false);
+  
   // Truy cập đầy đủ các thuộc tính và phương thức từ useEmailVerification
-  const { 
-    unconfirmedEmail, 
-    setUnconfirmedEmail,
-    isEmailVerificationRequired, 
-    setIsEmailVerificationRequired,
-    isLoading: emailVerificationLoading,
-    setIsLoading: setEmailVerificationLoading,
-    fetchEmailVerificationConfig, 
-    handleResendVerification 
-  } = useEmailVerification();
+  const emailVerification = useEmailVerification();
+  
+  // Sử dụng destructuring an toàn
+  const unconfirmedEmail = emailVerification.unconfirmedEmail || localUnconfirmedEmail;
+  const setUnconfirmedEmail = emailVerification.setUnconfirmedEmail || setLocalUnconfirmedEmail;
+  const isEmailVerificationRequired = emailVerification.isEmailVerificationRequired || localIsEmailVerificationRequired;
+  const setIsEmailVerificationRequired = emailVerification.setIsEmailVerificationRequired || setLocalIsEmailVerificationRequired;
+  const emailVerificationLoading = emailVerification.isLoading || isEmailVerificationLoading;
+  const setEmailVerificationLoading = emailVerification.setIsLoading || setIsEmailVerificationLoading;
+  const fetchEmailVerificationConfig = emailVerification.fetchEmailVerificationConfig || (() => Promise.resolve());
+  const handleResendVerification = emailVerification.handleResendVerification || (() => Promise.resolve());
 
   const { 
     isLoading: loginLoading, 

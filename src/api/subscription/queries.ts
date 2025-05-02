@@ -15,13 +15,16 @@ export const fetchSubscriptionPlans = async (): Promise<Subscription[]> => {
   }
 
   return (data || []).map((row) => {
+    // Thêm kiểm tra null rõ ràng
     if (!row) return {} as Subscription;
     
     // Kiểm tra null trước khi truy cập thuộc tính
+    const features = row && typeof row === 'object' && 'features' in row ? 
+      parseSubscriptionFeatures((row.features as any) || []) : [];
+      
     return {
       ...(row as any),
-      features: row && typeof row === 'object' && 'features' in row ? 
-        parseSubscriptionFeatures(row.features as any) : []
+      features
     } as Subscription;
   });
 };

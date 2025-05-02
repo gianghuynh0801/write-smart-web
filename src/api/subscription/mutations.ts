@@ -15,12 +15,11 @@ export const updateUserSubscription = async (userId: string, planId: number): Pr
   if (planError) throw new Error(`Error fetching plan: ${planError.message}`);
   if (!planData) throw new Error("Plan not found");
 
-  // Type safe features
+  // Type safe features - using null check to satisfy TypeScript
   const typedPlanData: Subscription = {
     ...(planData as any), 
-    // Kiểm tra null trước khi truy cập thuộc tính
-    features: planData && typeof planData === 'object' && 'features' in planData ? 
-      parseSubscriptionFeatures(planData.features as any) : [],
+    features: (planData && typeof planData === 'object' && 'features' in planData) ? 
+      parseSubscriptionFeatures((planData.features as any) || []) : [],
   };
 
   // Calculate subscription dates

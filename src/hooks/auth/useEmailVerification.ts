@@ -237,9 +237,10 @@ export const useEmailVerification = () => {
         .maybeSingle();
       
       // Kiểm tra an toàn cho giá trị cấu hình
-      const siteUrl = configData && typeof configData === 'object' && 'value' in configData ? 
-        configData.value : window.location.origin;
+      const configValue = configData && typeof configData === 'object' && 'value' in configData ? 
+        configData.value : null;
         
+      const siteUrl = configValue || window.location.origin;
       console.log("Site URL for verification:", siteUrl);
 
       // Gọi edge function để gửi email

@@ -36,11 +36,13 @@ export const useRealtimeSubscriptions = () => {
       }
       
       // Đảm bảo luôn có gói "Không có"
-      const hasNoneOption = data?.some(sub => 
-        typeof sub === 'object' && 'name' in sub && sub.name === 'Không có'
-      );
+      const dataArray = data || [];
+      const hasNoneOption = dataArray.some(sub => {
+        if (!sub) return false;
+        return typeof sub === 'object' && 'name' in sub && sub.name === 'Không có';
+      });
       
-      let processedData = [...(data || [])];
+      let processedData = [...dataArray];
       
       if (!hasNoneOption) {
         processedData.unshift({
@@ -50,7 +52,7 @@ export const useRealtimeSubscriptions = () => {
           period: 'month',
           description: 'Không sử dụng gói đăng ký',
           features: []
-        });
+        } as any);
       }
       
       // Đảm bảo dữ liệu hợp lệ

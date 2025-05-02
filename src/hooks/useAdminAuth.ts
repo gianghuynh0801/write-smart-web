@@ -66,7 +66,7 @@ export const useAdminAuth = () => {
               .from('user_roles')
               .select('*')
               .eq('user_id', data.session.user.id)
-              .eq('role', 'admin')
+              .eq('role', 'admin' as any)
               .maybeSingle();
               
             if (!roleError && roleData) {
