@@ -94,6 +94,11 @@ export const WebhookUrlCard = () => {
     setWebhookUrl(newUrl);
   };
 
+  // Xử lý khi xác thực thành công
+  const handleAuthSuccess = () => {
+    loadWebhookUrl();
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -103,7 +108,7 @@ export const WebhookUrlCard = () => {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <AdminAuthCheck>
+        <AdminAuthCheck onAuthSuccess={handleAuthSuccess}>
           {isLoading ? (
             <div className="flex justify-center py-4">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
