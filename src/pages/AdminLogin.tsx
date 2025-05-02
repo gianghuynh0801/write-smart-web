@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
-import LoginForm from "@/components/admin/LoginForm"; // Thay đổi cách import
+import LoginForm from "@/components/admin/LoginForm"; // Import component LoginForm với default export
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { ArrowLeft, AlertCircle } from "lucide-react";
