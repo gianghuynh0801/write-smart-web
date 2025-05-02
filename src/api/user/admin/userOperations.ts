@@ -1,5 +1,5 @@
 
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/integrations/supabase/typeSafeClient";
 import { User } from "@/types/user";
 
 interface ListUsersParams {
@@ -20,20 +20,20 @@ export const listUsers = async ({
   sortDirection = 'desc'
 }: ListUsersParams): Promise<{users: User[], total: number}> => {
   try {
-    let query = supabase.from('users' as any).select('*', { count: 'exact' });
+    let query = db.users().select('*', { count: 'exact' });
     
     // Apply filters
     if (status && status !== 'all') {
-      query = query.eq('status', status as any);
+      query = query.eq('status', status);
     }
     
     if (searchTerm) {
-      query = query.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%` as any);
+      query = query.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
     }
     
     // Apply sorting
     if (sortField) {
-      query = query.order(sortField as any, { ascending: sortDirection === 'asc' });
+      query = query.order(sortField, { ascending: sortDirection === 'asc' });
     }
     
     // Apply pagination
@@ -53,6 +53,13 @@ export const listUsers = async ({
       const role = user && typeof user === 'object' && 'role' in user ? 
         (user as any).role : 'user';
         
+      const createdAt = user && typeof user === 'object' && 'created_at' in user ? 
+        (user as any).created_at : new Date().toISOString();
+        
+      // Tạo avatar dựa trên id nếu không có
+      const userId = user && typeof user === 'object' && 'id' in user ? (user as any).id : '';
+      const avatar = `https://i.pravatar.cc/150?u=${userId}`;
+        
       // Trả về người dùng đã xử lý
       return {
         id: (user as any)?.id || '',
@@ -62,7 +69,8 @@ export const listUsers = async ({
         role: role === 'admin' ? 'admin' : 'user',
         credits: (user as any)?.credits || 0,
         subscription: (user as any)?.subscription || 'Không có',
-        created_at: (user as any)?.created_at || new Date().toISOString()
+        registeredAt: createdAt ? new Date(createdAt).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
+        avatar: avatar
       } as User;
     });
     

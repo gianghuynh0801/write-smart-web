@@ -1,5 +1,5 @@
 
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/integrations/supabase/typeSafeClient";
 import { parseUser } from "./userParser";
 import { User } from "@/types/user";
 
@@ -7,10 +7,9 @@ export const addUserCredits = async (id: string | number, amount: number): Promi
   const userId = String(id);
   console.log(`[API] Bắt đầu thêm ${amount} tín dụng cho người dùng ${userId}`);
 
-  const { data: currentData, error: getError } = await supabase
-    .from("users" as any)
+  const { data: currentData, error: getError } = await db.users()
     .select("*")
-    .eq("id", userId as any)
+    .eq("id", userId)
     .maybeSingle();
 
   if (getError) {
@@ -30,10 +29,9 @@ export const addUserCredits = async (id: string | number, amount: number): Promi
   const newCredits = currentCredits + amount;
   
   console.log(`[API] Cập nhật số dư tín dụng mới: ${newCredits}`);
-  const { data, error } = await supabase
-    .from("users" as any)
-    .update({ credits: newCredits } as any)
-    .eq("id", userId as any)
+  const { data, error } = await db.users()
+    .update({ credits: newCredits })
+    .eq("id", userId)
     .select()
     .maybeSingle();
 
@@ -48,15 +46,14 @@ export const addUserCredits = async (id: string | number, amount: number): Promi
   
   // Ghi log giao dịch vào payment_history
   try {
-    const { error: logError } = await supabase
-      .from("payment_history" as any)
+    const { error: logError } = await db.payment_history()
       .insert({
         user_id: userId,
         amount: amount,
         status: "completed",
         description: `Quản trị viên thêm ${amount} tín dụng`,
         payment_at: new Date().toISOString() // Thêm trường payment_at bắt buộc
-      } as any);
+      });
     
     if (logError) {
       console.warn(`[API] Không thể ghi log giao dịch:`, logError);

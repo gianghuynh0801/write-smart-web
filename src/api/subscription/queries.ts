@@ -1,11 +1,10 @@
 
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/integrations/supabase/typeSafeClient";
 import { parseSubscriptionFeatures } from "./utils";
 import { Subscription } from "@/types/subscriptions";
 
 export const fetchSubscriptionPlans = async (): Promise<Subscription[]> => {
-  const { data, error } = await supabase
-    .from("subscriptions" as any)
+  const { data, error } = await db.subscriptions()
     .select("*")
     .order("price", { ascending: true });
 
@@ -33,8 +32,7 @@ export const fetchUserSubscription = async (userId: string) => {
   console.log("Đang lấy thông tin gói đăng ký cho user:", userId);
   
   try {
-    const { data, error } = await supabase
-      .from("user_subscriptions" as any)
+    const { data, error } = await db.user_subscriptions()
       .select(`
         id,
         user_id,
@@ -51,8 +49,8 @@ export const fetchUserSubscription = async (userId: string) => {
           description
         )
       `)
-      .eq("user_id", userId as any)
-      .eq("status", "active" as any)
+      .eq("user_id", userId)
+      .eq("status", "active")
       .maybeSingle();
 
     if (error) {

@@ -1,15 +1,14 @@
 
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/integrations/supabase/typeSafeClient";
 import { Subscription } from "@/types/subscriptions";
 import { parseSubscriptionFeatures } from "./utils";
 import type { SubscriptionUpdateResponse, SubscriptionCancelResponse } from "./types";
 
 export const updateUserSubscription = async (userId: string, planId: number): Promise<SubscriptionUpdateResponse> => {
   // Get plan details
-  const { data: planData, error: planError } = await supabase
-    .from("subscriptions" as any)
+  const { data: planData, error: planError } = await db.subscriptions()
     .select("*")
-    .eq("id", planId as any)
+    .eq("id", planId)
     .maybeSingle();
 
   if (planError) throw new Error(`Error fetching plan: ${planError.message}`);
@@ -29,11 +28,10 @@ export const updateUserSubscription = async (userId: string, planId: number): Pr
   const endDate = endDateObj.toISOString().split("T")[0];
 
   // Check if user already has active subscription
-  const { data: existingSubscription, error: subError } = await supabase
-    .from("user_subscriptions" as any)
+  const { data: existingSubscription, error: subError } = await db.user_subscriptions()
     .select("id")
-    .eq("user_id", userId as any)
-    .eq("status", "active" as any)
+    .eq("user_id", userId)
+    .eq("status", "active")
     .maybeSingle();
 
   if (subError && subError.code !== "PGRST116") {
@@ -47,38 +45,35 @@ export const updateUserSubscription = async (userId: string, planId: number): Pr
         (existingSubscription as any).id : null;
       
       if (subscriptionId) {
-        const { error: updateError } = await supabase
-          .from("user_subscriptions" as any)
-          .update({ status: "inactive" } as any)
-          .eq("id", subscriptionId as any);
+        const { error: updateError } = await db.user_subscriptions()
+          .update({ status: "inactive" })
+          .eq("id", subscriptionId);
 
         if (updateError) throw new Error(`Error updating old subscription: ${updateError.message}`);
       }
     }
 
     // Create new subscription
-    const { error: insertError } = await supabase
-      .from("user_subscriptions" as any)
+    const { error: insertError } = await db.user_subscriptions()
       .insert({
         user_id: userId,
         subscription_id: planId,
         start_date: startDate,
         end_date: endDate,
         status: "active",
-      } as any);
+      });
 
     if (insertError) throw new Error(`Error creating subscription: ${insertError.message}`);
 
     // Record payment
-    const { error: paymentError } = await supabase
-      .from("payment_history" as any)
+    const { error: paymentError } = await db.payment_history()
       .insert({
         user_id: userId,
         amount: typedPlanData.price,
         status: "success",
         description: `Thanh toán gói ${typedPlanData.name}`,
         payment_at: new Date().toISOString(),
-      } as any);
+      });
 
     if (paymentError) throw new Error(`Error recording payment: ${paymentError.message}`);
 
@@ -93,11 +88,10 @@ export const updateUserSubscription = async (userId: string, planId: number): Pr
 
 export const cancelUserSubscription = async (userId: string): Promise<SubscriptionCancelResponse> => {
   // Find active subscription
-  const { data: subscription, error: findError } = await supabase
-    .from("user_subscriptions" as any)
+  const { data: subscription, error: findError } = await db.user_subscriptions()
     .select("id")
-    .eq("user_id", userId as any)
-    .eq("status", "active" as any)
+    .eq("user_id", userId)
+    .eq("status", "active")
     .maybeSingle();
 
   if (findError && findError.code !== "PGRST116") {
@@ -116,10 +110,9 @@ export const cancelUserSubscription = async (userId: string): Promise<Subscripti
     throw new Error("Không tìm thấy ID gói đăng ký");
   }
   
-  const { error: updateError } = await supabase
-    .from("user_subscriptions" as any)
-    .update({ status: "canceled" } as any)
-    .eq("id", subscriptionId as any);
+  const { error: updateError } = await db.user_subscriptions()
+    .update({ status: "canceled" })
+    .eq("id", subscriptionId);
 
   if (updateError) {
     throw new Error(`Error canceling subscription: ${updateError.message}`);
