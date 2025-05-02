@@ -1,4 +1,3 @@
-
 import { db } from "@/integrations/supabase/typeSafeClient";
 import { parseSubscriptionFeatures } from "./utils";
 import { Subscription } from "@/types/subscriptions";

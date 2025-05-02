@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Link, AlertCircle, Loader2, Save } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/integrations/supabase/typeSafeClient";
 
 interface WebhookUrlFormProps {
   initialUrl: string;
@@ -57,7 +57,7 @@ export const WebhookUrlForm = ({ initialUrl, onSave }: WebhookUrlFormProps) => {
       console.log("Đang lưu webhook URL vào database:", webhookUrl);
       
       // Kiểm tra quyền admin trước khi lưu
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await db.auth.getSession();
       if (!session) {
         setError("Bạn cần đăng nhập với quyền admin để thực hiện thao tác này.");
         toast({
@@ -69,32 +69,29 @@ export const WebhookUrlForm = ({ initialUrl, onSave }: WebhookUrlFormProps) => {
       }
       
       // Đầu tiên kiểm tra xem bản ghi đã tồn tại chưa
-      const { data: existingConfig } = await supabase
-        .from('system_configurations')
+      const { data: existingConfig } = await db.system_configurations()
         .select('*')
-        .eq('key', 'webhook_url' as any)
+        .eq('key', 'webhook_url')
         .maybeSingle();
       
       let result;
       
       if (existingConfig) {
         // Nếu bản ghi đã tồn tại, sử dụng UPDATE thay vì UPSERT
-        result = await supabase
-          .from('system_configurations')
+        result = await db.system_configurations()
           .update({ 
             value: webhookUrl || '',
             updated_at: new Date().toISOString()
-          } as any)
-          .eq('key', 'webhook_url' as any);
+          })
+          .eq('key', 'webhook_url');
       } else {
         // Nếu bản ghi chưa tồn tại, tạo mới
-        result = await supabase
-          .from('system_configurations')
+        result = await db.system_configurations()
           .insert({ 
             key: 'webhook_url', 
             value: webhookUrl || '',
             updated_at: new Date().toISOString()
-          } as any);
+          });
       }
       
       const { error } = result;

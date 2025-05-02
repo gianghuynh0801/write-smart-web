@@ -52,7 +52,7 @@ export const addUserCredits = async (id: string | number, amount: number): Promi
         amount: amount,
         status: "completed",
         description: `Quản trị viên thêm ${amount} tín dụng`,
-        payment_at: new Date().toISOString() // Thêm trường payment_at bắt buộc
+        payment_at: new Date().toISOString() 
       });
     
     if (logError) {

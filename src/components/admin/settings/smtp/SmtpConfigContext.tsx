@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/integrations/supabase/typeSafeClient";
 import { SmtpConfig, TestResult } from "./types";
 import { useToast } from "@/hooks/use-toast";
 
@@ -42,23 +42,23 @@ export const SmtpConfigProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const fetchConfig = async () => {
     try {
-      const { data, error } = await supabase
-        .from('system_configurations')
+      const { data, error } = await db.system_configurations()
         .select('id, value')
-        .eq('key', 'smtp_config' as any)
+        .eq('key', 'smtp_config')
         .maybeSingle();
 
       if (error) throw error;
       
       if (data && typeof data === 'object') {
-        if ('id' in data) {
-          setConfigId(data.id);
-          console.log("Fetched SMTP config with ID:", data.id);
+        const dataAny = data as any;
+        if ('id' in dataAny) {
+          setConfigId(dataAny.id);
+          console.log("Fetched SMTP config with ID:", dataAny.id);
         }
         
-        if ('value' in data && data.value) {
+        if ('value' in dataAny && dataAny.value) {
           try {
-            const parsedConfig = JSON.parse(data.value);
+            const parsedConfig = JSON.parse(dataAny.value);
             setConfig(parsedConfig);
           } catch (parseError) {
             console.error('Error parsing SMTP config JSON:', parseError);
@@ -98,18 +98,16 @@ export const SmtpConfigProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const configData = {
         key: 'smtp_config',
         value: JSON.stringify(config)
-      } as any;
+      };
       
       let operation;
       if (configId) {
-        operation = supabase
-            .from('system_configurations')
-            .update(configData)
-            .eq('id', configId as any);
+        operation = db.system_configurations()
+          .update(configData)
+          .eq('id', configId);
       } else {
-        operation = supabase
-            .from('system_configurations')
-            .insert(configData);
+        operation = db.system_configurations()
+          .insert(configData);
       }
       
       const { error } = await operation;
@@ -155,7 +153,7 @@ export const SmtpConfigProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     try {
       console.log("Testing SMTP configuration with test email:", testEmail);
       
-      const response = await supabase.functions.invoke('test-smtp', {
+      const response = await db.functions.invoke('test-smtp', {
         body: { 
           config: {
             ...config,

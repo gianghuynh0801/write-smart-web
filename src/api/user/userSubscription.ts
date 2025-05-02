@@ -45,7 +45,7 @@ export async function handleSubscriptionChange(userId: string, subscriptionName:
     console.log("Đã tìm thấy thông tin gói đăng ký:", subscriptionData);
     // Kiểm tra và truy cập an toàn thuộc tính id
     const subscriptionId = subscriptionData && typeof subscriptionData === 'object' && 'id' in subscriptionData ? 
-      subscriptionData.id : null;
+      (subscriptionData as any).id : null;
       
     if (subscriptionId === null) {
       throw new Error("ID gói đăng ký không hợp lệ");
@@ -107,10 +107,10 @@ export const getSubscriptionOptions = async (): Promise<string[]> => {
     
     // Luôn đảm bảo "Không có" (None) là một tùy chọn
     const options = data ? data.map(row => {
-      if (!row || typeof row !== 'object' || !('name' in row) || !row.name) {
+      if (!row || typeof row !== 'object' || !('name' in row) || !(row as any).name) {
         return "Không xác định";
       }
-      return row.name as string;
+      return (row as any).name as string;
     }) : [];
     
     if (!options.includes("Không có")) {

@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/integrations/supabase/typeSafeClient";
 import { checkAdminRole } from "@/services/admin/adminService";
 
 interface WebhookCheckResult {
@@ -21,9 +21,7 @@ export const useWebhookCheck = (): WebhookCheckResult => {
         console.log("Bắt đầu kiểm tra webhook URL và quyền admin...");
         
         // Kiểm tra webhook URL từ cấu hình hệ thống
-        // (Lưu ý: RLS policy đã được cập nhật để cho phép tất cả người dùng đọc cấu hình này)
-        const { data: webhookData, error: webhookError } = await supabase
-          .from('system_configurations')
+        const { data: webhookData, error: webhookError } = await db.system_configurations()
           .select('value')
           .eq('key', 'webhook_url')
           .maybeSingle();
@@ -32,11 +30,13 @@ export const useWebhookCheck = (): WebhookCheckResult => {
           console.error('Lỗi khi kiểm tra webhook URL:', webhookError);
         } else {
           console.log("Kết quả kiểm tra webhook URL:", webhookData);
-          setHasWebhook(!!webhookData?.value);
+          const webhookValue = webhookData && typeof webhookData === 'object' && 'value' in webhookData ? 
+            (webhookData as any).value : null;
+          setHasWebhook(!!webhookValue);
         }
 
         // Kiểm tra quyền admin của người dùng hiện tại
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await db.auth.getSession();
         if (session) {
           const { roleData } = await checkAdminRole(session.user.id);
           setIsAdmin(!!roleData);

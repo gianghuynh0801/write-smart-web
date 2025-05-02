@@ -27,7 +27,7 @@ export const WebhookUrlCard = () => {
       const { data, error } = await supabase
         .from('system_configurations')
         .select('value')
-        .eq('key', 'webhook_url' as any)
+        .eq('key', 'webhook_url')
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
