@@ -26,7 +26,7 @@ const EmailVerification = () => {
 
         // Verify token
         const { data, error } = await supabase
-          .from('verification_tokens')
+          .from('verification_tokens' as any)
           .select('*')
           .eq('token', token as any)
           .eq('type', 'email_verification' as any)
@@ -37,37 +37,38 @@ const EmailVerification = () => {
         }
 
         // Check token expiration
-        if (!data || typeof data !== 'object' || !('expires_at' in data)) {
+        const dataAny = data as any;
+        if (!dataAny || typeof dataAny !== 'object' || !('expires_at' in dataAny)) {
           throw new Error("Dữ liệu token không hợp lệ");
         }
         
-        const expiresAt = new Date(data.expires_at as string);
+        const expiresAt = new Date(dataAny.expires_at as string);
         if (expiresAt < new Date()) {
           throw new Error("Mã xác thực đã hết hạn");
         }
 
         // Update user's email_verified status
-        if (!data || typeof data !== 'object' || !('user_id' in data)) {
+        if (!dataAny || typeof dataAny !== 'object' || !('user_id' in dataAny)) {
           throw new Error("Không tìm thấy ID người dùng");
         }
         
         const { error: updateError } = await supabase
-          .from('users')
+          .from('users' as any)
           .update({ email_verified: true } as any)
-          .eq('id', data.user_id as any);
+          .eq('id', dataAny.user_id as any);
 
         if (updateError) {
           throw updateError;
         }
 
         // Delete the used token
-        if (!data || typeof data !== 'object' || !('id' in data)) {
+        if (!dataAny || typeof dataAny !== 'object' || !('id' in dataAny)) {
           console.warn("Không thể xóa token đã sử dụng (không có ID)");
         } else {
           await supabase
-            .from('verification_tokens')
+            .from('verification_tokens' as any)
             .delete()
-            .eq('id', data.id as any);
+            .eq('id', dataAny.id as any);
         }
 
         setStatus("success");

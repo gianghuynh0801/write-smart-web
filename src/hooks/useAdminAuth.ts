@@ -5,6 +5,13 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/auth";
 
+// Thông tin đăng nhập mặc định cho quản trị viên
+export const defaultAdmin = {
+  username: "admin",
+  email: "admin@example.com",
+  password: "Admin123!"
+};
+
 export const useAdminAuth = () => {
   const { toast } = useToast();
   const navigate = useNavigate();

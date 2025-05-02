@@ -2,8 +2,14 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { defaultAdmin } from "@/hooks/useAdminAuth";
 import { Eye, EyeOff } from "lucide-react";
+
+// Thông tin đăng nhập mặc định cho quản trị viên
+export const defaultAdmin = {
+  username: "admin",
+  email: "admin@example.com",
+  password: "Admin123!"
+};
 
 interface LoginFormProps {
   onSubmit: (username: string, password: string) => Promise<void>;

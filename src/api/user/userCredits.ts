@@ -8,7 +8,7 @@ export const addUserCredits = async (id: string | number, amount: number): Promi
   console.log(`[API] Bắt đầu thêm ${amount} tín dụng cho người dùng ${userId}`);
 
   const { data: currentData, error: getError } = await supabase
-    .from("users")
+    .from("users" as any)
     .select("*")
     .eq("id", userId as any)
     .maybeSingle();
@@ -31,7 +31,7 @@ export const addUserCredits = async (id: string | number, amount: number): Promi
   
   console.log(`[API] Cập nhật số dư tín dụng mới: ${newCredits}`);
   const { data, error } = await supabase
-    .from("users")
+    .from("users" as any)
     .update({ credits: newCredits } as any)
     .eq("id", userId as any)
     .select()
@@ -49,7 +49,7 @@ export const addUserCredits = async (id: string | number, amount: number): Promi
   // Ghi log giao dịch vào payment_history
   try {
     const { error: logError } = await supabase
-      .from("payment_history")
+      .from("payment_history" as any)
       .insert({
         user_id: userId,
         amount: amount,

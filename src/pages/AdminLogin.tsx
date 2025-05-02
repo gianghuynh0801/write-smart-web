@@ -1,16 +1,94 @@
 
+import { useState, useEffect } from "react";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { LoginForm } from "@/components/admin/LoginForm";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { ArrowLeft, AlertCircle } from "lucide-react";
-import { useEffect, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { supabase } from "@/integrations/supabase/client";
 
 const AdminLogin = () => {
-  const { isLoading, isChecking, error, handleAdminLogin } = useAdminAuth();
+  const [isLoading, setIsLoading] = useState(false);
+  const [isChecking, setIsChecking] = useState(true); 
+  const [error, setError] = useState<string | null>(null);
   const [showTimeout, setShowTimeout] = useState(false);
   const [showProcessing, setShowProcessing] = useState(false);
+  
+  // Hàm xử lý đăng nhập quản trị viên
+  const handleAdminLogin = async (username: string, password: string) => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      // Kiểm tra đăng nhập bằng email
+      const { data, error: loginError } = await supabase.auth.signInWithPassword({
+        email: username.includes('@') ? username : `${username}@example.com`,
+        password
+      });
+      
+      if (loginError) {
+        throw loginError;
+      }
+
+      if (!data.user) {
+        throw new Error("Không tìm thấy thông tin người dùng");
+      }
+
+      // Kiểm tra quyền admin 
+      const { data: roleData, error: roleError } = await supabase
+        .from('user_roles' as any)
+        .select('*')
+        .eq('user_id', data.user.id as any)
+        .eq('role', 'admin' as any)
+        .single();
+
+      if (roleError || !roleData) {
+        await supabase.auth.signOut(); // Đăng xuất nếu không phải admin
+        throw new Error("Tài khoản của bạn không có quyền quản trị");
+      }
+      
+      // Chuyển hướng đến trang quản trị
+      window.location.href = "/admin";
+      
+    } catch (error: any) {
+      console.error("Lỗi đăng nhập admin:", error);
+      setError(error.message || "Đăng nhập thất bại");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Kiểm tra phiên đăng nhập khi trang tải
+  useEffect(() => {
+    const checkAdminSession = async () => {
+      try {
+        const { data: session } = await supabase.auth.getSession();
+        
+        if (session.session) {
+          // Kiểm tra quyền admin
+          const { data: roleData, error: roleError } = await supabase
+            .from('user_roles' as any)
+            .select('*')
+            .eq('user_id', session.session.user.id as any)
+            .eq('role', 'admin' as any)
+            .single();
+            
+          if (!roleError && roleData) {
+            // Có quyền admin, chuyển hướng đến trang quản trị
+            window.location.href = "/admin";
+            return;
+          }
+        }
+      } catch (error) {
+        console.error("Lỗi kiểm tra phiên admin:", error);
+      } finally {
+        setIsChecking(false);
+      }
+    };
+    
+    checkAdminSession();
+  }, []);
 
   // Hiển thị thông báo timeout nếu isChecking kéo dài quá lâu
   useEffect(() => {

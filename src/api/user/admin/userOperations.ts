@@ -13,7 +13,7 @@ export const checkAdminRole = async (userId: string) => {
     
     // 1. Sử dụng RPC function is_admin nếu có (hiệu quả nhất)
     try {
-      const { data: isAdmin, error: rpcError } = await supabase.rpc('is_admin', { uid: userId });
+      const { data: isAdmin, error: rpcError } = await supabase.rpc('is_admin', { uid: userId as any });
       
       console.log("Admin role check with RPC:", { isAdmin, rpcError });
       
@@ -30,7 +30,7 @@ export const checkAdminRole = async (userId: string) => {
     // 2. Kiểm tra từ bảng user_roles (chính thức)
     try {
       const { data: roleData, error: roleError } = await supabase
-        .from('user_roles')
+        .from('user_roles' as any)
         .select('*')
         .eq('user_id', userId as any)
         .eq('role', 'admin' as any)
@@ -48,7 +48,7 @@ export const checkAdminRole = async (userId: string) => {
     // 3. Kiểm tra từ bảng users trước (nhanh nhất)
     try {
       const { data: userData, error: userError } = await supabase
-        .from('users')
+        .from('users' as any)
         .select('role')
         .eq('id', userId as any)
         .maybeSingle();

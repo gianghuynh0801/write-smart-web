@@ -29,7 +29,7 @@ export const useUserDataRefresh = () => {
 
       // Lấy thông tin chi tiết từ bảng users
       const userPromise = supabase
-        .from('users')
+        .from('users' as any)
         .select('credits, email_verified, subscription')
         .eq('id', user.id as any)
         .single();
@@ -56,7 +56,7 @@ export const useUserDataRefresh = () => {
 
       // Lấy thông tin gói đăng ký hiện tại với timeout
       const subPromise = supabase
-        .from('user_subscriptions')
+        .from('user_subscriptions' as any)
         .select(`
           subscription_id,
           end_date,

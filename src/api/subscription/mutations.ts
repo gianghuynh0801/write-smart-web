@@ -7,7 +7,7 @@ import type { SubscriptionUpdateResponse, SubscriptionCancelResponse } from "./t
 export const updateUserSubscription = async (userId: string, planId: number): Promise<SubscriptionUpdateResponse> => {
   // Get plan details
   const { data: planData, error: planError } = await supabase
-    .from("subscriptions")
+    .from("subscriptions" as any)
     .select("*")
     .eq("id", planId as any)
     .maybeSingle();
@@ -30,7 +30,7 @@ export const updateUserSubscription = async (userId: string, planId: number): Pr
 
   // Check if user already has active subscription
   const { data: existingSubscription, error: subError } = await supabase
-    .from("user_subscriptions")
+    .from("user_subscriptions" as any)
     .select("id")
     .eq("user_id", userId as any)
     .eq("status", "active" as any)
@@ -48,7 +48,7 @@ export const updateUserSubscription = async (userId: string, planId: number): Pr
       
       if (subscriptionId) {
         const { error: updateError } = await supabase
-          .from("user_subscriptions")
+          .from("user_subscriptions" as any)
           .update({ status: "inactive" } as any)
           .eq("id", subscriptionId as any);
 
@@ -58,7 +58,7 @@ export const updateUserSubscription = async (userId: string, planId: number): Pr
 
     // Create new subscription
     const { error: insertError } = await supabase
-      .from("user_subscriptions")
+      .from("user_subscriptions" as any)
       .insert({
         user_id: userId,
         subscription_id: planId,
@@ -71,7 +71,7 @@ export const updateUserSubscription = async (userId: string, planId: number): Pr
 
     // Record payment
     const { error: paymentError } = await supabase
-      .from("payment_history")
+      .from("payment_history" as any)
       .insert({
         user_id: userId,
         amount: typedPlanData.price,
@@ -94,7 +94,7 @@ export const updateUserSubscription = async (userId: string, planId: number): Pr
 export const cancelUserSubscription = async (userId: string): Promise<SubscriptionCancelResponse> => {
   // Find active subscription
   const { data: subscription, error: findError } = await supabase
-    .from("user_subscriptions")
+    .from("user_subscriptions" as any)
     .select("id")
     .eq("user_id", userId as any)
     .eq("status", "active" as any)
@@ -117,7 +117,7 @@ export const cancelUserSubscription = async (userId: string): Promise<Subscripti
   }
   
   const { error: updateError } = await supabase
-    .from("user_subscriptions")
+    .from("user_subscriptions" as any)
     .update({ status: "canceled" } as any)
     .eq("id", subscriptionId as any);
 

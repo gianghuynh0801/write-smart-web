@@ -5,7 +5,7 @@ import { Subscription } from "@/types/subscriptions";
 
 export const fetchSubscriptionPlans = async (): Promise<Subscription[]> => {
   const { data, error } = await supabase
-    .from("subscriptions")
+    .from("subscriptions" as any)
     .select("*")
     .order("price", { ascending: true });
 
@@ -34,7 +34,7 @@ export const fetchUserSubscription = async (userId: string) => {
   
   try {
     const { data, error } = await supabase
-      .from("user_subscriptions")
+      .from("user_subscriptions" as any)
       .select(`
         id,
         user_id,

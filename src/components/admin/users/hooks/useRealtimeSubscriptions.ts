@@ -24,7 +24,7 @@ export const useRealtimeSubscriptions = () => {
       
       console.log('Fetching subscription plans...');
       const { data, error: fetchError } = await supabase
-        .from('subscriptions')
+        .from('subscriptions' as any)
         .select('*')
         .order('price', { ascending: true });
       
@@ -111,7 +111,7 @@ export const useRealtimeSubscriptions = () => {
       
       console.log(`Fetching subscription with ID ${id}...`);
       const { data, error } = await supabase
-        .from('subscriptions')
+        .from('subscriptions' as any)
         .select('*')
         .eq('id', id as any)
         .maybeSingle();
