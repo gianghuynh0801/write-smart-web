@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,7 +31,7 @@ const PaymentHistoryCard = () => {
         // Transform the data to match our PaymentHistory interface
         const transformedData = data?.map(item => ({
           ...item,
-          payment_at: item.created_at // Map created_at to payment_at
+          payment_at: item.payment_at || item.created_at // Sử dụng payment_at nếu có, nếu không thì dùng created_at
         })) || [];
         
         setPayments(transformedData);

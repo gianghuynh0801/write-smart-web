@@ -26,7 +26,7 @@ export interface PaymentHistory {
   amount: number;
   status: string;
   description: string;
-  payment_at: string; // This field is required according to error message
+  payment_at: string; // Trường bắt buộc
   created_at?: string;
 }
 

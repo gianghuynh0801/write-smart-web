@@ -41,7 +41,7 @@ export const updateUserSubscription = async (userId: string, planId: number): Pr
 
   try {
     // Inactivate old subscription if exists
-    if (existingSubscription && existingSubscription.id) {
+    if (existingSubscription) {
       const { error: updateError } = await supabase
         .from("user_subscriptions")
         .update({ status: "inactive" })
@@ -53,29 +53,26 @@ export const updateUserSubscription = async (userId: string, planId: number): Pr
     // Create new subscription
     const { error: insertError } = await supabase
       .from("user_subscriptions")
-      .insert([
-        {
-          user_id: userId,
-          subscription_id: planId,
-          start_date: startDate,
-          end_date: endDate,
-          status: "active",
-        },
-      ]);
+      .insert({
+        user_id: userId,
+        subscription_id: planId,
+        start_date: startDate,
+        end_date: endDate,
+        status: "active",
+      });
 
     if (insertError) throw new Error(`Error creating subscription: ${insertError.message}`);
 
     // Record payment
     const { error: paymentError } = await supabase
       .from("payment_history")
-      .insert([
-        {
-          user_id: userId,
-          amount: typedPlanData.price,
-          status: "success",
-          description: `Thanh toán gói ${typedPlanData.name}`,
-        },
-      ]);
+      .insert({
+        user_id: userId,
+        amount: typedPlanData.price,
+        status: "success",
+        description: `Thanh toán gói ${typedPlanData.name}`,
+        payment_at: new Date().toISOString(), // Thêm trường bắt buộc payment_at
+      });
 
     if (paymentError) throw new Error(`Error recording payment: ${paymentError.message}`);
 
@@ -101,7 +98,7 @@ export const cancelUserSubscription = async (userId: string): Promise<Subscripti
     throw new Error(`Error finding subscription: ${findError.message}`);
   }
 
-  if (!subscription || !subscription.id) {
+  if (!subscription) {
     throw new Error("Không tìm thấy gói đăng ký hoạt động");
   }
 
