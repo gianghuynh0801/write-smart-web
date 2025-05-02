@@ -51,21 +51,30 @@ export const deleteUser = async (id: string | number): Promise<void> => {
           );
           
           if (retryError) {
-            if (typeof retryError === 'object' && retryError !== null) {
-              const errorMessage = (retryError as any).message || "Lỗi không xác định";
-              throw new Error(`Lỗi xóa user: ${errorMessage}`);
-            } else {
-              throw new Error(`Lỗi xóa user: ${String(retryError)}`);
-            }
+            // Cải thiện thông báo lỗi để nó cụ thể hơn về nguyên nhân thất bại
+            const errorMessage = typeof retryError === 'object' && retryError !== null 
+              ? (retryError as any).message || "Lỗi không xác định" 
+              : String(retryError);
+              
+            throw new Error(`Lỗi xóa user: ${errorMessage}`);
           }
           
           return; // Thành công
         }
       }
       
+      // Cải thiện xử lý lỗi và trích xuất thông báo
       if (typeof invocationError === 'object' && invocationError !== null) {
-        const errorMessage = (invocationError as any).message || "Lỗi không xác định";
-        throw new Error(`Lỗi xóa user: ${errorMessage}`);
+        // Trích xuất thông báo chi tiết từ response nếu có
+        let detailedMessage = (invocationError as any).message || "Lỗi không xác định";
+        
+        // Kiểm tra xem lỗi có chứa thông tin từ Edge Function không
+        const responseError = (invocationError as any).error;
+        if (responseError && typeof responseError === 'object') {
+          detailedMessage = responseError.message || detailedMessage;
+        }
+        
+        throw new Error(`Lỗi xóa user: ${detailedMessage}`);
       } else {
         throw new Error(`Lỗi xóa user: ${String(invocationError)}`);
       }
@@ -74,6 +83,8 @@ export const deleteUser = async (id: string | number): Promise<void> => {
     if (data?.error) {
       throw new Error(`Lỗi xóa user: ${data.error}`);
     }
+    
+    console.log("[deleteUser] Xóa user thành công:", userId);
     
   } catch (error) {
     console.error("[deleteUser] Lỗi không mong đợi:", error);

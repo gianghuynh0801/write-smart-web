@@ -153,7 +153,34 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Xóa các dữ liệu liên quan trước (nếu cần)
+    // QUAN TRỌNG: Xóa dữ liệu liên quan trong user_subscriptions trước
+    try {
+      console.log('[delete-user] Đang xóa dữ liệu trong bảng user_subscriptions');
+      
+      const { error: deleteSubscriptionsError } = await supabaseAdmin
+        .from('user_subscriptions')
+        .delete()
+        .eq('user_id', userId);
+      
+      if (deleteSubscriptionsError) {
+        console.error('[delete-user] Lỗi khi xóa dữ liệu từ bảng user_subscriptions:', deleteSubscriptionsError);
+        return standardResponse(
+          null,
+          `Lỗi khi xóa dữ liệu đăng ký: ${deleteSubscriptionsError.message}`,
+          500
+        );
+      }
+      console.log('[delete-user] Đã xóa thành công dữ liệu trong bảng user_subscriptions');
+    } catch (subError) {
+      console.error('[delete-user] Lỗi không mong đợi khi xóa dữ liệu đăng ký:', subError);
+      return standardResponse(
+        null,
+        `Lỗi khi xóa dữ liệu đăng ký: ${subError instanceof Error ? subError.message : String(subError)}`,
+        500
+      );
+    }
+
+    // Xóa dữ liệu liên quan khác nếu có
     try {
       // Xóa trong bảng user_roles nếu có
       await supabaseAdmin
@@ -162,8 +189,33 @@ Deno.serve(async (req) => {
         .eq('user_id', userId);
       
       console.log('[delete-user] Đã xóa dữ liệu liên quan trong bảng user_roles');
+      
+      // Xóa trong bảng payment_history nếu có
+      await supabaseAdmin
+        .from('payment_history')
+        .delete()
+        .eq('user_id', userId);
+      
+      console.log('[delete-user] Đã xóa dữ liệu liên quan trong bảng payment_history');
+      
+      // Xóa trong bảng articles nếu có
+      await supabaseAdmin
+        .from('articles')
+        .delete()
+        .eq('user_id', userId);
+      
+      console.log('[delete-user] Đã xóa dữ liệu liên quan trong bảng articles');
+      
+      // Xóa trong bảng verification_tokens nếu có
+      await supabaseAdmin
+        .from('verification_tokens')
+        .delete()
+        .eq('user_id', userId);
+      
+      console.log('[delete-user] Đã xóa dữ liệu liên quan trong bảng verification_tokens');
+      
     } catch (relatedError) {
-      console.log('[delete-user] Không có hoặc không cần xóa dữ liệu liên quan:', relatedError);
+      console.log('[delete-user] Lỗi khi xóa một số dữ liệu liên quan (không ảnh hưởng đến quá trình):', relatedError);
       // Tiếp tục xử lý kể cả khi xóa dữ liệu liên quan thất bại
     }
     
