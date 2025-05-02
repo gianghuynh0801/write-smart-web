@@ -53,7 +53,7 @@ export const checkAdminRole = async (userId: string) => {
         .eq('id', userId as any)
         .maybeSingle();
       
-      if (!userError && userData && userData.role === 'admin') {
+      if (!userError && userData && typeof userData === 'object' && 'role' in userData && userData.role === 'admin') {
         console.log("Admin role found in users table:", userData);
         return { 
           roleData: { user_id: userId, role: 'admin' }, 

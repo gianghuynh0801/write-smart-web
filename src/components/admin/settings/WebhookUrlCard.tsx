@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { AdminAuthCheck } from "@/components/admin/auth/AdminAuthCheck";
@@ -39,7 +40,7 @@ export const WebhookUrlCard = () => {
         return;
       }
 
-      if (data && data.value) {
+      if (data && typeof data === 'object' && 'value' in data) {
         console.log("Đã tải webhook URL:", data.value);
         setWebhookUrl(data.value);
       } else {

@@ -9,7 +9,7 @@ export const updateUserSubscription = async (userId: string, planId: number): Pr
   const { data: planData, error: planError } = await supabase
     .from("subscriptions")
     .select("*")
-    .eq("id", planId as any) // Chuyển thành any để tránh lỗi type
+    .eq("id", planId as any)
     .maybeSingle();
 
   if (planError) throw new Error(`Error fetching plan: ${planError.message}`);
@@ -17,8 +17,9 @@ export const updateUserSubscription = async (userId: string, planId: number): Pr
 
   // Type safe features
   const typedPlanData: Subscription = {
-    ...(planData as any), // Sử dụng any để tránh lỗi spread type
-    features: planData && planData.features ? parseSubscriptionFeatures(planData.features as any) : [],
+    ...(planData as any), 
+    features: planData && typeof planData === 'object' && 'features' in planData ? 
+      parseSubscriptionFeatures(planData.features as any) : [],
   };
 
   // Calculate subscription dates
@@ -31,7 +32,7 @@ export const updateUserSubscription = async (userId: string, planId: number): Pr
   const { data: existingSubscription, error: subError } = await supabase
     .from("user_subscriptions")
     .select("id")
-    .eq("user_id", userId as any) // Sử dụng any để tránh lỗi type
+    .eq("user_id", userId as any)
     .eq("status", "active" as any)
     .maybeSingle();
 
@@ -41,13 +42,18 @@ export const updateUserSubscription = async (userId: string, planId: number): Pr
 
   try {
     // Inactivate old subscription if exists
-    if (existingSubscription) {
-      const { error: updateError } = await supabase
-        .from("user_subscriptions")
-        .update({ status: "inactive" } as any)
-        .eq("id", existingSubscription && existingSubscription.id ? existingSubscription.id : null);
+    if (existingSubscription && typeof existingSubscription === 'object') {
+      const subscriptionId = existingSubscription && 'id' in existingSubscription ? 
+        existingSubscription.id : null;
+      
+      if (subscriptionId) {
+        const { error: updateError } = await supabase
+          .from("user_subscriptions")
+          .update({ status: "inactive" } as any)
+          .eq("id", subscriptionId);
 
-      if (updateError) throw new Error(`Error updating old subscription: ${updateError.message}`);
+        if (updateError) throw new Error(`Error updating old subscription: ${updateError.message}`);
+      }
     }
 
     // Create new subscription
@@ -103,10 +109,17 @@ export const cancelUserSubscription = async (userId: string): Promise<Subscripti
   }
 
   // Mark as canceled
+  const subscriptionId = subscription && typeof subscription === 'object' && 'id' in subscription ? 
+    subscription.id : null;
+  
+  if (!subscriptionId) {
+    throw new Error("Không tìm thấy ID gói đăng ký");
+  }
+  
   const { error: updateError } = await supabase
     .from("user_subscriptions")
     .update({ status: "canceled" } as any)
-    .eq("id", subscription && subscription.id ? subscription.id : null);
+    .eq("id", subscriptionId);
 
   if (updateError) {
     throw new Error(`Error canceling subscription: ${updateError.message}`);

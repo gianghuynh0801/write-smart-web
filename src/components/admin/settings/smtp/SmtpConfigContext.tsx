@@ -45,18 +45,24 @@ export const SmtpConfigProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const { data, error } = await supabase
         .from('system_configurations')
         .select('id, value')
-        .eq('key', 'smtp_config')
+        .eq('key', 'smtp_config' as any)
         .maybeSingle();
 
       if (error) throw error;
       
-      if (data) {
-        setConfigId(data.id);
-        console.log("Fetched SMTP config with ID:", data.id);
+      if (data && typeof data === 'object') {
+        if ('id' in data) {
+          setConfigId(data.id);
+          console.log("Fetched SMTP config with ID:", data.id);
+        }
         
-        if (data.value) {
-          const parsedConfig = JSON.parse(data.value);
-          setConfig(parsedConfig);
+        if ('value' in data && data.value) {
+          try {
+            const parsedConfig = JSON.parse(data.value);
+            setConfig(parsedConfig);
+          } catch (parseError) {
+            console.error('Error parsing SMTP config JSON:', parseError);
+          }
         }
       }
     } catch (error) {
@@ -92,16 +98,19 @@ export const SmtpConfigProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const configData = {
         key: 'smtp_config',
         value: JSON.stringify(config)
-      };
+      } as any;
       
-      const operation = configId
-        ? supabase
+      let operation;
+      if (configId) {
+        operation = supabase
             .from('system_configurations')
             .update(configData)
-            .eq('id', configId)
-        : supabase
+            .eq('id', configId as any);
+      } else {
+        operation = supabase
             .from('system_configurations')
             .insert(configData);
+      }
       
       const { error } = await operation;
       if (error) throw error;

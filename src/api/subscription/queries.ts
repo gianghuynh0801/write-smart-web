@@ -16,7 +16,8 @@ export const fetchSubscriptionPlans = async (): Promise<Subscription[]> => {
 
   return (data || []).map((row) => ({
     ...(row as any),
-    features: row && row.features ? parseSubscriptionFeatures(row.features as any) : []
+    features: row && typeof row === 'object' && 'features' in row ? 
+      parseSubscriptionFeatures(row.features as any) : []
   })) as Subscription[];
 };
 
@@ -76,16 +77,17 @@ export const fetchUserSubscription = async (userId: string) => {
 
     // Sử dụng kiểm tra an toàn để tránh lỗi
     const dataAny = data as any;
-    const subscription = dataAny.subscriptions;
+    const subscription = dataAny && typeof dataAny === 'object' && 'subscriptions' in dataAny ? 
+      dataAny.subscriptions : null;
     
     if (!subscription) {
       console.error("Không tìm thấy thông tin chi tiết gói đăng ký");
       return {
         plan: "Lỗi",
-        planId: dataAny.subscription_id,
-        status: dataAny.status,
-        startDate: dataAny.start_date,
-        endDate: dataAny.end_date,
+        planId: dataAny && typeof dataAny === 'object' && 'subscription_id' in dataAny ? dataAny.subscription_id : null,
+        status: dataAny && typeof dataAny === 'object' && 'status' in dataAny ? dataAny.status : 'inactive',
+        startDate: dataAny && typeof dataAny === 'object' && 'start_date' in dataAny ? dataAny.start_date : '',
+        endDate: dataAny && typeof dataAny === 'object' && 'end_date' in dataAny ? dataAny.end_date : '',
         price: 0,
         usageArticles: 0,
         totalArticles: 0

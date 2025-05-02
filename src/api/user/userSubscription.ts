@@ -45,7 +45,9 @@ export async function handleSubscriptionChange(userId: string, subscriptionName:
 
     console.log("Đã tìm thấy thông tin gói đăng ký:", subscriptionData);
     // Kiểm tra và truy cập an toàn thuộc tính id
-    const subscriptionId = subscriptionData && subscriptionData.id ? subscriptionData.id : null;
+    const subscriptionId = subscriptionData && typeof subscriptionData === 'object' && 'id' in subscriptionData ? 
+      subscriptionData.id : null;
+      
     if (subscriptionId === null) {
       throw new Error("ID gói đăng ký không hợp lệ");
     }

@@ -52,12 +52,18 @@ const PaymentHistoryCard = () => {
   }, [toast]);
   
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('vi-VN');
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('vi-VN');
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return '';
+    }
   };
   
   const formatAmount = (amount: number) => {
-    return amount.toLocaleString() + 'đ';
+    return amount ? amount.toLocaleString() + 'đ' : '0đ';
   };
 
   return (
@@ -85,7 +91,8 @@ const PaymentHistoryCard = () => {
               {payments.length > 0 ? (
                 payments.map((payment) => (
                   <div key={payment.id} className="grid grid-cols-4 p-4">
-                    <div className="font-medium">INV-{payment.id?.toString().substring(0, 3).padStart(3, '0') || '000'}</div>
+                    <div className="font-medium">INV-{(payment.id && typeof payment.id === 'string') ? 
+                      payment.id.toString().substring(0, 3).padStart(3, '0') : '000'}</div>
                     <div className="text-gray-500">{formatDate(payment.payment_at || '')}</div>
                     <div>{formatAmount(payment.amount || 0)}</div>
                     <div>
