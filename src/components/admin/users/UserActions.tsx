@@ -1,8 +1,15 @@
 
-import { User } from "@/types/user";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { MoreHorizontal, Edit, PlusCircle, Trash, Send } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Edit, CreditCard, Trash, MoreHorizontal, RefreshCw } from "lucide-react";
+import { User } from "@/types/user";
 
 interface UserActionsProps {
   user: User;
@@ -10,49 +17,50 @@ interface UserActionsProps {
   onAddCredits: (user: User) => void;
   onDeleteUser: (user: User) => void;
   onResendVerification?: (user: User) => void;
+  disabled?: boolean;
 }
 
-const UserActions = ({ 
+const UserActions = ({
   user,
   onEditUser,
   onAddCredits,
   onDeleteUser,
   onResendVerification,
+  disabled = false
 }: UserActionsProps) => {
-  // Hiển thị tùy chọn gửi lại email xác thực nếu người dùng chưa được xác thực
-  const showResendVerification = onResendVerification && user.email_verified === false;
-
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm">
-          <MoreHorizontal className="h-4 w-4" />
+        <Button variant="ghost" className="h-8 w-8 p-0" disabled={disabled}>
           <span className="sr-only">Mở menu</span>
+          <MoreHorizontal className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuLabel>Thao tác</DropdownMenuLabel>
-        <DropdownMenuItem onClick={() => onEditUser(user.id)}>
+        <DropdownMenuLabel>Tác vụ</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => onEditUser(user.id)} disabled={disabled}>
           <Edit className="mr-2 h-4 w-4" />
           Chỉnh sửa
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onAddCredits(user)}>
-          <CreditCard className="mr-2 h-4 w-4" />
+        <DropdownMenuItem onClick={() => onAddCredits(user)} disabled={disabled}>
+          <PlusCircle className="mr-2 h-4 w-4" />
           Thêm tín dụng
         </DropdownMenuItem>
-        {showResendVerification && (
-          <DropdownMenuItem onClick={() => onResendVerification(user)}>
-            <RefreshCw className="mr-2 h-4 w-4" />
+        {onResendVerification && (
+          <DropdownMenuItem onClick={() => onResendVerification(user)} disabled={disabled}>
+            <Send className="mr-2 h-4 w-4" />
             Gửi lại xác thực
           </DropdownMenuItem>
         )}
         <DropdownMenuSeparator />
-        <DropdownMenuItem
+        <DropdownMenuItem 
+          className="text-red-600 focus:text-red-600" 
           onClick={() => onDeleteUser(user)}
-          className="text-red-600"
+          disabled={disabled}
         >
           <Trash className="mr-2 h-4 w-4" />
-          Xóa
+          Xóa người dùng
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

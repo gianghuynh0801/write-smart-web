@@ -60,20 +60,24 @@ const AdminUsers = () => {
     });
   }, [refreshUsers]);
 
-  // Sử dụng effect hooks
+  // Sử dụng effect hooks - đã cải thiện để hỗ trợ trạng thái xử lý
   const { 
     isDataRefreshing, 
+    isProcessingAction,
     handleRefresh,
-    handleUserActionComplete
+    handleUserActionComplete,
+    cleanup,
+    isMounted
   } = useAdminUsersEffects({ 
     refreshUsers, 
     handleUserSaved 
   });
 
-  // Sử dụng dialog handlers
+  // Sử dụng dialog handlers với cả isProcessing
   const {
     handleConfirmDeleteUser,
-    handleConfirmAddCredits
+    handleConfirmAddCredits,
+    isProcessing
   } = useUserDialogHandlers({
     confirmDeleteUser,
     confirmAddCredits,
@@ -85,6 +89,7 @@ const AdminUsers = () => {
   // Thêm hàm để load dữ liệu ban đầu khi trang được mở - tự động tải dữ liệu khi component mount
   useEffect(() => {
     console.log("[AdminUsers] Trang đã được mở, tự động tải dữ liệu ban đầu");
+    
     refreshUsers(false).catch(() => {
       errorCountRef.current++;
       if (errorCountRef.current >= maxErrorCount) {
@@ -92,14 +97,22 @@ const AdminUsers = () => {
         window.location.reload();
       }
     });
-  }, [refreshUsers]);
+    
+    return () => {
+      isMounted.current = false;
+      cleanup();
+    };
+  }, [refreshUsers, cleanup]);
 
-  // Thêm một hàm để refresh dữ liệu thủ công với kiểm soát throttle
+  // Thêm một hàm để refresh dữ liệu thủ công với kiểm soát
   const handleManualRefresh = useCallback(async () => {
+    if (isDataRefreshing || isProcessingAction) return;
+    
     try {
       console.log("[AdminUsers] Đang làm mới dữ liệu thủ công...");
       errorCountRef.current = 0;
-      await refreshUsers(true);  // Force refresh khi làm mới thủ công
+      await handleRefresh();
+      
       toast({
         title: "Thành công",
         description: "Đã làm mới danh sách người dùng",
@@ -121,14 +134,17 @@ const AdminUsers = () => {
         }, 1500);
       }
     }
-  }, [refreshUsers, toast]);
+  }, [handleRefresh, toast, isDataRefreshing, isProcessingAction]);
 
   // Tính số trang
   const totalPages = Math.ceil(totalUsers / pageSize);
 
   return (
     <div className="space-y-6">
-      <AdminUsersHeader onAddUser={handleAddUser} />
+      <AdminUsersHeader 
+        onAddUser={handleAddUser} 
+        disabled={isProcessingAction || isDataRefreshing || isProcessing}
+      />
 
       <AdminUsersContent
         users={users}
@@ -143,6 +159,7 @@ const AdminUsers = () => {
         pageSize={pageSize}
         totalPages={totalPages}
         isDataRefreshing={isDataRefreshing}
+        isProcessingAction={isProcessingAction || isProcessing}
         handleRefresh={handleManualRefresh}
         handleSearch={handleSearch}
         handleStatusChange={handleStatusChange}
@@ -166,6 +183,7 @@ const AdminUsers = () => {
         handleConfirmDeleteUser={handleConfirmDeleteUser}
         handleConfirmAddCredits={handleConfirmAddCredits}
         handleUserSaved={handleUserSaved}
+        isProcessing={isProcessing}
       />
     </div>
   );

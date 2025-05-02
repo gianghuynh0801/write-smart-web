@@ -1,13 +1,8 @@
 
-import { useEffect, useCallback, useRef } from "react";
-import { useToast } from "@/hooks/use-toast";
-import { tokenManager } from "@/utils/tokenManager";
-import { useAdminUsersDebounce } from "@/hooks/admin/useAdminUsersDebounce";
-import { featureFlags } from "@/config/featureFlags";
-import { clearAllUserCache } from "@/utils/api/userApiUtils";
+import { useCallback, useRef, useState } from "react";
 
 interface UseAdminUsersEffectsProps {
-  refreshUsers: (forceRefresh?: boolean) => Promise<void>;
+  refreshUsers: (forceRefresh?: boolean) => Promise<boolean | void>;
   handleUserSaved: () => void;
 }
 
@@ -15,88 +10,80 @@ export const useAdminUsersEffects = ({
   refreshUsers, 
   handleUserSaved 
 }: UseAdminUsersEffectsProps) => {
-  const isMountedRef = useRef(true);
-  const { debouncedRefreshUsers, clearRefreshTimeout, getIsDataRefreshing } = useAdminUsersDebounce();
-  const { toast } = useToast();
-  const refreshAttemptsRef = useRef(0);
-  const maxRefreshAttempts = 3;
+  const [isDataRefreshing, setIsDataRefreshing] = useState(false);
+  const [isProcessingAction, setIsProcessingAction] = useState(false);
+  const refreshTimeoutRef = useRef<number | null>(null);
+  const isMounted = useRef(true);
+  const processingStateTimeoutRef = useRef<number | null>(null);
   
-  // Cleanup khi component unmount
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => { 
-      isMountedRef.current = false;
-      clearRefreshTimeout();
-    };
-  }, [clearRefreshTimeout]);
-
-  // Handler cập nhật sau khi user được lưu với thời gian delay dài hơn
-  const handleUserActionComplete = useCallback(() => {
-    console.log("[AdminUsers] Hoàn thành hành động người dùng, đang làm mới dữ liệu sau 2000ms...");
-    refreshAttemptsRef.current = 0;
+  // Hàm làm mới dữ liệu với debounce
+  const handleRefresh = useCallback(async () => {
+    if (isDataRefreshing) return;
     
-    // Xóa toàn bộ cache người dùng
-    clearAllUserCache();
-    
-    // Thử làm mới dữ liệu với số lần thử tối đa
-    const attemptRefresh = () => {
-      if (refreshAttemptsRef.current >= maxRefreshAttempts) {
-        console.log("[AdminUsers] Đã đạt số lần thử tối đa, tải lại trang...");
-        window.location.reload();
-        return;
+    try {
+      // Xóa timeout hiện tại nếu có
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+        refreshTimeoutRef.current = null;
       }
       
-      refreshAttemptsRef.current++;
-      
-      setTimeout(() => {
-        if (isMountedRef.current) {
-          console.log(`[AdminUsers] Thử làm mới lần ${refreshAttemptsRef.current}/${maxRefreshAttempts}`);
-          refreshUsers(true)
-            .catch(() => {
-              if (refreshAttemptsRef.current < maxRefreshAttempts) {
-                attemptRefresh();
-              } else {
-                window.location.reload();
-              }
-            });
+      setIsDataRefreshing(true);
+      await refreshUsers(true); // Luôn sử dụng force refresh khi làm mới thủ công
+    } catch (error) {
+      console.error("[AdminUsersEffects] Lỗi khi làm mới dữ liệu:", error);
+    } finally {
+      // Thêm chút độ trễ để tránh UI đóng băng
+      refreshTimeoutRef.current = window.setTimeout(() => {
+        if (isMounted.current) {
+          setIsDataRefreshing(false);
         }
-      }, 1000);
-    };
-    
-    attemptRefresh();
-  }, [refreshUsers]);
+      }, 500);
+    }
+  }, [refreshUsers, isDataRefreshing]);
 
-  // Sử dụng biến cờ để đánh dấu đang refresh
-  const isDataRefreshing = getIsDataRefreshing();
+  // Xử lý sau khi hoàn thành các hành động như xóa, thêm tín dụng
+  const handleUserActionComplete = useCallback(() => {
+    setIsProcessingAction(true);
+    
+    // Xóa timeout nếu có
+    if (processingStateTimeoutRef.current) {
+      clearTimeout(processingStateTimeoutRef.current);
+    }
+    
+    // Đợi một chút trước khi gọi refresh để tránh nhiều lần gọi API liên tiếp
+    processingStateTimeoutRef.current = window.setTimeout(async () => {
+      try {
+        await refreshUsers(true);
+      } catch (error) {
+        console.error("[AdminUsersEffects] Lỗi khi làm mới dữ liệu sau hành động:", error);
+      } finally {
+        if (isMounted.current) {
+          setIsProcessingAction(false);
+          handleUserSaved();
+        }
+      }
+    }, 500);
+  }, [refreshUsers, handleUserSaved]);
+  
+  // Cleanup function
+  const cleanup = useCallback(() => {
+    if (refreshTimeoutRef.current) {
+      clearTimeout(refreshTimeoutRef.current);
+      refreshTimeoutRef.current = null;
+    }
+    
+    if (processingStateTimeoutRef.current) {
+      clearTimeout(processingStateTimeoutRef.current);
+      processingStateTimeoutRef.current = null;
+    }
+  }, []);
 
-  const handleRefresh = useCallback(() => {
-    console.log("[AdminUsers] Yêu cầu refresh thủ công");
-    
-    // Xóa toàn bộ cache người dùng
-    clearAllUserCache();
-    
-    // Reset biến đếm số lần thử
-    refreshAttemptsRef.current = 0;
-    
-    // Sử dụng force refresh khi refresh thủ công
-    refreshUsers(true).catch(() => {
-      toast({
-        title: "Lỗi",
-        description: "Không thể làm mới dữ liệu. Đang tải lại trang...",
-        variant: "destructive"
-      });
-      
-      // Nếu không thành công, tải lại trang
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
-    });
-  }, [refreshUsers, toast]);
-
-  return {
+  return { 
     isDataRefreshing,
+    isProcessingAction, 
     handleRefresh,
     handleUserActionComplete,
-    isMountedRef,
+    cleanup,
+    isMounted
   };
 };

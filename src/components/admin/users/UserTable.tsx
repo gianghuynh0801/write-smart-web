@@ -17,6 +17,7 @@ type UserTableProps = {
   onDeleteUser: (user: User) => void;
   onResendVerification?: (user: User) => void;
   onRetryLoad?: () => void;
+  disabled?: boolean;
 };
 
 const UserTable = ({
@@ -31,6 +32,7 @@ const UserTable = ({
   onDeleteUser,
   onResendVerification,
   onRetryLoad,
+  disabled = false
 }: UserTableProps) => {
   return (
     <div className="rounded-md border">
@@ -62,6 +64,7 @@ const UserTable = ({
                 onAddCredits={onAddCredits}
                 onDeleteUser={onDeleteUser}
                 onResendVerification={onResendVerification}
+                disabled={disabled}
               />
             ))
           ) : (

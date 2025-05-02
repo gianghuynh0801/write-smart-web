@@ -19,18 +19,21 @@ interface DeleteUserDialogProps {
   onClose: () => void;
   onConfirm: () => Promise<void>;
   userName: string;
+  isProcessing?: boolean;
 }
 
-const DeleteUserDialog = ({ isOpen, onClose, onConfirm, userName }: DeleteUserDialogProps) => {
+const DeleteUserDialog = ({ isOpen, onClose, onConfirm, userName, isProcessing = false }: DeleteUserDialogProps) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleConfirm = async () => {
+    if (isDeleting || isProcessing) return;
+    
     setIsDeleting(true);
     setError(null);
     try {
       await onConfirm();
-      onClose();
+      // Không đóng dialog ở đây vì sẽ được xử lý bởi useUserDialogHandlers
     } catch (err) {
       console.error("Lỗi khi xóa người dùng:", err);
       setError(err instanceof Error ? err.message : "Lỗi không xác định khi xóa người dùng");
@@ -40,11 +43,13 @@ const DeleteUserDialog = ({ isOpen, onClose, onConfirm, userName }: DeleteUserDi
   };
 
   const handleClose = () => {
-    if (!isDeleting) {
+    if (!isDeleting && !isProcessing) {
       setError(null);
       onClose();
     }
   };
+  
+  const isDisabled = isDeleting || isProcessing;
 
   return (
     <AlertDialog open={isOpen} onOpenChange={handleClose}>
@@ -70,13 +75,13 @@ const DeleteUserDialog = ({ isOpen, onClose, onConfirm, userName }: DeleteUserDi
         )}
         
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isDeleting}>Hủy bỏ</AlertDialogCancel>
+          <AlertDialogCancel disabled={isDisabled}>Hủy bỏ</AlertDialogCancel>
           <Button 
             variant="destructive" 
             onClick={handleConfirm}
-            disabled={isDeleting}
+            disabled={isDisabled}
           >
-            {isDeleting ? (
+            {isDisabled ? (
               <>
                 <Loader className="mr-2 h-4 w-4 animate-spin" />
                 Đang xóa...

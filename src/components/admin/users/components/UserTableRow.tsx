@@ -15,6 +15,7 @@ interface UserTableRowProps {
   onAddCredits: (user: User) => void;
   onDeleteUser: (user: User) => void;
   onResendVerification?: (user: User) => void;
+  disabled?: boolean;
 }
 
 export const UserTableRow = ({
@@ -25,6 +26,7 @@ export const UserTableRow = ({
   onAddCredits,
   onDeleteUser,
   onResendVerification,
+  disabled = false
 }: UserTableRowProps) => {
   // Format registration date
   const formattedDate = formatDate(user.registeredAt);
@@ -38,7 +40,7 @@ export const UserTableRow = ({
   };
 
   return (
-    <TableRow>
+    <TableRow className={disabled ? "opacity-70" : ""}>
       <TableCell className="font-medium">
         <div className="flex flex-col">
           <span className="text-sm font-medium">{user.name}</span>
@@ -72,6 +74,7 @@ export const UserTableRow = ({
           onAddCredits={onAddCredits}
           onDeleteUser={onDeleteUser}
           onResendVerification={user.email_verified === false ? onResendVerification : undefined}
+          disabled={disabled}
         />
       </TableCell>
     </TableRow>

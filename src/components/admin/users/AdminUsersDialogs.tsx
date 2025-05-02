@@ -16,6 +16,7 @@ interface AdminUsersDialogsProps {
   handleConfirmDeleteUser: () => Promise<void>;
   handleConfirmAddCredits: (amount: number) => Promise<void>;
   handleUserSaved: () => void;
+  isProcessing?: boolean;
 }
 
 const AdminUsersDialogs = ({
@@ -30,6 +31,7 @@ const AdminUsersDialogs = ({
   handleConfirmDeleteUser,
   handleConfirmAddCredits,
   handleUserSaved,
+  isProcessing = false,
 }: AdminUsersDialogsProps) => {
   return (
     <>
@@ -40,6 +42,7 @@ const AdminUsersDialogs = ({
             onClose={() => setDeleteDialogOpen(false)}
             onConfirm={handleConfirmDeleteUser}
             userName={selectedUser.name}
+            isProcessing={isProcessing}
           />
 
           <AddCreditsDialog

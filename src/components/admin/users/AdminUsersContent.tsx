@@ -20,6 +20,7 @@ interface AdminUsersContentProps {
   pageSize: number;
   totalPages: number;
   isDataRefreshing: boolean;
+  isProcessingAction: boolean; // Thêm prop này để biết đang trong quá trình xử lý hành động
   handleRefresh: () => void;
   handleSearch: (term: string) => void;
   handleStatusChange: (status: string) => void;
@@ -44,6 +45,7 @@ const AdminUsersContent = ({
   pageSize,
   totalPages,
   isDataRefreshing,
+  isProcessingAction, // Thêm prop này
   handleRefresh,
   handleSearch,
   handleStatusChange,
@@ -54,6 +56,9 @@ const AdminUsersContent = ({
   handleResendVerification,
   getRoleColor,
 }: AdminUsersContentProps) => {
+  // Xác định trạng thái hiển thị loading chung
+  const isLoadingState = isLoading || isDataRefreshing || isProcessingAction;
+
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -69,13 +74,18 @@ const AdminUsersContent = ({
               variant="outline" 
               size="sm" 
               onClick={handleRefresh}
-              disabled={isLoading || isDataRefreshing}
+              disabled={isLoadingState}
               className="w-full sm:w-auto"
             >
-              <RefreshCcw className={`mr-2 h-4 w-4 ${(isLoading || isDataRefreshing) ? 'animate-spin' : ''}`} />
-              {(isLoading || isDataRefreshing) ? 'Đang tải...' : 'Làm mới'}
+              <RefreshCcw className={`mr-2 h-4 w-4 ${isLoadingState ? 'animate-spin' : ''}`} />
+              {isLoadingState ? 'Đang tải...' : 'Làm mới'}
             </Button>
-            <Button variant="outline" size="sm" className="w-full sm:w-auto">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full sm:w-auto"
+              disabled={isLoadingState}
+            >
               <Download className="mr-2 h-4 w-4" />
               Xuất CSV
             </Button>
@@ -88,10 +98,11 @@ const AdminUsersContent = ({
           onSearchChange={handleSearch}
           status={status}
           onStatusChange={handleStatusChange}
+          disabled={isLoadingState}
         />
         <UserTable
           users={users}
-          isLoading={isLoading || isDataRefreshing}
+          isLoading={isLoadingState}
           isError={isError}
           errorMessage={errorMessage}
           isCreditUpdating={isCreditUpdating}
@@ -101,6 +112,7 @@ const AdminUsersContent = ({
           onDeleteUser={handleDeleteUser}
           onResendVerification={handleResendVerification}
           onRetryLoad={handleRefresh}
+          disabled={isProcessingAction}
         />
         {!isError && totalPages > 0 && (
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-4 gap-2">
@@ -111,6 +123,7 @@ const AdminUsersContent = ({
               currentPage={currentPage}
               totalPages={totalPages}
               onPageChange={handlePageChange}
+              disabled={isLoadingState}
             />
           </div>
         )}

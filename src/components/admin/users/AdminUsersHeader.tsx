@@ -4,18 +4,19 @@ import { UserPlus } from "lucide-react";
 
 interface AdminUsersHeaderProps {
   onAddUser: () => void;
+  disabled?: boolean;
 }
 
-const AdminUsersHeader = ({ onAddUser }: AdminUsersHeaderProps) => {
+const AdminUsersHeader = ({ onAddUser, disabled = false }: AdminUsersHeaderProps) => {
   return (
-    <div className="flex justify-between items-center">
+    <div className="flex items-center justify-between">
       <div>
-        <h1 className="text-2xl font-bold">Quản lý người dùng</h1>
-        <p className="text-gray-500">
-          Quản lý thông tin và quyền của người dùng
+        <h2 className="text-2xl font-bold tracking-tight">Quản lý người dùng</h2>
+        <p className="text-muted-foreground">
+          Quản lý thông tin, quyền hạn và tín dụng của người dùng.
         </p>
       </div>
-      <Button onClick={onAddUser}>
+      <Button onClick={onAddUser} disabled={disabled}>
         <UserPlus className="mr-2 h-4 w-4" />
         Thêm người dùng
       </Button>
