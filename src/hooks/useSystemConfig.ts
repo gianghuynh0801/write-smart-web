@@ -26,7 +26,8 @@ export function useSystemConfig() {
       }
       
       // Kiểm tra an toàn và trích xuất giá trị
-      return data && typeof data === 'object' && 'value' in data ? data.value : null;
+      return data && typeof data === 'object' && 'value' in data ? 
+        (data as any).value : null;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Lỗi không xác định';
       console.error(`Unexpected error getting config ${key}:`, err);
@@ -64,7 +65,7 @@ export function useSystemConfig() {
           .insert({ 
             key: key, 
             value: defaultValue 
-          });
+          } as any);
         
         if (insertError) {
           console.error(`Error creating config ${key}:`, insertError);
@@ -107,8 +108,8 @@ export function useSystemConfig() {
       if (data && typeof data === 'object' && 'id' in data) {
         const { error: updateError } = await supabase
           .from("system_configurations")
-          .update({ value })
-          .eq('id', data.id);
+          .update({ value } as any)
+          .eq('id', (data as any).id);
         
         if (updateError) {
           console.error(`Error updating config ${key}:`, updateError);
@@ -123,7 +124,7 @@ export function useSystemConfig() {
           .insert({ 
             key: key, 
             value: value 
-          });
+          } as any);
         
         if (insertError) {
           console.error(`Error creating config ${key}:`, insertError);

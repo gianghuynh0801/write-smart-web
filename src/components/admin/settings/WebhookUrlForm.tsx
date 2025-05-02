@@ -41,20 +41,20 @@ export const WebhookUrlForm = ({ initialUrl, onSave }: WebhookUrlFormProps) => {
   };
 
   const handleSaveWebhook = async () => {
-    setError(null);
-    
-    if (webhookUrl && !isValidUrl) {
-      toast({
-        title: "URL không hợp lệ",
-        description: "Vui lòng nhập một URL webhook hợp lệ.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    setIsLoading(true);
-    
     try {
+      setError(null);
+      
+      if (webhookUrl && !isValidUrl) {
+        toast({
+          title: "URL không hợp lệ",
+          description: "Vui lòng nhập một URL webhook hợp lệ.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      setIsLoading(true);
+      
       console.log("Đang lưu webhook URL vào database:", webhookUrl);
       
       // Kiểm tra quyền admin trước khi lưu
@@ -85,7 +85,7 @@ export const WebhookUrlForm = ({ initialUrl, onSave }: WebhookUrlFormProps) => {
           .update({ 
             value: webhookUrl || '',
             updated_at: new Date().toISOString()
-          })
+          } as any)
           .eq('key', 'webhook_url');
       } else {
         // Nếu bản ghi chưa tồn tại, tạo mới
@@ -95,7 +95,7 @@ export const WebhookUrlForm = ({ initialUrl, onSave }: WebhookUrlFormProps) => {
             key: 'webhook_url', 
             value: webhookUrl || '',
             updated_at: new Date().toISOString()
-          });
+          } as any);
       }
       
       const { error } = result;

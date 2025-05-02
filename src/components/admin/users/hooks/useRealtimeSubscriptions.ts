@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
-import { db } from '@/integrations/supabase/typeSafeClient';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Subscription {
   id: number;
@@ -23,7 +23,8 @@ export const useRealtimeSubscriptions = () => {
       setError(null);
       
       console.log('Fetching subscription plans...');
-      const { data, error: fetchError } = await db.subscriptions()
+      const { data, error: fetchError } = await supabase
+        .from("subscriptions")
         .select('*')
         .order('price', { ascending: true });
       
@@ -109,7 +110,8 @@ export const useRealtimeSubscriptions = () => {
       if (cached) return cached;
       
       console.log(`Fetching subscription with ID ${id}...`);
-      const { data, error } = await db.subscriptions()
+      const { data, error } = await supabase
+        .from("subscriptions")
         .select('*')
         .eq('id', id)
         .maybeSingle();
@@ -179,7 +181,7 @@ export const useRealtimeSubscriptions = () => {
     fetchSubscriptions();
     
     // Thiết lập channel realtime để theo dõi thay đổi
-    const subscriptionsChannel = db.auth.onAuthStateChange(() => {
+    const subscriptionsChannel = supabase.auth.onAuthStateChange(() => {
       console.log('Auth state changed, reloading subscriptions...');
       fetchSubscriptions();
     });

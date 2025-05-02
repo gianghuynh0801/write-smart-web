@@ -54,7 +54,8 @@ export const useEmailVerification = () => {
       }
       
       // Xử lý dữ liệu nhận được an toàn
-      const configValue = data && typeof data === 'object' && 'value' in data ? data.value : null;
+      const configValue = data && typeof data === 'object' && 'value' in data ? 
+        (data as any).value : null;
       const requireVerification = configValue === 'true';
       
       console.log("Cấu hình xác minh email:", requireVerification);
@@ -101,7 +102,8 @@ export const useEmailVerification = () => {
       }
       
       // Truy cập an toàn user ID
-      const userId = userData && typeof userData === 'object' && 'id' in userData ? userData.id : null;
+      const userId = userData && typeof userData === 'object' && 'id' in userData ? 
+        (userData as any).id : null;
       
       if (!userId) {
         console.error("ID người dùng không hợp lệ");
@@ -224,7 +226,7 @@ export const useEmailVerification = () => {
           token: token,
           type: params.type,
           expires_at: expiresAt.toISOString()
-        });
+        } as any);
 
       if (tokenError) {
         throw tokenError;
@@ -239,7 +241,7 @@ export const useEmailVerification = () => {
       
       // Kiểm tra an toàn cho giá trị cấu hình
       const configValue = configData && typeof configData === 'object' && 'value' in configData ? 
-        configData.value : null;
+        (configData as any).value : null;
         
       const siteUrl = configValue || window.location.origin;
       console.log("Site URL for verification:", siteUrl);

@@ -4,35 +4,40 @@ import { parseSubscriptionFeatures } from "./utils";
 import { Subscription } from "@/types/subscriptions";
 
 export const fetchSubscriptionPlans = async (): Promise<Subscription[]> => {
-  const { data, error } = await supabase
-    .from("subscriptions")
-    .select("*")
-    .order("price", { ascending: true });
+  try {
+    const { data, error } = await supabase
+      .from("subscriptions")
+      .select("*")
+      .order("price", { ascending: true });
 
-  if (error) {
-    console.error("Lỗi khi lấy danh sách gói:", error);
-    throw new Error(`Error fetching subscription plans: ${error.message}`);
-  }
+    if (error) {
+      console.error("Lỗi khi lấy danh sách gói:", error);
+      throw new Error(`Error fetching subscription plans: ${error.message}`);
+    }
 
-  return (data || []).map((row) => {
-    // Thêm kiểm tra null rõ ràng
-    if (!row) return {} as Subscription;
-    
-    // Kiểm tra null trước khi truy cập thuộc tính
-    const features = row && typeof row === 'object' && 'features' in row ? 
-      parseSubscriptionFeatures(((row as any).features) || []) : [];
+    return (data || []).map((row) => {
+      // Thêm kiểm tra null rõ ràng
+      if (!row) return {} as Subscription;
       
-    return {
-      ...((row as any) || {}),
-      features
-    } as Subscription;
-  });
+      // Kiểm tra null trước khi truy cập thuộc tính
+      const features = row && typeof row === 'object' && 'features' in row ? 
+        parseSubscriptionFeatures(((row as any).features) || []) : [];
+        
+      return {
+        ...((row as any) || {}),
+        features
+      } as Subscription;
+    });
+  } catch (error) {
+    console.error("Unexpected error fetching subscription plans:", error);
+    throw error;
+  }
 };
 
 export const fetchUserSubscription = async (userId: string) => {
-  console.log("Đang lấy thông tin gói đăng ký cho user:", userId);
-  
   try {
+    console.log("Đang lấy thông tin gói đăng ký cho user:", userId);
+    
     const { data, error } = await supabase
       .from("user_subscriptions")
       .select(`
