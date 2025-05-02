@@ -1,7 +1,7 @@
 
 import { useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { clearUserCache, clearUsersCache, clearAllUserCache } from "@/utils/api/userApiUtils";
+import { clearUserCache, clearUsersCache } from "@/utils/api/userApiUtils";
 
 interface UseUserDialogHandlersProps {
   confirmDeleteUser: () => Promise<void>;
@@ -27,7 +27,7 @@ export const useUserDialogHandlers = ({
       setDeleteDialogOpen(false);
       
       // Xóa toàn bộ cache
-      clearAllUserCache();
+      clearUsersCache();
       
       // Báo cáo hành động hoàn thành
       handleUserActionComplete();
@@ -53,7 +53,7 @@ export const useUserDialogHandlers = ({
       setAddCreditsDialogOpen(false);
       
       // Xóa toàn bộ cache
-      clearAllUserCache();
+      clearUsersCache();
       
       // Báo cáo hành động hoàn thành
       handleUserActionComplete();

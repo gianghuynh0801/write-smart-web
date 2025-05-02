@@ -1,6 +1,6 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileText, CreditCard, Package, ArrowUpRight, Link, RefreshCw } from "lucide-react";
+import { FileText, CreditCard, Package, ArrowUpRight, Link } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link as RouterLink } from "react-router-dom";
 import { useDashboardStats } from "./hooks/useDashboardStats";
@@ -9,36 +9,18 @@ import { useEffect } from "react";
 import { useUserDataRefresh } from "@/hooks/useUserDataRefresh";
 
 const Dashboard = () => {
-  const { stats, isLoading, forceRefresh } = useDashboardStats();
+  const { stats, isLoading } = useDashboardStats();
   const { refreshUserData } = useUserDataRefresh();
   
   // Refresh dữ liệu người dùng khi trang dashboard được tải
   useEffect(() => {
     const initData = async () => {
-      console.log("[Dashboard] Mounted, đang làm mới dữ liệu người dùng...");
-      try {
-        // Làm mới dữ liệu người dùng trước khi lấy thông tin thống kê
-        await refreshUserData();
-        // Sau khi làm mới dữ liệu người dùng, force refresh thống kê
-        forceRefresh();
-      } catch (error) {
-        console.error("[Dashboard] Lỗi khi khởi tạo dữ liệu:", error);
-      }
+      console.log("Dashboard mounted, refreshing user data...");
+      await refreshUserData();
     };
     
     initData();
-  }, [refreshUserData, forceRefresh]);
-
-  // Hàm xử lý nút làm mới thủ công
-  const handleManualRefresh = async () => {
-    console.log("[Dashboard] Đang làm mới dữ liệu thủ công...");
-    try {
-      await refreshUserData();
-      forceRefresh();
-    } catch (error) {
-      console.error("[Dashboard] Lỗi khi làm mới dữ liệu thủ công:", error);
-    }
-  };
+  }, [refreshUserData]);
 
   const renderStats = () => {
     if (isLoading) {
@@ -113,24 +95,11 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-        <div>
-          <h1 className="text-2xl font-bold">Bảng điều khiển</h1>
-          <p className="text-gray-500">
-            Chào mừng bạn đến với WriteSmart, xem thống kê và tạo nội dung của bạn tại đây.
-          </p>
-        </div>
-        
-        <Button 
-          variant="outline" 
-          size="sm"
-          onClick={handleManualRefresh}
-          disabled={isLoading}
-          className="mt-2 sm:mt-0"
-        >
-          <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-          {isLoading ? 'Đang tải...' : 'Làm mới dữ liệu'}
-        </Button>
+      <div>
+        <h1 className="text-2xl font-bold">Bảng điều khiển</h1>
+        <p className="text-gray-500">
+          Chào mừng bạn đến với WriteSmart, xem thống kê và tạo nội dung của bạn tại đây.
+        </p>
       </div>
       
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">

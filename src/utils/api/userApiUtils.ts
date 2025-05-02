@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@/types/user";
 import { authService, AuthErrorType, AuthError, isAuthError } from "@/services/authService";
@@ -138,7 +139,7 @@ export const fetchUsers = async (params: {
           
           // Lưu vào cache
           usersCache = {
-            data: retryResponse.data,
+            data: retryResponse.data.data,
             timestamp: Date.now(),
             params: { ...params }
           };
@@ -150,7 +151,7 @@ export const fetchUsers = async (params: {
             console.warn("[fetchUsers] Không thể lưu cache vào sessionStorage:", err);
           }
           
-          return retryResponse.data;
+          return retryResponse.data.data;
         }
       }
       
@@ -162,11 +163,11 @@ export const fetchUsers = async (params: {
       throw new Error(data.error);
     }
 
-    console.log(`Đã lấy được ${data.users?.length} người dùng, tổng số: ${data.total}`);
+    console.log(`Đã lấy được ${data.data.users.length} người dùng, tổng số: ${data.data.total}`);
     
     // Lưu vào cache
     usersCache = {
-      data: data,
+      data: data.data,
       timestamp: Date.now(),
       params: { ...params }
     };
@@ -178,7 +179,7 @@ export const fetchUsers = async (params: {
       console.warn("[fetchUsers] Không thể lưu cache vào sessionStorage:", err);
     }
     
-    return data;
+    return data.data;
   } catch (error) {
     console.error("Lỗi trong fetchUsers:", error);
     
@@ -208,7 +209,7 @@ export const clearUsersCache = () => {
   console.log("Đã xóa cache người dùng");
 };
 
-// Xóa cache người dùng cụ thể
+// Mới: Xóa cache người dùng cụ thể
 export const clearUserCache = (userId: string | number) => {
   const cacheKey = `user_details_${userId}`;
   try {
@@ -219,20 +220,17 @@ export const clearUserCache = (userId: string | number) => {
   }
 };
 
-// Xóa toàn bộ cache liên quan đến người dùng
+// Mới: Xóa toàn bộ cache liên quan đến người dùng
 export const clearAllUserCache = () => {
   try {
     // Xóa cache danh sách người dùng
     clearUsersCache();
     
-    // Xóa cache thống kê dashboard
-    sessionStorage.removeItem('dashboard_stats_cache');
-    
     // Xóa tất cả các mục cache chi tiết người dùng
     const keysToRemove: string[] = [];
     for (let i = 0; i < sessionStorage.length; i++) {
       const key = sessionStorage.key(i);
-      if (key && (key.startsWith('user_details_') || key.includes('dashboard'))) {
+      if (key && key.startsWith('user_details_')) {
         keysToRemove.push(key);
       }
     }
@@ -242,7 +240,7 @@ export const clearAllUserCache = () => {
       console.log(`[clearAllUserCache] Đã xóa cache: ${key}`);
     });
     
-    console.log(`[clearAllUserCache] Đã xóa ${keysToRemove.length} mục cache người dùng và dashboard`);
+    console.log(`[clearAllUserCache] Đã xóa ${keysToRemove.length} mục cache chi tiết người dùng`);
   } catch (err) {
     console.warn("[clearAllUserCache] Lỗi khi xóa cache:", err);
   }

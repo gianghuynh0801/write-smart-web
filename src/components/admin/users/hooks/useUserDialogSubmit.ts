@@ -4,7 +4,7 @@ import { UserFormValues } from "@/types/user";
 import { useToast } from "@/hooks/use-toast";
 import { updateUser } from "@/api/user/mutations/updateUser";
 import { createUser } from "@/api/user/mutations";
-import { clearUserCache, clearUsersCache, clearAllUserCache } from "@/utils/api/userApiUtils";
+import { clearUserCache, clearUsersCache } from "@/utils/api/userApiUtils";
 
 interface UseUserDialogSubmitProps {
   userId?: string | number;
@@ -32,8 +32,8 @@ export const useUserDialogSubmit = ({ userId, onClose, onUserSaved }: UseUserDia
           description: "Cập nhật người dùng thành công",
         });
         
-        // Đảm bảo xóa toàn bộ cache
-        clearAllUserCache();
+        // Đảm bảo xóa cache
+        clearUserCache(userId);
       } else {
         // Tạo người dùng mới
         await createUser(data);
@@ -43,8 +43,8 @@ export const useUserDialogSubmit = ({ userId, onClose, onUserSaved }: UseUserDia
           description: "Tạo người dùng mới thành công",
         });
         
-        // Xóa toàn bộ cache
-        clearAllUserCache();
+        // Xóa cache danh sách người dùng
+        clearUsersCache();
       }
 
       // Đánh dấu đã lưu thành công
