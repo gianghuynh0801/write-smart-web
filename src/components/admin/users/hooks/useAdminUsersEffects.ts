@@ -4,6 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { tokenManager } from "@/utils/tokenManager";
 import { useAdminUsersDebounce } from "@/hooks/admin/useAdminUsersDebounce";
 import { featureFlags } from "@/config/featureFlags";
+import { clearAllUserCache } from "@/utils/api/userApiUtils";
 
 interface UseAdminUsersEffectsProps {
   refreshUsers: (forceRefresh?: boolean) => Promise<void>;
@@ -31,8 +32,11 @@ export const useAdminUsersEffects = ({
 
   // Handler cập nhật sau khi user được lưu với thời gian delay dài hơn
   const handleUserActionComplete = useCallback(() => {
-    console.log("[AdminUsers] Hoàn thành hành động người dùng, đang làm mới dữ liệu sau 3000ms...");
+    console.log("[AdminUsers] Hoàn thành hành động người dùng, đang làm mới dữ liệu sau 2000ms...");
     refreshAttemptsRef.current = 0;
+    
+    // Xóa toàn bộ cache người dùng
+    clearAllUserCache();
     
     // Thử làm mới dữ liệu với số lần thử tối đa
     const attemptRefresh = () => {
@@ -56,7 +60,7 @@ export const useAdminUsersEffects = ({
               }
             });
         }
-      }, 2000);
+      }, 1000);
     };
     
     attemptRefresh();
@@ -67,6 +71,9 @@ export const useAdminUsersEffects = ({
 
   const handleRefresh = useCallback(() => {
     console.log("[AdminUsers] Yêu cầu refresh thủ công");
+    
+    // Xóa toàn bộ cache người dùng
+    clearAllUserCache();
     
     // Reset biến đếm số lần thử
     refreshAttemptsRef.current = 0;
@@ -82,7 +89,7 @@ export const useAdminUsersEffects = ({
       // Nếu không thành công, tải lại trang
       setTimeout(() => {
         window.location.reload();
-      }, 1500);
+      }, 1000);
     });
   }, [refreshUsers, toast]);
 

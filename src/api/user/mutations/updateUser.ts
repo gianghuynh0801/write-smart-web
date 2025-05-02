@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { User, UserFormValues } from "@/types/user";
 import { parseUser } from "../userParser";
 import { authService, isAuthError } from "@/services/auth";
+import { clearUserCache, clearUsersCache } from "@/utils/api/userApiUtils";
 
 /**
  * Cập nhật thông tin người dùng
@@ -58,6 +59,9 @@ export const updateUser = async (id: string | number, userData: UserFormValues):
           }
           
           if (retryData?.data) {
+            // Xóa cache sau khi cập nhật thành công
+            clearUserCache(userId);
+            clearUsersCache();
             return parseUser(retryData.data);
           }
         }
@@ -89,6 +93,10 @@ export const updateUser = async (id: string | number, userData: UserFormValues):
       throw new Error("Dữ liệu người dùng không hợp lệ");
     }
 
+    // Xóa cache sau khi cập nhật thành công
+    clearUserCache(userId);
+    clearUsersCache();
+    
     // Phân tích và trả về dữ liệu người dùng đã cập nhật
     return parseUser(responseData.data);
   } catch (error) {

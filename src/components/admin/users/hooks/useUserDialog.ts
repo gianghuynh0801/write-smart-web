@@ -3,6 +3,7 @@ import { useState, useRef, useCallback } from "react";
 import { User } from "@/types/user";
 import { getUserById } from "@/api/user/userCrud";
 import { useToast } from "@/hooks/use-toast";
+import { clearUserCache } from "@/utils/api/userApiUtils";
 
 export const useUserDialog = (
   userId: string | number | undefined,
@@ -80,9 +81,12 @@ export const useUserDialog = (
       setError(null);
     }
 
+    // Xóa cache của user trước khi fetch để đảm bảo lấy dữ liệu mới nhất
+    clearUserCache(userId);
+
     try {
-      // Gọi API để lấy thông tin chi tiết của user
-      const userData = await getUserById(userId);
+      // Gọi API để lấy thông tin chi tiết của user với forceRefresh=true để không dùng cache
+      const userData = await getUserById(userId, true);
       
       if (!isMounted.current) return;
       

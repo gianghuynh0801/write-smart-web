@@ -4,6 +4,7 @@ import { UserFormValues } from "@/types/user";
 import { useToast } from "@/hooks/use-toast";
 import { updateUser } from "@/api/user/mutations/updateUser";
 import { createUser } from "@/api/user/mutations";
+import { clearUserCache, clearUsersCache } from "@/utils/api/userApiUtils";
 
 interface UseUserDialogSubmitProps {
   userId?: string | number;
@@ -30,6 +31,9 @@ export const useUserDialogSubmit = ({ userId, onClose, onUserSaved }: UseUserDia
           title: "Thành công",
           description: "Cập nhật người dùng thành công",
         });
+        
+        // Đảm bảo xóa cache
+        clearUserCache(userId);
       } else {
         // Tạo người dùng mới
         await createUser(data);
@@ -38,6 +42,9 @@ export const useUserDialogSubmit = ({ userId, onClose, onUserSaved }: UseUserDia
           title: "Thành công",
           description: "Tạo người dùng mới thành công",
         });
+        
+        // Xóa cache danh sách người dùng
+        clearUsersCache();
       }
 
       // Đánh dấu đã lưu thành công
@@ -50,11 +57,11 @@ export const useUserDialogSubmit = ({ userId, onClose, onUserSaved }: UseUserDia
       setTimeout(() => {
         onUserSaved();
         
-        // Thêm đoạn mã để tải lại trang sau khi cập nhật thành công
+        // Luôn làm mới trang sau khi cập nhật thành công để đảm bảo dữ liệu mới nhất
         setTimeout(() => {
           window.location.reload();
-        }, 1000);
-      }, 500);
+        }, 500);
+      }, 300);
     } catch (error) {
       console.error("Lỗi khi lưu người dùng:", error);
       

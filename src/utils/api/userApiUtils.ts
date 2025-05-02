@@ -208,3 +208,40 @@ export const clearUsersCache = () => {
   }
   console.log("Đã xóa cache người dùng");
 };
+
+// Mới: Xóa cache người dùng cụ thể
+export const clearUserCache = (userId: string | number) => {
+  const cacheKey = `user_details_${userId}`;
+  try {
+    sessionStorage.removeItem(cacheKey);
+    console.log(`[clearUserCache] Đã xóa cache cho user ID: ${userId}`);
+  } catch (err) {
+    console.warn(`[clearUserCache] Không thể xóa cache cho user ID: ${userId}`, err);
+  }
+};
+
+// Mới: Xóa toàn bộ cache liên quan đến người dùng
+export const clearAllUserCache = () => {
+  try {
+    // Xóa cache danh sách người dùng
+    clearUsersCache();
+    
+    // Xóa tất cả các mục cache chi tiết người dùng
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const key = sessionStorage.key(i);
+      if (key && key.startsWith('user_details_')) {
+        keysToRemove.push(key);
+      }
+    }
+    
+    keysToRemove.forEach(key => {
+      sessionStorage.removeItem(key);
+      console.log(`[clearAllUserCache] Đã xóa cache: ${key}`);
+    });
+    
+    console.log(`[clearAllUserCache] Đã xóa ${keysToRemove.length} mục cache chi tiết người dùng`);
+  } catch (err) {
+    console.warn("[clearAllUserCache] Lỗi khi xóa cache:", err);
+  }
+};

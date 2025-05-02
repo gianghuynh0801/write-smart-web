@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { parseUser } from "./userParser";
 import { User } from "@/types/user";
@@ -59,25 +58,29 @@ export const fetchUsers = async (
   }
 };
 
-export const getUserById = async (id: string | number): Promise<User | undefined> => {
+export const getUserById = async (id: string | number, forceRefresh = false): Promise<User | undefined> => {
   try {
-    console.log("Đang lấy thông tin chi tiết của user:", id);
+    console.log("Đang lấy thông tin chi tiết của user:", id, "forceRefresh:", forceRefresh);
     
     // Tạo cache key
     const cacheKey = `user_details_${id}`;
     
-    // Thử lấy từ sessionStorage trước
-    const cachedData = sessionStorage.getItem(cacheKey);
-    if (cachedData) {
-      try {
-        const userData = JSON.parse(cachedData);
-        if (userData && userData.id) {
-          console.log("Sử dụng dữ liệu người dùng từ cache:", userData.id);
-          return userData as User;
+    // Thử lấy từ sessionStorage trước nếu không yêu cầu tải mới
+    if (!forceRefresh) {
+      const cachedData = sessionStorage.getItem(cacheKey);
+      if (cachedData) {
+        try {
+          const userData = JSON.parse(cachedData);
+          if (userData && userData.id) {
+            console.log("Sử dụng dữ liệu người dùng từ cache:", userData.id);
+            return userData as User;
+          }
+        } catch (err) {
+          console.warn("Lỗi khi parse dữ liệu cache:", err);
         }
-      } catch (err) {
-        console.warn("Lỗi khi parse dữ liệu cache:", err);
       }
+    } else {
+      console.log(`Bỏ qua cache và tải mới dữ liệu cho user: ${id}`);
     }
     
     const { data: { session } } = await supabase.auth.getSession();
@@ -108,6 +111,7 @@ export const getUserById = async (id: string | number): Promise<User | undefined
     // Lưu vào cache
     try {
       sessionStorage.setItem(cacheKey, JSON.stringify(userWithSubscription));
+      console.log(`Đã lưu dữ liệu user ${id} vào cache`);
     } catch (err) {
       console.warn("Không thể lưu user vào cache:", err);
     }
