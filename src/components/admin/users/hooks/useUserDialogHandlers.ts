@@ -1,5 +1,6 @@
 
 import { useCallback } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 interface UseUserDialogHandlersProps {
   confirmDeleteUser: () => Promise<void>;
@@ -16,30 +17,49 @@ export const useUserDialogHandlers = ({
   setAddCreditsDialogOpen,
   handleUserActionComplete
 }: UseUserDialogHandlersProps) => {
-  
-  // Xử lý xóa người dùng
+  const { toast } = useToast();
+
+  // Xác nhận xóa người dùng với tải lại trang
   const handleConfirmDeleteUser = useCallback(async () => {
     try {
       await confirmDeleteUser();
       setDeleteDialogOpen(false);
-      // Làm mới dữ liệu sau khi xóa
       handleUserActionComplete();
+      
+      // Thêm tải lại trang sau khi xóa
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
     } catch (error) {
-      console.error("[AdminUsers] Lỗi khi xóa người dùng:", error);
+      console.error("Lỗi khi xóa người dùng:", error);
+      toast({
+        title: "Lỗi",
+        description: error instanceof Error ? error.message : "Không thể xóa người dùng",
+        variant: "destructive"
+      });
     }
-  }, [confirmDeleteUser, setDeleteDialogOpen, handleUserActionComplete]);
+  }, [confirmDeleteUser, setDeleteDialogOpen, handleUserActionComplete, toast]);
 
-  // Xử lý thêm credits
+  // Xác nhận thêm credits với tải lại trang
   const handleConfirmAddCredits = useCallback(async (amount: number) => {
     try {
       await confirmAddCredits(amount);
       setAddCreditsDialogOpen(false);
-      // Làm mới dữ liệu sau khi thêm credits
       handleUserActionComplete();
+      
+      // Thêm tải lại trang sau khi thêm credits
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
     } catch (error) {
-      console.error("[AdminUsers] Lỗi khi thêm credits:", error);
+      console.error("Lỗi khi thêm credits:", error);
+      toast({
+        title: "Lỗi",
+        description: error instanceof Error ? error.message : "Không thể thêm credits",
+        variant: "destructive"
+      });
     }
-  }, [confirmAddCredits, setAddCreditsDialogOpen, handleUserActionComplete]);
+  }, [confirmAddCredits, setAddCreditsDialogOpen, handleUserActionComplete, toast]);
 
   return {
     handleConfirmDeleteUser,

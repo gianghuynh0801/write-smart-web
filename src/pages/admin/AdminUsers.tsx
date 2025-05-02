@@ -1,5 +1,5 @@
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useUserManagement } from "@/hooks/useUserManagement";
 import AdminUsersHeader from "@/components/admin/users/AdminUsersHeader";
 import AdminUsersContent from "@/components/admin/users/AdminUsersContent";
@@ -44,12 +44,20 @@ const AdminUsers = () => {
   } = useUserManagement();
 
   const { toast } = useToast();
+  const errorCountRef = useRef(0);
+  const maxErrorCount = 3;
 
   // Handler cập nhật sau khi user được lưu 
   const handleUserSaved = useCallback(() => {
     console.log("[AdminUsers] Đã phát hiện người dùng được lưu, đang làm mới dữ liệu...");
     // Sử dụng force refresh để đảm bảo dữ liệu mới nhất
-    refreshUsers(true);
+    refreshUsers(true).catch(() => {
+      errorCountRef.current++;
+      if (errorCountRef.current >= maxErrorCount) {
+        console.log("[AdminUsers] Đã đạt số lỗi tối đa, tải lại trang...");
+        window.location.reload();
+      }
+    });
   }, [refreshUsers]);
 
   // Sử dụng effect hooks
@@ -77,13 +85,20 @@ const AdminUsers = () => {
   // Thêm hàm để load dữ liệu ban đầu khi trang được mở - tự động tải dữ liệu khi component mount
   useEffect(() => {
     console.log("[AdminUsers] Trang đã được mở, tự động tải dữ liệu ban đầu");
-    refreshUsers(false);  // Không cần force refresh khi lần đầu tải
+    refreshUsers(false).catch(() => {
+      errorCountRef.current++;
+      if (errorCountRef.current >= maxErrorCount) {
+        console.log("[AdminUsers] Lỗi khi tải dữ liệu ban đầu, tải lại trang...");
+        window.location.reload();
+      }
+    });
   }, [refreshUsers]);
 
   // Thêm một hàm để refresh dữ liệu thủ công với kiểm soát throttle
   const handleManualRefresh = useCallback(async () => {
     try {
       console.log("[AdminUsers] Đang làm mới dữ liệu thủ công...");
+      errorCountRef.current = 0;
       await refreshUsers(true);  // Force refresh khi làm mới thủ công
       toast({
         title: "Thành công",
@@ -91,11 +106,20 @@ const AdminUsers = () => {
       });
     } catch (error) {
       console.error("[AdminUsers] Lỗi khi làm mới dữ liệu thủ công:", error);
+      errorCountRef.current++;
+      
       toast({
         title: "Lỗi",
         description: "Không thể làm mới danh sách người dùng",
         variant: "destructive"
       });
+      
+      if (errorCountRef.current >= maxErrorCount) {
+        console.log("[AdminUsers] Đã đạt số lỗi tối đa, tải lại trang...");
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      }
     }
   }, [refreshUsers, toast]);
 

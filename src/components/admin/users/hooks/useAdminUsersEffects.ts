@@ -17,6 +17,8 @@ export const useAdminUsersEffects = ({
   const isMountedRef = useRef(true);
   const { debouncedRefreshUsers, clearRefreshTimeout, getIsDataRefreshing } = useAdminUsersDebounce();
   const { toast } = useToast();
+  const refreshAttemptsRef = useRef(0);
+  const maxRefreshAttempts = 3;
   
   // Cleanup khi component unmount
   useEffect(() => {
@@ -29,15 +31,35 @@ export const useAdminUsersEffects = ({
 
   // Handler cập nhật sau khi user được lưu với thời gian delay dài hơn
   const handleUserActionComplete = useCallback(() => {
-    console.log("[AdminUsers] Hoàn thành hành động người dùng, đang làm mới dữ liệu sau 5000ms...");
-    // Tăng thời gian delay lên 5 giây để đảm bảo các tác vụ nền đã hoàn tất
-    setTimeout(() => {
-      if (isMountedRef.current) {
-        // Sử dụng force refresh để đảm bảo dữ liệu được làm mới hoàn toàn
-        console.log("[AdminUsers] Đang làm mới dữ liệu với force=true sau khi hoàn thành hành động");
-        refreshUsers(true);
+    console.log("[AdminUsers] Hoàn thành hành động người dùng, đang làm mới dữ liệu sau 3000ms...");
+    refreshAttemptsRef.current = 0;
+    
+    // Thử làm mới dữ liệu với số lần thử tối đa
+    const attemptRefresh = () => {
+      if (refreshAttemptsRef.current >= maxRefreshAttempts) {
+        console.log("[AdminUsers] Đã đạt số lần thử tối đa, tải lại trang...");
+        window.location.reload();
+        return;
       }
-    }, 5000);
+      
+      refreshAttemptsRef.current++;
+      
+      setTimeout(() => {
+        if (isMountedRef.current) {
+          console.log(`[AdminUsers] Thử làm mới lần ${refreshAttemptsRef.current}/${maxRefreshAttempts}`);
+          refreshUsers(true)
+            .catch(() => {
+              if (refreshAttemptsRef.current < maxRefreshAttempts) {
+                attemptRefresh();
+              } else {
+                window.location.reload();
+              }
+            });
+        }
+      }, 2000);
+    };
+    
+    attemptRefresh();
   }, [refreshUsers]);
 
   // Sử dụng biến cờ để đánh dấu đang refresh
@@ -45,9 +67,24 @@ export const useAdminUsersEffects = ({
 
   const handleRefresh = useCallback(() => {
     console.log("[AdminUsers] Yêu cầu refresh thủ công");
+    
+    // Reset biến đếm số lần thử
+    refreshAttemptsRef.current = 0;
+    
     // Sử dụng force refresh khi refresh thủ công
-    refreshUsers(true);
-  }, [refreshUsers]);
+    refreshUsers(true).catch(() => {
+      toast({
+        title: "Lỗi",
+        description: "Không thể làm mới dữ liệu. Đang tải lại trang...",
+        variant: "destructive"
+      });
+      
+      // Nếu không thành công, tải lại trang
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    });
+  }, [refreshUsers, toast]);
 
   return {
     isDataRefreshing,
