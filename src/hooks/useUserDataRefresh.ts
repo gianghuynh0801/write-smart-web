@@ -1,6 +1,6 @@
 
 import { useCallback, useState } from 'react';
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/integrations/supabase/typeSafeClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/contexts/auth';
 
@@ -28,10 +28,9 @@ export const useUserDataRefresh = () => {
       });
 
       // Lấy thông tin chi tiết từ bảng users
-      const userPromise = supabase
-        .from('users' as any)
+      const userPromise = db.users()
         .select('credits, email_verified, subscription')
-        .eq('id', user.id as any)
+        .eq('id', user.id)
         .single();
         
       // Sử dụng Promise.race để áp dụng timeout
@@ -55,8 +54,7 @@ export const useUserDataRefresh = () => {
       console.log("useUserDataRefresh: Đã lấy thông tin cơ bản người dùng:", userData);
 
       // Lấy thông tin gói đăng ký hiện tại với timeout
-      const subPromise = supabase
-        .from('user_subscriptions' as any)
+      const subPromise = db.user_subscriptions()
         .select(`
           subscription_id,
           end_date,
@@ -66,8 +64,8 @@ export const useUserDataRefresh = () => {
             features
           )
         `)
-        .eq('user_id', user.id as any)
-        .eq('status', 'active' as any)
+        .eq('user_id', user.id)
+        .eq('status', 'active')
         .maybeSingle();
         
       const subResult = await Promise.race([subPromise, timeoutPromise]) as any;

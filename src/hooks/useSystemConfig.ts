@@ -1,6 +1,6 @@
 
 import { useState, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/supabase/typeSafeClient';
 import { useToast } from './use-toast';
 
 export function useSystemConfig() {
@@ -13,10 +13,9 @@ export function useSystemConfig() {
       setIsLoading(true);
       setError(null);
       
-      const { data, error } = await supabase
-        .from('system_configurations')
+      const { data, error } = await db.system_configurations()
         .select('value')
-        .eq('key', key as any)
+        .eq('key', key)
         .maybeSingle();
       
       if (error) {
@@ -43,10 +42,9 @@ export function useSystemConfig() {
       setError(null);
       
       // Kiểm tra xem cấu hình đã tồn tại chưa
-      const { data, error } = await supabase
-        .from('system_configurations')
+      const { data, error } = await db.system_configurations()
         .select('id')
-        .eq('key', key as any)
+        .eq('key', key)
         .maybeSingle();
       
       if (error && error.code !== 'PGRST116') {
@@ -59,12 +57,11 @@ export function useSystemConfig() {
       if (!data) {
         console.log(`Creating new config ${key} with default value: ${defaultValue}`);
         
-        const { error: insertError } = await supabase
-          .from('system_configurations')
+        const { error: insertError } = await db.system_configurations()
           .insert({ 
             key: key, 
             value: defaultValue 
-          } as any);
+          });
         
         if (insertError) {
           console.error(`Error creating config ${key}:`, insertError);
@@ -91,10 +88,9 @@ export function useSystemConfig() {
       console.log(`Updating config ${key} to: ${value}`);
       
       // Kiểm tra xem cấu hình đã tồn tại chưa
-      const { data, error: checkError } = await supabase
-        .from('system_configurations')
+      const { data, error: checkError } = await db.system_configurations()
         .select('id')
-        .eq('key', key as any)
+        .eq('key', key)
         .maybeSingle();
       
       if (checkError) {
@@ -105,10 +101,9 @@ export function useSystemConfig() {
       
       // Nếu tìm thấy, cập nhật
       if (data && typeof data === 'object' && 'id' in data) {
-        const { error: updateError } = await supabase
-          .from('system_configurations')
-          .update({ value } as any)
-          .eq('id', data.id as any);
+        const { error: updateError } = await db.system_configurations()
+          .update({ value })
+          .eq('id', data.id);
         
         if (updateError) {
           console.error(`Error updating config ${key}:`, updateError);
@@ -118,12 +113,11 @@ export function useSystemConfig() {
       } 
       // Nếu không tìm thấy, tạo mới
       else {
-        const { error: insertError } = await supabase
-          .from('system_configurations')
+        const { error: insertError } = await db.system_configurations()
           .insert({ 
             key: key, 
             value: value 
-          } as any);
+          });
         
         if (insertError) {
           console.error(`Error creating config ${key}:`, insertError);

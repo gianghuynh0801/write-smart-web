@@ -1,6 +1,5 @@
 
 import { supabase } from "./client";
-import { PostgrestQueryBuilder } from "@supabase/supabase-js";
 
 // Định nghĩa các type cho các bảng để tránh lỗi TypeScript
 export type TableType = {
@@ -12,24 +11,24 @@ export type TableType = {
   system_configurations: any;
   articles: any;
   profiles: any;
-  verification_tokens: any; // Thêm verification_tokens vào danh sách bảng
+  verification_tokens: any;
 }
 
 // Wrapper cải tiến để truy cập các bảng trong Supabase mà không gặp lỗi TypeScript
 export const db = {
   // Các bảng
-  users: () => supabase.from('users') as unknown as PostgrestQueryBuilder<any, any, any>,
-  subscriptions: () => supabase.from('subscriptions') as unknown as PostgrestQueryBuilder<any, any, any>,
-  user_subscriptions: () => supabase.from('user_subscriptions') as unknown as PostgrestQueryBuilder<any, any, any>,
-  payment_history: () => supabase.from('payment_history') as unknown as PostgrestQueryBuilder<any, any, any>,
-  user_roles: () => supabase.from('user_roles') as unknown as PostgrestQueryBuilder<any, any, any>,
-  system_configurations: () => supabase.from('system_configurations') as unknown as PostgrestQueryBuilder<any, any, any>,
-  articles: () => supabase.from('articles') as unknown as PostgrestQueryBuilder<any, any, any>,
-  profiles: () => supabase.from('profiles') as unknown as PostgrestQueryBuilder<any, any, any>,
-  verification_tokens: () => supabase.from('verification_tokens') as unknown as PostgrestQueryBuilder<any, any, any>,
+  users: () => supabase.from('users'),
+  subscriptions: () => supabase.from('subscriptions'),
+  user_subscriptions: () => supabase.from('user_subscriptions'),
+  payment_history: () => supabase.from('payment_history'),
+  user_roles: () => supabase.from('user_roles'),
+  system_configurations: () => supabase.from('system_configurations'),
+  articles: () => supabase.from('articles'),
+  profiles: () => supabase.from('profiles'),
+  verification_tokens: () => supabase.from('verification_tokens'),
   
   // Helper để truy cập bảng tùy chỉnh
-  table: (tableName: string) => supabase.from(tableName) as unknown as PostgrestQueryBuilder<any, any, any>,
+  table: (tableName: string) => supabase.from(tableName),
 
   // Truy xuất các API khác của Supabase
   auth: supabase.auth,

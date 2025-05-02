@@ -13,13 +13,13 @@ export const EmailVerificationToggle = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
-  const { getConfigValue, updateConfig } = useSystemConfig();
+  const { getConfig, updateConfig } = useSystemConfig();
 
   useEffect(() => {
     const loadConfig = async () => {
       setIsLoading(true);
       try {
-        const value = await getConfigValue('require_email_verification', 'false');
+        const value = await getConfig('require_email_verification');
         setRequired(value === 'true');
       } catch (error) {
         console.error("Lỗi khi tải cấu hình xác thực email:", error);
@@ -29,7 +29,7 @@ export const EmailVerificationToggle = () => {
     };
 
     loadConfig();
-  }, [getConfigValue]);
+  }, [getConfig]);
 
   const handleToggle = (checked: boolean) => {
     setRequired(checked);
