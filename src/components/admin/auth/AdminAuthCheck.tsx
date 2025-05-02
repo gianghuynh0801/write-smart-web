@@ -1,3 +1,4 @@
+
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -5,9 +6,10 @@ import { useAuth } from "@/contexts/auth";
 
 interface AdminAuthCheckProps {
   onAuthSuccess: () => void;
+  children: React.ReactNode; // Thêm children vào interface
 }
 
-export const AdminAuthCheck = ({ onAuthSuccess }: AdminAuthCheckProps) => {
+export const AdminAuthCheck = ({ children, onAuthSuccess }: AdminAuthCheckProps) => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [isLocalChecking, setIsLocalChecking] = useState(true);
@@ -115,5 +117,5 @@ export const AdminAuthCheck = ({ onAuthSuccess }: AdminAuthCheckProps) => {
     );
   }
 
-  return null;
+  return <>{children}</>;
 };
