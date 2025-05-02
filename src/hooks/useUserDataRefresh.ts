@@ -1,6 +1,6 @@
 
 import { useCallback, useState } from 'react';
-import { db } from "@/integrations/supabase/typeSafeClient";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/contexts/auth';
 
@@ -28,7 +28,8 @@ export const useUserDataRefresh = () => {
       });
 
       // Lấy thông tin chi tiết từ bảng users
-      const userPromise = db.users()
+      const userPromise = supabase
+        .from("users")
         .select('credits, email_verified, subscription')
         .eq('id', user.id)
         .single();
@@ -54,7 +55,8 @@ export const useUserDataRefresh = () => {
       console.log("useUserDataRefresh: Đã lấy thông tin cơ bản người dùng:", userData);
 
       // Lấy thông tin gói đăng ký hiện tại với timeout
-      const subPromise = db.user_subscriptions()
+      const subPromise = supabase
+        .from("user_subscriptions")
         .select(`
           subscription_id,
           end_date,

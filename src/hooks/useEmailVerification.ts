@@ -2,7 +2,6 @@
 // Sử dụng mã tương tự từ hook auth/useEmailVerification.ts
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { db } from "@/integrations/supabase/typeSafeClient";
 import { useToast } from "@/hooks/use-toast";
 
 export interface VerificationParams {
@@ -42,7 +41,8 @@ export const useEmailVerification = () => {
       setIsLoading(true);
       console.log("Đang lấy cấu hình xác minh email...");
       
-      const { data, error } = await db.system_configurations()
+      const { data, error } = await supabase
+        .from("system_configurations")
         .select('value')
         .eq('key', 'require_email_verification')
         .maybeSingle();
@@ -69,7 +69,6 @@ export const useEmailVerification = () => {
   
   // Xử lý gửi lại email xác thực
   const handleResendVerification = useCallback(async () => {
-    // ... nội dung tương tự như trong hooks/auth/useEmailVerification.ts
     if (!unconfirmedEmail) {
       console.error("Email không hợp lệ khi thử gửi lại xác thực");
       toast({
@@ -85,7 +84,8 @@ export const useEmailVerification = () => {
       console.log("Đang tìm user ID từ email:", unconfirmedEmail);
       
       // Tìm ID người dùng từ email
-      const { data: userData, error: userError } = await db.users()
+      const { data: userData, error: userError } = await supabase
+        .from("users")
         .select("id")
         .eq("email", unconfirmedEmail.toLowerCase())
         .maybeSingle();
@@ -138,7 +138,6 @@ export const useEmailVerification = () => {
   }, [unconfirmedEmail, toast]);
 
   const sendVerificationEmail = useCallback(async (params: VerificationParams) => {
-    // ... nội dung tương tự như trong hooks/auth/useEmailVerification.ts
     try {
       console.log("Sending verification email for:", params.email, "userId:", params.userId);
       
@@ -208,7 +207,8 @@ export const useEmailVerification = () => {
       // Xóa các token hiện có song song với việc đồng bộ user
       const [syncResult] = await Promise.all([
         syncUser(),
-        db.verification_tokens()
+        supabase
+          .from("verification_tokens")
           .delete()
           .eq('user_id', params.userId)
           .eq('type', params.type)
@@ -217,7 +217,8 @@ export const useEmailVerification = () => {
       console.log("Sync user result:", syncResult);
       
       // Tạo token mới
-      const { error: tokenError } = await db.verification_tokens()
+      const { error: tokenError } = await supabase
+        .from("verification_tokens")
         .insert({
           user_id: params.userId,
           token: token,
@@ -230,7 +231,8 @@ export const useEmailVerification = () => {
       }
 
       // Lấy URL trang web từ cấu hình hệ thống
-      const { data: configData, error: configError } = await db.system_configurations()
+      const { data: configData, error: configError } = await supabase
+        .from("system_configurations")
         .select('value')
         .eq('key', 'site_url')
         .maybeSingle();

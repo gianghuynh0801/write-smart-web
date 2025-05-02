@@ -1,12 +1,13 @@
 
-import { db } from "@/integrations/supabase/typeSafeClient";
+import { supabase } from "@/integrations/supabase/client";
 import { Subscription } from "@/types/subscriptions";
 import { parseSubscriptionFeatures } from "./utils";
 import type { SubscriptionUpdateResponse, SubscriptionCancelResponse } from "./types";
 
 export const updateUserSubscription = async (userId: string, planId: number): Promise<SubscriptionUpdateResponse> => {
   // Get plan details
-  const { data: planData, error: planError } = await db.subscriptions()
+  const { data: planData, error: planError } = await supabase
+    .from("subscriptions")
     .select("*")
     .eq("id", planId)
     .maybeSingle();
@@ -28,7 +29,8 @@ export const updateUserSubscription = async (userId: string, planId: number): Pr
   const endDate = endDateObj.toISOString().split("T")[0];
 
   // Check if user already has active subscription
-  const { data: existingSubscription, error: subError } = await db.user_subscriptions()
+  const { data: existingSubscription, error: subError } = await supabase
+    .from("user_subscriptions")
     .select("id")
     .eq("user_id", userId)
     .eq("status", "active")
@@ -45,7 +47,8 @@ export const updateUserSubscription = async (userId: string, planId: number): Pr
         (existingSubscription as any).id : null;
       
       if (subscriptionId) {
-        const { error: updateError } = await db.user_subscriptions()
+        const { error: updateError } = await supabase
+          .from("user_subscriptions")
           .update({ status: "inactive" })
           .eq("id", subscriptionId);
 
@@ -54,7 +57,8 @@ export const updateUserSubscription = async (userId: string, planId: number): Pr
     }
 
     // Create new subscription
-    const { error: insertError } = await db.user_subscriptions()
+    const { error: insertError } = await supabase
+      .from("user_subscriptions")
       .insert({
         user_id: userId,
         subscription_id: planId,
@@ -66,7 +70,8 @@ export const updateUserSubscription = async (userId: string, planId: number): Pr
     if (insertError) throw new Error(`Error creating subscription: ${insertError.message}`);
 
     // Record payment
-    const { error: paymentError } = await db.payment_history()
+    const { error: paymentError } = await supabase
+      .from("payment_history")
       .insert({
         user_id: userId,
         amount: typedPlanData.price,
@@ -88,7 +93,8 @@ export const updateUserSubscription = async (userId: string, planId: number): Pr
 
 export const cancelUserSubscription = async (userId: string): Promise<SubscriptionCancelResponse> => {
   // Find active subscription
-  const { data: subscription, error: findError } = await db.user_subscriptions()
+  const { data: subscription, error: findError } = await supabase
+    .from("user_subscriptions")
     .select("id")
     .eq("user_id", userId)
     .eq("status", "active")
@@ -110,7 +116,8 @@ export const cancelUserSubscription = async (userId: string): Promise<Subscripti
     throw new Error("Không tìm thấy ID gói đăng ký");
   }
   
-  const { error: updateError } = await db.user_subscriptions()
+  const { error: updateError } = await supabase
+    .from("user_subscriptions")
     .update({ status: "canceled" })
     .eq("id", subscriptionId);
 

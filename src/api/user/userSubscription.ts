@@ -1,5 +1,5 @@
 
-import { db } from "@/integrations/supabase/typeSafeClient";
+import { supabase } from "@/integrations/supabase/client";
 import { createUserSubscriptionAsAdmin } from "./admin/subscriptionOperations";
 
 // Handle subscription changes for a user
@@ -27,7 +27,8 @@ export async function handleSubscriptionChange(userId: string, subscriptionName:
     
     // Lấy thông tin gói đăng ký từ tên
     console.log("Đang tìm thông tin gói đăng ký:", subscriptionName);
-    const { data: subscriptionData, error: subscriptionError } = await db.subscriptions()
+    const { data: subscriptionData, error: subscriptionError } = await supabase
+      .from("subscriptions")
       .select("id")
       .eq("name", subscriptionName)
       .maybeSingle();
@@ -95,7 +96,8 @@ export async function handleSubscriptionChange(userId: string, subscriptionName:
 export const getSubscriptionOptions = async (): Promise<string[]> => {
   try {
     console.log("Đang lấy danh sách gói đăng ký...");
-    const { data, error } = await db.subscriptions()
+    const { data, error } = await supabase
+      .from("subscriptions")
       .select("name")
       .order('price', { ascending: true });
       

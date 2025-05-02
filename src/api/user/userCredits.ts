@@ -1,5 +1,5 @@
 
-import { db } from "@/integrations/supabase/typeSafeClient";
+import { supabase } from "@/integrations/supabase/client";
 import { parseUser } from "./userParser";
 import { User } from "@/types/user";
 
@@ -7,7 +7,8 @@ export const addUserCredits = async (id: string | number, amount: number): Promi
   const userId = String(id);
   console.log(`[API] Bắt đầu thêm ${amount} tín dụng cho người dùng ${userId}`);
 
-  const { data: currentData, error: getError } = await db.users()
+  const { data: currentData, error: getError } = await supabase
+    .from("users")
     .select("*")
     .eq("id", userId)
     .maybeSingle();
@@ -29,7 +30,8 @@ export const addUserCredits = async (id: string | number, amount: number): Promi
   const newCredits = currentCredits + amount;
   
   console.log(`[API] Cập nhật số dư tín dụng mới: ${newCredits}`);
-  const { data, error } = await db.users()
+  const { data, error } = await supabase
+    .from("users")
     .update({ credits: newCredits })
     .eq("id", userId)
     .select()
@@ -46,7 +48,8 @@ export const addUserCredits = async (id: string | number, amount: number): Promi
   
   // Ghi log giao dịch vào payment_history
   try {
-    const { error: logError } = await db.payment_history()
+    const { error: logError } = await supabase
+      .from("payment_history")
       .insert({
         user_id: userId,
         amount: amount,
