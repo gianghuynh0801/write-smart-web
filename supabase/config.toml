@@ -35,3 +35,5 @@ port = 54327
 verify_jwt = true
 [functions.delete-user]
 verify_jwt = true
+[functions.add-admin-user]
+verify_jwt = false

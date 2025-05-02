@@ -51,7 +51,28 @@ class AdminRoleService {
         console.error("Lỗi ngoại lệ khi kiểm tra quyền admin qua RPC:", error);
       }
       
-      // 2. Kiểm tra từ bảng user_roles
+      // 2. Kiểm tra từ bảng user_roles trong schema seo_project
+      try {
+        const { data, error } = await supabase
+          .from('seo_project.user_roles')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('role', 'admin')
+          .maybeSingle();
+        
+        if (error) {
+          console.error("Lỗi khi kiểm tra bảng seo_project.user_roles:", error);
+        } else if (data) {
+          // Cache kết quả để sử dụng lại
+          this.adminUserIds.set(userId, true);
+          this.lastChecks.set(userId, Date.now());
+          return true;
+        }
+      } catch (error) {
+        console.error("Lỗi ngoại lệ khi kiểm tra bảng seo_project.user_roles:", error);
+      }
+      
+      // 3. Kiểm tra từ bảng user_roles trong schema public nếu trước đó không tìm thấy
       try {
         const { data, error } = await supabase
           .from('user_roles')
@@ -61,7 +82,7 @@ class AdminRoleService {
           .maybeSingle();
         
         if (error) {
-          console.error("Lỗi khi kiểm tra bảng user_roles:", error);
+          console.error("Lỗi khi kiểm tra bảng public.user_roles:", error);
         } else if (data) {
           // Cache kết quả để sử dụng lại
           this.adminUserIds.set(userId, true);
@@ -69,10 +90,10 @@ class AdminRoleService {
           return true;
         }
       } catch (error) {
-        console.error("Lỗi ngoại lệ khi kiểm tra bảng user_roles:", error);
+        console.error("Lỗi ngoại lệ khi kiểm tra bảng public.user_roles:", error);
       }
       
-      // 3. Kiểm tra từ bảng users cuối cùng
+      // 4. Kiểm tra từ bảng users trong schema public
       try {
         const { data, error } = await supabase
           .from('users')
@@ -90,6 +111,26 @@ class AdminRoleService {
         }
       } catch (error) {
         console.error("Lỗi ngoại lệ khi kiểm tra bảng users:", error);
+      }
+      
+      // 5. Kiểm tra từ bảng users trong schema seo_project
+      try {
+        const { data, error } = await supabase
+          .from('seo_project.users')
+          .select('role')
+          .eq('id', userId)
+          .maybeSingle();
+        
+        if (error) {
+          console.error("Lỗi khi kiểm tra bảng seo_project.users:", error);
+        } else if (data?.role === 'admin') {
+          // Cache kết quả để sử dụng lại
+          this.adminUserIds.set(userId, true);
+          this.lastChecks.set(userId, Date.now());
+          return true;
+        }
+      } catch (error) {
+        console.error("Lỗi ngoại lệ khi kiểm tra bảng seo_project.users:", error);
       }
       
       // Không tìm thấy quyền admin qua bất kỳ phương thức nào

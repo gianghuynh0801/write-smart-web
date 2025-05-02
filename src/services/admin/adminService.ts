@@ -38,6 +38,26 @@ export const checkAdminRole = async (userId: string) => {
       // Tiếp tục với phương thức tiếp theo nếu lỗi
     }
     
+    // 1.5. Kiểm tra từ bảng seo_project.users
+    try {
+      const { data: userData, error: userError } = await supabase
+        .from('seo_project.users')
+        .select('role')
+        .eq('id', userId)
+        .maybeSingle();
+      
+      if (!userError && userData?.role === 'admin') {
+        console.log("Admin role found in seo_project.users table:", userData);
+        return { 
+          roleData: { user_id: userId, role: 'admin' }, 
+          roleError: null 
+        };
+      }
+    } catch (err) {
+      console.log("Error checking admin role in seo_project.users table:", err);
+      // Tiếp tục với phương thức tiếp theo nếu lỗi
+    }
+    
     // 2. Kiểm tra từ bảng user_roles (chính thức)
     try {
       const { data: roleData, error: roleError } = await supabase
@@ -54,6 +74,25 @@ export const checkAdminRole = async (userId: string) => {
       }
     } catch (err) {
       console.log("Error checking admin role in user_roles table:", err);
+      // Tiếp tục với phương thức tiếp theo nếu lỗi
+    }
+    
+    // 2.5 Kiểm tra trong bảng seo_project.user_roles
+    try {
+      const { data: roleData, error: roleError } = await supabase
+        .from('seo_project.user_roles')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('role', 'admin')
+        .single();
+      
+      console.log("Admin role check in seo_project.user_roles:", { roleData, roleError });
+      
+      if (!roleError && roleData) {
+        return { roleData, roleError: null };
+      }
+    } catch (err) {
+      console.log("Error checking admin role in seo_project.user_roles table:", err);
       // Tiếp tục với phương thức tiếp theo nếu lỗi
     }
     

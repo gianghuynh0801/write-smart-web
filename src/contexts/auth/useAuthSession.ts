@@ -181,12 +181,36 @@ export function useAuthSession() {
         console.log("Lỗi khi gọi RPC is_admin:", err);
       }
       
-      // 2. Kiểm tra từ user_roles
+      // 2. Kiểm tra từ user_roles trong schema seo_project
       try {
-        const { data: roleData, error: roleError } = await db.user_roles()
+        console.log("Kiểm tra bảng seo_project.user_roles");
+        const { data: roleData, error: roleError } = await supabase
+          .from('seo_project.user_roles')
           .select('*')
-          .eq('user_id', targetUserId as any)
-          .eq('role', 'admin' as any)
+          .eq('user_id', targetUserId)
+          .eq('role', 'admin')
+          .maybeSingle();
+        
+        if (!roleError && roleData) {
+          console.log("Xác định quyền admin qua bảng seo_project.user_roles");
+          setAdminCheckCache(prev => ({
+            ...prev,
+            [targetUserId]: { result: true, timestamp: now }
+          }));
+          return true;
+        }
+      } catch (err) {
+        console.log("Lỗi khi kiểm tra bảng seo_project.user_roles:", err);
+      }
+      
+      // 3. Kiểm tra từ user_roles trong schema public
+      try {
+        console.log("Kiểm tra bảng public.user_roles");
+        const { data: roleData, error: roleError } = await supabase
+          .from('user_roles')
+          .select('*')
+          .eq('user_id', targetUserId)
+          .eq('role', 'admin')
           .maybeSingle();
         
         if (!roleError && roleData) {
@@ -201,11 +225,13 @@ export function useAuthSession() {
         console.log("Lỗi khi kiểm tra bảng user_roles:", err);
       }
       
-      // 3. Kiểm tra từ bảng users
+      // 4. Kiểm tra từ bảng users trong schema public
       try {
-        const { data: userData, error: userError } = await db.users()
+        console.log("Kiểm tra bảng public.users");
+        const { data: userData, error: userError } = await supabase
+          .from('users')
           .select('role')
-          .eq('id', targetUserId as any)
+          .eq('id', targetUserId)
           .maybeSingle();
         
         if (!userError && userData?.role === 'admin') {
@@ -218,6 +244,27 @@ export function useAuthSession() {
         }
       } catch (err) {
         console.log("Lỗi khi kiểm tra bảng users:", err);
+      }
+      
+      // 5. Kiểm tra từ bảng users trong schema seo_project
+      try {
+        console.log("Kiểm tra bảng seo_project.users");
+        const { data: userData, error: userError } = await supabase
+          .from('seo_project.users')
+          .select('role')
+          .eq('id', targetUserId)
+          .maybeSingle();
+        
+        if (!userError && userData?.role === 'admin') {
+          console.log("Xác định quyền admin qua bảng seo_project.users");
+          setAdminCheckCache(prev => ({
+            ...prev,
+            [targetUserId]: { result: true, timestamp: now }
+          }));
+          return true;
+        }
+      } catch (err) {
+        console.log("Lỗi khi kiểm tra bảng seo_project.users:", err);
       }
       
       // Không tìm thấy quyền admin
