@@ -50,6 +50,7 @@ export const AdminAuthCheck = ({ children, onAuthSuccess }: AdminAuthCheckProps)
         
         // Kiểm tra quyền admin
         const isAdmin = await checkAdminStatus(user.id);
+        console.log("Kết quả kiểm tra quyền admin:", isAdmin);
 
         if (!isAdmin) {
           console.log("Không có quyền admin");
@@ -75,6 +76,7 @@ export const AdminAuthCheck = ({ children, onAuthSuccess }: AdminAuthCheckProps)
         
         // Thử làm mới session nếu có lỗi
         const refreshSuccessful = await refreshSession();
+        console.log("Làm mới session:", refreshSuccessful ? "thành công" : "thất bại");
         
         if (!refreshSuccessful && retryCount.current < maxRetries && isMounted.current) {
           retryCount.current++;

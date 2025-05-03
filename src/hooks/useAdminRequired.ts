@@ -9,6 +9,7 @@ export const useAdminRequired = () => {
   const { toast } = useToast();
   const [isLocalChecking, setIsLocalChecking] = useState(true);
   const isMounted = useRef(true);
+  const retryRef = useRef(0);
   
   // Sử dụng hook useAuth để truy cập AuthContext
   const { 
@@ -22,7 +23,6 @@ export const useAdminRequired = () => {
 
   useEffect(() => {
     isMounted.current = true;
-    let retryCount = 0;
     const maxRetries = 3;
 
     const checkAdminAccess = async () => {
@@ -44,6 +44,7 @@ export const useAdminRequired = () => {
         
         // Kiểm tra vai trò admin
         const isUserAdmin = await checkAdminStatus(user.id);
+        console.log("Kết quả kiểm tra quyền admin:", isUserAdmin);
 
         if (!isUserAdmin) {
           console.log("Không có quyền admin, chuyển hướng đến trang đăng nhập");
@@ -67,10 +68,11 @@ export const useAdminRequired = () => {
         
         // Thử làm mới session nếu có lỗi
         const refreshSuccessful = await refreshSession();
+        console.log("Làm mới session:", refreshSuccessful ? "thành công" : "thất bại");
         
-        if (!refreshSuccessful && retryCount < maxRetries && isMounted.current) {
-          retryCount++;
-          console.log(`Thử lại lần ${retryCount}/${maxRetries}...`);
+        if (!refreshSuccessful && retryRef.current < maxRetries && isMounted.current) {
+          retryRef.current++;
+          console.log(`Thử lại lần ${retryRef.current}/${maxRetries}...`);
           setTimeout(checkAdminAccess, 1000);
           return;
         } else if (!refreshSuccessful) {

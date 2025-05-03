@@ -69,6 +69,7 @@ Deno.serve(async (req) => {
       
       if (roleError) {
         console.error("[add-admin-user] Lỗi khi thêm vai trò admin (seo_project):", roleError);
+        return standardResponse(null, `Lỗi khi thêm vai trò admin: ${roleError.message}`, 500);
       } else {
         console.log("[add-admin-user] Thêm vai trò admin thành công (seo_project)");
       }
@@ -113,12 +114,14 @@ Deno.serve(async (req) => {
         });
       
       if (usersError) {
-        console.error("[add-admin-user] Lỗi khi thêm vào bảng users:", usersError);
+        console.error("[add-admin-user] Lỗi chi tiết khi thêm vào bảng users:", usersError);
+        return standardResponse(null, `Lỗi khi thêm vào bảng users: ${usersError.message}`, 500);
       } else {
         console.log("[add-admin-user] Thêm vào bảng users thành công");
       }
-    } catch (usersError) {
-      console.error("[add-admin-user] Lỗi khi thêm vào bảng users:", usersError);
+    } catch (usersError: any) {
+      console.error("[add-admin-user] Lỗi chi tiết khi thêm vào bảng users:", usersError);
+      return standardResponse(null, `Lỗi khi thêm vào bảng users: ${usersError.message || String(usersError)}`, 500);
     }
     
     // 5. Thêm thông tin người dùng vào bảng seo_project.users với role admin
@@ -135,12 +138,14 @@ Deno.serve(async (req) => {
         });
       
       if (seoUsersError) {
-        console.error("[add-admin-user] Lỗi khi thêm vào bảng seo_project.users:", seoUsersError);
+        console.error("[add-admin-user] Lỗi chi tiết khi thêm vào bảng seo_project.users:", seoUsersError);
+        return standardResponse(null, `Lỗi khi thêm vào bảng seo_project.users: ${seoUsersError.message}`, 500);
       } else {
         console.log("[add-admin-user] Thêm vào bảng seo_project.users thành công");
       }
-    } catch (seoUsersError) {
-      console.error("[add-admin-user] Lỗi khi thêm vào bảng seo_project.users:", seoUsersError);
+    } catch (seoUsersError: any) {
+      console.error("[add-admin-user] Lỗi chi tiết khi thêm vào bảng seo_project.users:", seoUsersError);
+      return standardResponse(null, `Lỗi khi thêm vào bảng seo_project.users: ${seoUsersError.message || String(seoUsersError)}`, 500);
     }
     
     // Trả về kết quả thành công
