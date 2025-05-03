@@ -3,7 +3,6 @@ import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth";
-import { adminRoleService } from "@/services/auth/adminRoleService";
 
 interface AdminAuthCheckProps {
   onAuthSuccess: () => void;
@@ -17,6 +16,8 @@ export const AdminAuthCheck = ({ children, onAuthSuccess }: AdminAuthCheckProps)
   const isMounted = useRef(true);
   const retryCount = useRef(0);
   const maxRetries = 3;
+  
+  // Sử dụng hook useAuth để truy cập AuthContext
   const { 
     user, 
     session, 
@@ -46,9 +47,6 @@ export const AdminAuthCheck = ({ children, onAuthSuccess }: AdminAuthCheckProps)
         }
 
         console.log("User ID:", user.id);
-        
-        // Xóa cache để đảm bảo luôn kiểm tra lại quyền admin từ database
-        adminRoleService.clearCache(user.id);
         
         // Kiểm tra quyền admin
         const isAdmin = await checkAdminStatus(user.id);

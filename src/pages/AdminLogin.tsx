@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import LoginForm from "@/components/admin/LoginForm";
@@ -8,6 +7,7 @@ import { ArrowLeft, AlertCircle, Shield, UserPlus } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/auth";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const AdminLogin = () => {
@@ -24,10 +24,11 @@ const AdminLogin = () => {
   const isMounted = useRef(true);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const auth = useAuth(); // Sử dụng hook useAuth để truy cập AuthContext
   
   // Hàm xử lý đăng nhập quản trị viên
   const handleAdminLogin = async (username: string, password: string) => {
-    if (!isMounted.current) return;
+    if (isLoading || !isMounted.current) return;
     
     setIsLoading(true);
     setError(null);
@@ -35,111 +36,19 @@ const AdminLogin = () => {
     try {
       console.log("Đang xử lý đăng nhập admin...");
       
-      // Kiểm tra đăng nhập bằng email
-      const { data, error: loginError } = await supabase.auth.signInWithPassword({
-        email: username.includes('@') ? username : `${username}@example.com`,
-        password
-      });
+      // Sử dụng login từ AuthContext thay vì gọi trực tiếp Supabase
+      await auth.login(username, password);
       
-      if (loginError) {
-        console.error("Lỗi đăng nhập:", loginError);
-        throw loginError;
+      // Đảm bảo lấy thông tin người dùng mới nhất từ AuthContext
+      if (!auth.user) {
+        throw new Error("Đăng nhập thất bại: Không lấy được thông tin người dùng");
       }
-
-      if (!data.user) {
-        throw new Error("Không tìm thấy thông tin người dùng");
-      }
-
+      
       console.log("Đăng nhập thành công, kiểm tra quyền admin...");
 
-      // Kiểm tra quyền admin - thử từng cách một
-      let isAdmin = false;
+      // Kiểm tra quyền admin sử dụng checkAdminStatus từ AuthContext
+      const isAdmin = await auth.checkAdminStatus(auth.user.id);
       
-      // Cách 1: Kiểm tra bằng RPC function
-      try {
-        const { data: rpcData, error: rpcError } = await supabase.rpc('is_admin', { uid: data.user.id });
-        if (!rpcError && rpcData === true) {
-          isAdmin = true;
-          console.log("Xác thực admin thành công qua RPC");
-        }
-      } catch (rpcErr) {
-        console.log("Lỗi khi kiểm tra admin qua RPC:", rpcErr);
-      }
-      
-      if (!isAdmin) {
-        // Cách 2a: Kiểm tra từ bảng seo_project.user_roles
-        try {
-          const { data: roleData, error: roleError } = await supabase
-            .from('seo_project.user_roles')
-            .select('*')
-            .eq('user_id', data.user.id)
-            .eq('role', 'admin')
-            .maybeSingle();
-            
-          if (!roleError && roleData) {
-            isAdmin = true;
-            console.log("Xác thực admin thành công qua seo_project.user_roles");
-          }
-        } catch (roleErr) {
-          console.log("Lỗi khi kiểm tra admin qua seo_project.user_roles:", roleErr);
-        }
-      }
-      
-      // Cách 2b: Kiểm tra từ bảng user_roles nếu cách trên thất bại
-      if (!isAdmin) {
-        try {
-          const { data: roleData, error: roleError } = await supabase
-            .from('user_roles')
-            .select('*')
-            .eq('user_id', data.user.id)
-            .eq('role', 'admin')
-            .maybeSingle();
-            
-          if (!roleError && roleData) {
-            isAdmin = true;
-            console.log("Xác thực admin thành công qua user_roles");
-          }
-        } catch (roleErr) {
-          console.log("Lỗi khi kiểm tra admin qua user_roles:", roleErr);
-        }
-      }
-      
-      // Cách 3a: Kiểm tra từ bảng users nếu cả 2 cách trên thất bại
-      if (!isAdmin) {
-        try {
-          const { data: userData, error: userError } = await supabase
-            .from('users')
-            .select('role')
-            .eq('id', data.user.id)
-            .maybeSingle();
-            
-          if (!userError && userData?.role === 'admin') {
-            isAdmin = true;
-            console.log("Xác thực admin thành công qua user role");
-          }
-        } catch (userErr) {
-          console.log("Lỗi khi kiểm tra admin qua users:", userErr);
-        }
-      }
-      
-      // Cách 3b: Kiểm tra từ bảng seo_project.users nếu cả 3 cách trên thất bại
-      if (!isAdmin) {
-        try {
-          const { data: userData, error: userError } = await supabase
-            .from('seo_project.users')
-            .select('role')
-            .eq('id', data.user.id)
-            .maybeSingle();
-            
-          if (!userError && userData?.role === 'admin') {
-            isAdmin = true;
-            console.log("Xác thực admin thành công qua seo_project.users role");
-          }
-        } catch (userErr) {
-          console.log("Lỗi khi kiểm tra admin qua seo_project.users:", userErr);
-        }
-      }
-
       if (!isAdmin) {
         await supabase.auth.signOut(); // Đăng xuất nếu không phải admin
         throw new Error("Tài khoản của bạn không có quyền quản trị");
@@ -226,79 +135,14 @@ const AdminLogin = () => {
     
     const checkAdminSession = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        console.log("Kiểm tra phiên admin hiện tại...");
         
-        if (session) {
-          let isAdmin = false;
+        // Kiểm tra xem đã có session chưa
+        if (auth.session && auth.user) {
+          console.log("Đã tìm thấy session, user ID:", auth.user.id);
           
-          // Thử kiểm tra quyền admin bằng nhiều cách
-          // Cách 1: Kiểm tra bằng RPC function
-          try {
-            const { data: rpcData, error: rpcError } = await supabase.rpc('is_admin', { uid: session.user.id });
-            if (!rpcError && rpcData === true) {
-              isAdmin = true;
-            }
-          } catch (err) {
-            console.log("Lỗi khi gọi RPC is_admin:", err);
-          }
-          
-          if (!isAdmin) {
-            // Cách 2a: Kiểm tra từ bảng seo_project.user_roles
-            try {
-              const { data: roleData, error: roleError } = await supabase
-                .from('seo_project.user_roles')
-                .select('*')
-                .eq('user_id', session.user.id)
-                .eq('role', 'admin')
-                .maybeSingle();
-                
-              if (!roleError && roleData) {
-                isAdmin = true;
-              }
-            } catch (err) {
-              console.log("Lỗi khi kiểm tra seo_project.user_roles:", err);
-            }
-          }
-          
-          if (!isAdmin) {
-            // Cách 2b: Kiểm tra từ bảng user_roles
-            const { data: roleData, error: roleError } = await supabase
-              .from('user_roles')
-              .select('*')
-              .eq('user_id', session.user.id)
-              .eq('role', 'admin')
-              .maybeSingle();
-              
-            if (!roleError && roleData) {
-              isAdmin = true;
-            }
-          }
-          
-          if (!isAdmin) {
-            // Cách 3a: Kiểm tra từ bảng users
-            const { data: userData, error: userError } = await supabase
-              .from('users')
-              .select('role')
-              .eq('id', session.user.id)
-              .maybeSingle();
-              
-            if (!userError && userData?.role === 'admin') {
-              isAdmin = true;
-            }
-          }
-          
-          if (!isAdmin) {
-            // Cách 3b: Kiểm tra từ bảng seo_project.users
-            const { data: userData, error: userError } = await supabase
-              .from('seo_project.users')
-              .select('role')
-              .eq('id', session.user.id)
-              .maybeSingle();
-              
-            if (!userError && userData?.role === 'admin') {
-              isAdmin = true;
-            }
-          }
+          // Kiểm tra quyền admin từ AuthContext
+          const isAdmin = await auth.checkAdminStatus(auth.user.id);
             
           if (isAdmin) {
             // Có quyền admin, chuyển hướng đến trang quản trị
@@ -318,7 +162,32 @@ const AdminLogin = () => {
       }
     };
     
-    checkAdminSession();
+    // Chỉ thực hiện kiểm tra khi AuthContext đã hoàn thành việc kiểm tra ban đầu
+    if (!auth.isChecking) {
+      checkAdminSession();
+    } else {
+      // Nếu AuthContext đang kiểm tra, đợi một lúc rồi mới thực hiện kiểm tra phiên
+      const waitForAuthContext = setTimeout(() => {
+        if (!auth.isChecking && isMounted.current) {
+          checkAdminSession();
+        } else if (isMounted.current) {
+          // Nếu vẫn đang kiểm tra sau 3 giây, hiển thị trạng thái xử lý
+          setShowProcessing(true);
+          
+          // Nếu vẫn đang kiểm tra sau 8 giây, coi như đã hết thời gian
+          const timeoutId = setTimeout(() => {
+            if (isMounted.current) {
+              setShowTimeout(true);
+              setIsChecking(false);
+            }
+          }, 5000);
+          
+          return () => clearTimeout(timeoutId);
+        }
+      }, 3000);
+      
+      return () => clearTimeout(waitForAuthContext);
+    }
     
     // Hiển thị thông báo timeout nếu isChecking kéo dài quá lâu
     const processingId = window.setTimeout(() => {
@@ -339,7 +208,7 @@ const AdminLogin = () => {
       clearTimeout(processingId);
       clearTimeout(timeoutId);
     };
-  }, [navigate]);
+  }, [navigate, auth.session, auth.user, auth.isChecking, auth.checkAdminStatus]);
 
   if (isChecking) {
     return (
