@@ -4,6 +4,7 @@ import { useAuthSession } from "./useAuthSession";
 import { useAuthActions } from "./useAuthActions";
 import { AuthContextType, AuthState } from "./types";
 import { adminRoleService } from "@/services/auth/adminRoleService";
+import { supabase } from "@/integrations/supabase/client"; // Thêm import này
 
 const initialAuthState: AuthState = {
   session: null,
