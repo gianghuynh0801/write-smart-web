@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -5,11 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Eye, EyeOff } from "lucide-react";
 
-// Thông tin đăng nhập mặc định cho quản trị viên
+// Thông tin đăng nhập mặc định cho quản trị viên - đảm bảo phù hợp với dữ liệu thực tế
 export const defaultAdmin = {
   username: "admin",
-  email: "admin@seoproject.com", // Thay đổi email mặc định để phản ánh domain dự án
-  password: "Admin@123"  // Thay đổi mật khẩu mặc định
+  email: "admin@example.com", // Email mặc định của admin
+  password: "Admin123!"  // Mật khẩu mặc định
 };
 
 export interface LoginFormProps {
@@ -30,6 +31,7 @@ export const LoginForm = ({ onSubmit, isLoading = false, error }: LoginFormProps
     e.preventDefault();
     
     try {
+      console.log("Bắt đầu đăng nhập với email:", email);
       await onSubmit(email, password);
     } catch (error) {
       console.error("Lỗi trong quá trình đăng nhập:", error);
@@ -52,7 +54,7 @@ export const LoginForm = ({ onSubmit, isLoading = false, error }: LoginFormProps
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="admin@seoproject.com"
+          placeholder="admin@example.com"
           required
         />
       </div>

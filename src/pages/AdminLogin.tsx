@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import LoginForm from "@/components/admin/LoginForm";
+import LoginForm, { defaultAdmin } from "@/components/admin/LoginForm";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { ArrowLeft, AlertCircle, Shield, UserPlus } from "lucide-react";
@@ -17,8 +17,8 @@ const AdminLogin = () => {
   const [showTimeout, setShowTimeout] = useState(false);
   const [showProcessing, setShowProcessing] = useState(false);
   const [showCreateAdmin, setShowCreateAdmin] = useState(false);
-  const [createAdminEmail, setCreateAdminEmail] = useState("admin@example.com");
-  const [createAdminPassword, setCreateAdminPassword] = useState("Admin123!");
+  const [createAdminEmail, setCreateAdminEmail] = useState(defaultAdmin.email);
+  const [createAdminPassword, setCreateAdminPassword] = useState(defaultAdmin.password);
   const [isCreatingAdmin, setIsCreatingAdmin] = useState(false);
   const [createAdminError, setCreateAdminError] = useState<string | null>(null);
   const isMounted = useRef(true);
@@ -27,31 +27,62 @@ const AdminLogin = () => {
   const auth = useAuth(); // Sử dụng hook useAuth để truy cập AuthContext
   
   // Hàm xử lý đăng nhập quản trị viên
-  const handleAdminLogin = async (username: string, password: string) => {
+  const handleAdminLogin = async (email: string, password: string) => {
     if (isLoading || !isMounted.current) return;
     
     setIsLoading(true);
     setError(null);
     
     try {
-      console.log("Đang xử lý đăng nhập admin...");
+      console.log("Đang xử lý đăng nhập admin với email:", email);
       
-      // Sử dụng login từ AuthContext thay vì gọi trực tiếp Supabase
-      await auth.login(username, password);
+      // Đăng nhập sử dụng Supabase
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password
+      });
       
-      // Đảm bảo lấy thông tin người dùng mới nhất từ AuthContext
-      if (!auth.user) {
+      if (error) {
+        throw error;
+      }
+      
+      if (!data.user || !data.session) {
         throw new Error("Đăng nhập thất bại: Không lấy được thông tin người dùng");
       }
       
-      console.log("Đăng nhập thành công, kiểm tra quyền admin...");
+      console.log("Đăng nhập thành công, kiểm tra quyền admin cho user ID:", data.user.id);
 
-      // Kiểm tra quyền admin sử dụng checkAdminStatus từ AuthContext
-      const isAdmin = await auth.checkAdminStatus(auth.user.id);
+      // Kiểm tra quyền admin trực tiếp từ bảng seo_project.users
+      const { data: adminData, error: adminError } = await supabase
+        .from('seo_project.users')
+        .select('role')
+        .eq('id', data.user.id)
+        .maybeSingle();
+      
+      if (adminError) {
+        console.error("Lỗi khi kiểm tra quyền admin:", adminError);
+      }
+      
+      const isAdmin = adminData?.role === 'admin';
       
       if (!isAdmin) {
-        await supabase.auth.signOut(); // Đăng xuất nếu không phải admin
-        throw new Error("Tài khoản của bạn không có quyền quản trị");
+        // Thử kiểm tra trong bảng seo_project.user_roles
+        const { data: roleData, error: roleError } = await supabase
+          .from('seo_project.user_roles')
+          .select('*')
+          .eq('user_id', data.user.id)
+          .eq('role', 'admin')
+          .maybeSingle();
+        
+        if (!roleError && roleData) {
+          console.log("Tìm thấy quyền admin trong bảng seo_project.user_roles");
+        } else {
+          // Không có quyền admin, đăng xuất
+          await supabase.auth.signOut();
+          throw new Error("Tài khoản của bạn không có quyền quản trị");
+        }
+      } else {
+        console.log("Tìm thấy quyền admin trong bảng seo_project.users");
       }
       
       // Thông báo thành công và chuyển hướng
@@ -88,32 +119,61 @@ const AdminLogin = () => {
 
     try {
       console.log("Đang tạo tài khoản admin mới...");
-      const { data, error } = await supabase.functions.invoke('add-admin-user', {
-        body: {
-          email: createAdminEmail,
-          password: createAdminPassword,
-          name: "Quản trị viên"
+      
+      // Tạo tài khoản mới trong Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: createAdminEmail,
+        password: createAdminPassword,
+        options: {
+          data: {
+            name: "Quản trị viên",
+            role: "admin"
+          }
         }
       });
 
-      if (error) {
-        console.error("Lỗi khi tạo tài khoản admin:", error);
-        setCreateAdminError(error.message || "Không thể tạo tài khoản quản trị viên");
-        toast({
-          title: "Tạo tài khoản thất bại",
-          description: error.message || "Không thể tạo tài khoản quản trị viên",
-          variant: "destructive"
+      if (authError) {
+        throw authError;
+      }
+      
+      if (!authData.user) {
+        throw new Error("Không thể tạo tài khoản mới");
+      }
+      
+      // Thêm người dùng vào bảng seo_project.users
+      const { error: insertError } = await supabase
+        .from('seo_project.users')
+        .insert({
+          id: authData.user.id,
+          email: createAdminEmail,
+          name: "Quản trị viên",
+          role: 'admin'
         });
-        return;
+        
+      if (insertError) {
+        console.error("Lỗi khi thêm vào seo_project.users:", insertError);
+      }
+      
+      // Thêm vào bảng seo_project.user_roles
+      const { error: roleError } = await supabase
+        .from('seo_project.user_roles')
+        .insert({
+          user_id: authData.user.id,
+          role: 'admin'
+        });
+        
+      if (roleError) {
+        console.error("Lỗi khi thêm vào seo_project.user_roles:", roleError);
       }
 
-      console.log("Kết quả tạo tài khoản admin:", data);
       toast({
         title: "Tạo tài khoản thành công",
         description: "Tài khoản quản trị viên đã được tạo. Vui lòng đăng nhập.",
       });
 
       setShowCreateAdmin(false);
+      
+      // Đặt giá trị email vừa tạo để sẵn sàng đăng nhập
       setCreateAdminEmail("");
       setCreateAdminPassword("");
     } catch (error: any) {
@@ -138,20 +198,43 @@ const AdminLogin = () => {
         console.log("Kiểm tra phiên admin hiện tại...");
         
         // Kiểm tra xem đã có session chưa
-        if (auth.session && auth.user) {
-          console.log("Đã tìm thấy session, user ID:", auth.user.id);
+        const { data: sessionData } = await supabase.auth.getSession();
+        
+        if (sessionData.session && sessionData.session.user) {
+          console.log("Đã tìm thấy session, user ID:", sessionData.session.user.id);
           
-          // Kiểm tra quyền admin từ AuthContext
-          const isAdmin = await auth.checkAdminStatus(auth.user.id);
-            
-          if (isAdmin) {
-            // Có quyền admin, chuyển hướng đến trang quản trị
-            console.log("Đã phát hiện phiên admin hiện tại, chuyển hướng đến trang admin");
-            navigate("/admin");
-            return;
+          // Kiểm tra quyền admin trong bảng seo_project.users
+          const { data: adminData, error: adminError } = await supabase
+            .from('seo_project.users')
+            .select('role')
+            .eq('id', sessionData.session.user.id)
+            .maybeSingle();
+          
+          const isAdmin = !adminError && adminData?.role === 'admin';
+          
+          if (!isAdmin) {
+            // Thử kiểm tra trong bảng seo_project.user_roles
+            const { data: roleData, error: roleError } = await supabase
+              .from('seo_project.user_roles')
+              .select('*')
+              .eq('user_id', sessionData.session.user.id)
+              .eq('role', 'admin')
+              .maybeSingle();
+              
+            if (!roleError && roleData) {
+              // Có quyền admin, chuyển hướng đến trang quản trị
+              console.log("Đã phát hiện phiên admin từ user_roles, chuyển hướng đến trang admin");
+              if (isMounted.current) navigate("/admin");
+              return;
+            }
           } else {
-            console.log("Người dùng đã đăng nhập nhưng không có quyền admin");
+            // Có quyền admin, chuyển hướng đến trang quản trị
+            console.log("Đã phát hiện phiên admin từ users.role, chuyển hướng đến trang admin");
+            if (isMounted.current) navigate("/admin");
+            return;
           }
+          
+          console.log("Người dùng đã đăng nhập nhưng không có quyền admin");
         }
       } catch (error) {
         console.error("Lỗi kiểm tra phiên admin:", error);
@@ -162,32 +245,7 @@ const AdminLogin = () => {
       }
     };
     
-    // Chỉ thực hiện kiểm tra khi AuthContext đã hoàn thành việc kiểm tra ban đầu
-    if (!auth.isChecking) {
-      checkAdminSession();
-    } else {
-      // Nếu AuthContext đang kiểm tra, đợi một lúc rồi mới thực hiện kiểm tra phiên
-      const waitForAuthContext = setTimeout(() => {
-        if (!auth.isChecking && isMounted.current) {
-          checkAdminSession();
-        } else if (isMounted.current) {
-          // Nếu vẫn đang kiểm tra sau 3 giây, hiển thị trạng thái xử lý
-          setShowProcessing(true);
-          
-          // Nếu vẫn đang kiểm tra sau 8 giây, coi như đã hết thời gian
-          const timeoutId = setTimeout(() => {
-            if (isMounted.current) {
-              setShowTimeout(true);
-              setIsChecking(false);
-            }
-          }, 5000);
-          
-          return () => clearTimeout(timeoutId);
-        }
-      }, 3000);
-      
-      return () => clearTimeout(waitForAuthContext);
-    }
+    checkAdminSession();
     
     // Hiển thị thông báo timeout nếu isChecking kéo dài quá lâu
     const processingId = window.setTimeout(() => {
@@ -208,7 +266,7 @@ const AdminLogin = () => {
       clearTimeout(processingId);
       clearTimeout(timeoutId);
     };
-  }, [navigate, auth.session, auth.user, auth.isChecking, auth.checkAdminStatus]);
+  }, [navigate]);
 
   if (isChecking) {
     return (
@@ -284,7 +342,7 @@ const AdminLogin = () => {
             </Alert>
           )}
           
-          <LoginForm onSubmit={handleAdminLogin} isLoading={isLoading} />
+          <LoginForm onSubmit={handleAdminLogin} isLoading={isLoading} error={error} />
 
           <div className="mt-6 flex justify-center">
             <Button 
