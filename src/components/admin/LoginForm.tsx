@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -9,8 +8,8 @@ import { Eye, EyeOff } from "lucide-react";
 // Thông tin đăng nhập mặc định cho quản trị viên
 export const defaultAdmin = {
   username: "admin",
-  email: "admin@example.com",
-  password: "Admin123!"
+  email: "admin@seoproject.com", // Thay đổi email mặc định để phản ánh domain dự án
+  password: "Admin@123"  // Thay đổi mật khẩu mặc định
 };
 
 export interface LoginFormProps {
@@ -53,7 +52,7 @@ export const LoginForm = ({ onSubmit, isLoading = false, error }: LoginFormProps
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="admin@example.com"
+          placeholder="admin@seoproject.com"
           required
         />
       </div>

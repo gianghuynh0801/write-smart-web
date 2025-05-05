@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth";
+import { supabase } from "@/integrations/supabase/client";
 
 export const useAdminRequired = () => {
   const navigate = useNavigate();
@@ -42,7 +43,46 @@ export const useAdminRequired = () => {
 
         console.log("Đã tìm thấy session, user ID:", user.id);
         
-        // Kiểm tra vai trò admin
+        // Kiểm tra trực tiếp từ bảng seo_project.users trước
+        try {
+          const { data: userData, error: userError } = await supabase
+            .from('seo_project.users')
+            .select('role')
+            .eq('id', user.id)
+            .maybeSingle();
+            
+          if (!userError && userData?.role === 'admin') {
+            console.log("Xác thực quyền admin thành công từ seo_project.users");
+            if (isMounted.current) {
+              setIsLocalChecking(false);
+            }
+            return;
+          }
+        } catch (error) {
+          console.error("Lỗi khi kiểm tra seo_project.users:", error);
+        }
+        
+        // Nếu không tìm thấy trong seo_project.users, thử với bảng seo_project.user_roles
+        try {
+          const { data: roleData, error: roleError } = await supabase
+            .from('seo_project.user_roles')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('role', 'admin')
+            .maybeSingle();
+            
+          if (!roleError && roleData) {
+            console.log("Xác thực quyền admin thành công từ seo_project.user_roles");
+            if (isMounted.current) {
+              setIsLocalChecking(false);
+            }
+            return;
+          }
+        } catch (error) {
+          console.error("Lỗi khi kiểm tra seo_project.user_roles:", error);
+        }
+        
+        // Nếu vẫn không tìm thấy, sử dụng phương thức của AuthContext
         const isUserAdmin = await checkAdminStatus(user.id);
         console.log("Kết quả kiểm tra quyền admin:", isUserAdmin);
 

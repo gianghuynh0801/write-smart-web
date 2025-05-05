@@ -25,20 +25,42 @@ const AdminSetupPage = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Tải danh sách người dùng từ bảng users
+  // Tải danh sách người dùng từ bảng seo_project.users thay vì users
   const fetchUsers = async () => {
     setLoading(true);
     setError(null);
 
     try {
       const { data, error } = await supabase
-        .from('users')
+        .from('seo_project.users')
         .select('id, email, name, role')
         .order('created_at', { ascending: false });
 
       if (error) {
         console.error("Lỗi khi tải danh sách users:", error);
-        setError("Không thể tải danh sách người dùng");
+        
+        // Thử tải từ bảng auth.users nếu không thể tải từ seo_project.users
+        try {
+          const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+          
+          if (authError || !authUsers) {
+            setError("Không thể tải danh sách người dùng");
+            return;
+          }
+          
+          const formattedUsers = authUsers.users.map(user => ({
+            id: user.id,
+            email: user.email || '',
+            name: user.user_metadata?.name || '',
+            role: 'user'
+          }));
+          
+          setUsers(formattedUsers);
+          
+        } catch (fallbackErr) {
+          console.error("Lỗi khi tải danh sách auth.users:", fallbackErr);
+          setError("Không thể tải danh sách người dùng");
+        }
       } else {
         setUsers(data || []);
       }

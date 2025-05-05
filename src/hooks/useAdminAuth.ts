@@ -1,8 +1,8 @@
+
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { db } from "@/integrations/supabase/typeSafeClient";
 import { useAuth } from "@/contexts/auth";
 
 // Thông tin đăng nhập mặc định cho quản trị viên - Xuất ra để LoginForm có thể sử dụng
@@ -23,7 +23,7 @@ export const useAdminAuth = () => {
   const checkAdminAccess = useCallback(async () => {
     if (!auth.user) {
       console.log("Không có user, chuyển hướng đến trang đăng nhập");
-      navigate("/admin/login");
+      navigate("/admin-login");
       return false;
     }
     
@@ -33,20 +33,58 @@ export const useAdminAuth = () => {
       
       console.log("Kiểm tra quyền admin cho user:", auth.user.id);
       
-      // Kiểm tra quyền admin trong bảng user_roles
-      const { data, error } = await db.user_roles()
+      // Kiểm tra quyền admin trong bảng seo_project.users trước
+      const { data: seoProjectUser, error: seoProjectError } = await supabase
+        .from('seo_project.users')
+        .select('role')
+        .eq('id', auth.user.id)
+        .maybeSingle();
+        
+      if (!seoProjectError && seoProjectUser?.role === 'admin') {
+        console.log("Đã tìm thấy quyền admin trong seo_project.users");
+        return true;
+      }
+      
+      // Kiểm tra quyền admin trong bảng seo_project.user_roles
+      const { data: seoProjectRole, error: seoProjectRoleError } = await supabase
+        .from('seo_project.user_roles')
         .select('*')
         .eq('user_id', auth.user.id)
         .eq('role', 'admin')
         .maybeSingle();
         
-      if (error) {
+      if (!seoProjectRoleError && seoProjectRole) {
+        console.log("Đã tìm thấy quyền admin trong seo_project.user_roles");
+        return true;
+      }
+      
+      // Kiểm tra quyền admin trong bảng user_roles
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('*')
+        .eq('user_id', auth.user.id)
+        .eq('role', 'admin')
+        .maybeSingle();
+        
+      if (error && !error.message.includes("does not exist")) {
         console.error("Lỗi khi kiểm tra quyền admin:", error);
         setError("Không thể kiểm tra quyền truy cập");
         return false;
       }
       
       if (!data) {
+        // Kiểm tra trong bảng users thông thường
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', auth.user.id)
+          .maybeSingle();
+          
+        if (!userError && userData?.role === 'admin') {
+          console.log("Đã tìm thấy quyền admin trong bảng users");
+          return true;
+        }
+        
         console.log("User không có quyền admin");
         toast({
           title: "Truy cập bị từ chối",
