@@ -10,7 +10,7 @@ import { Eye, EyeOff } from "lucide-react";
 export const defaultAdmin = {
   username: "admin",
   email: "admin@example.com", // Email mặc định của admin
-  password: "Admin123!"  // Mật khẩu mặc định
+  password: "admin@1238"  // Mật khẩu mặc định cập nhật
 };
 
 export interface LoginFormProps {

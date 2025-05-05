@@ -111,3 +111,49 @@ export const removeAdminRole = async (userId: string) => {
     };
   }
 };
+
+/**
+ * Đặt lại mật khẩu cho tài khoản admin
+ * @param email Email của tài khoản admin cần đặt lại mật khẩu
+ * @param newPassword Mật khẩu mới
+ * @returns Kết quả đặt lại mật khẩu
+ */
+export const resetAdminPassword = async (email: string, newPassword: string) => {
+  if (!email) return { success: false, error: "Không có email" };
+  if (!newPassword || newPassword.length < 6) return { success: false, error: "Mật khẩu phải có ít nhất 6 ký tự" };
+  
+  try {
+    // Kiểm tra xem tài khoản có tồn tại trong auth.users không
+    const { data: authUserData, error: authUserError } = await supabase
+      .auth.admin.getUserByEmail(email);
+    
+    if (authUserError) {
+      console.error("Lỗi khi kiểm tra tài khoản trong auth.users:", authUserError);
+      return { success: false, error: "Không thể kiểm tra tài khoản admin" };
+    }
+    
+    if (!authUserData?.user) {
+      return { success: false, error: "Không tìm thấy tài khoản admin với email này" };
+    }
+    
+    // Đặt lại mật khẩu
+    const { error: resetError } = await supabase.auth.admin.updateUserById(
+      authUserData.user.id,
+      { password: newPassword }
+    );
+    
+    if (resetError) {
+      console.error("Lỗi khi đặt lại mật khẩu:", resetError);
+      return { success: false, error: `Không thể đặt lại mật khẩu: ${resetError.message}` };
+    }
+    
+    console.log("Đã đặt lại mật khẩu thành công cho tài khoản admin:", email);
+    return { success: true };
+  } catch (error) {
+    console.error("Lỗi không mong đợi khi đặt lại mật khẩu admin:", error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : "Lỗi không xác định khi đặt lại mật khẩu admin"
+    };
+  }
+};

@@ -4,12 +4,13 @@ import { useNavigate } from "react-router-dom";
 import LoginForm, { defaultAdmin } from "@/components/admin/LoginForm";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { ArrowLeft, AlertCircle, Shield, UserPlus } from "lucide-react";
+import { ArrowLeft, AlertCircle, Shield, UserPlus, RefreshCcw } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { adminUserService } from "@/services/auth/adminUserService";
 
 const AdminLogin = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -22,6 +23,11 @@ const AdminLogin = () => {
   const [createAdminPassword, setCreateAdminPassword] = useState(defaultAdmin.password);
   const [isCreatingAdmin, setIsCreatingAdmin] = useState(false);
   const [createAdminError, setCreateAdminError] = useState<string | null>(null);
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [resetEmail, setResetEmail] = useState(defaultAdmin.email);
+  const [resetPassword, setResetPassword] = useState(defaultAdmin.password);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [resetPasswordError, setResetPasswordError] = useState<string | null>(null);
   const isMounted = useRef(true);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -231,6 +237,90 @@ const AdminLogin = () => {
       setIsCreatingAdmin(false);
     }
   };
+  
+  // Hàm đặt lại mật khẩu cho tài khoản admin
+  const handleResetPassword = async () => {
+    if (isResettingPassword || !resetEmail || !resetPassword || resetPassword.length < 6) return;
+    
+    setIsResettingPassword(true);
+    setResetPasswordError(null);
+    
+    try {
+      console.log("Đang đặt lại mật khẩu cho tài khoản admin:", resetEmail);
+      
+      // Tìm userId bằng email
+      const { data: userData, error: userError } = await supabase
+        .from('seo_project.users')
+        .select('id')
+        .eq('email', resetEmail)
+        .maybeSingle();
+        
+      if (userError) {
+        console.error("Lỗi khi tìm user id:", userError);
+        throw new Error("Không thể tìm thấy tài khoản admin");
+      }
+      
+      if (!userData) {
+        throw new Error("Không tìm thấy tài khoản admin với email này");
+      }
+      
+      // Đặt lại mật khẩu sử dụng hàm từ adminUserService
+      try {
+        // Sử dụng API admin để cập nhật mật khẩu
+        const { error: resetError } = await supabase.auth.admin.updateUserById(
+          userData.id,
+          { password: resetPassword }
+        );
+        
+        if (resetError) {
+          throw resetError;
+        }
+      } catch (resetError) {
+        console.error("Lỗi khi đặt lại mật khẩu:", resetError);
+        
+        // Thử phương pháp thay thế: Gửi email đặt lại mật khẩu
+        try {
+          const { error: resetLinkError } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+            redirectTo: `${window.location.origin}/reset-password`
+          });
+          
+          if (resetLinkError) {
+            throw resetLinkError;
+          }
+          
+          toast({
+            title: "Email đặt lại mật khẩu đã được gửi",
+            description: "Vui lòng kiểm tra hộp thư đến của bạn và làm theo hướng dẫn để đặt lại mật khẩu."
+          });
+          
+          setShowResetPassword(false);
+          return;
+        } catch (emailError) {
+          console.error("Lỗi khi gửi email đặt lại mật khẩu:", emailError);
+          throw new Error("Không thể đặt lại mật khẩu hoặc gửi email đặt lại");
+        }
+      }
+      
+      toast({
+        title: "Đặt lại mật khẩu thành công",
+        description: "Mật khẩu đã được cập nhật. Vui lòng đăng nhập bằng mật khẩu mới."
+      });
+      
+      setShowResetPassword(false);
+      
+    } catch (error: any) {
+      console.error("Lỗi khi đặt lại mật khẩu:", error);
+      setResetPasswordError(error.message || "Đã xảy ra lỗi không mong đợi");
+      
+      toast({
+        title: "Lỗi đặt lại mật khẩu",
+        description: error.message || "Không thể đặt lại mật khẩu",
+        variant: "destructive"
+      });
+    } finally {
+      setIsResettingPassword(false);
+    }
+  };
 
   // Kiểm tra phiên đăng nhập khi trang tải
   useEffect(() => {
@@ -404,7 +494,7 @@ const AdminLogin = () => {
           
           <LoginForm onSubmit={handleAdminLogin} isLoading={isLoading} error={error} />
 
-          <div className="mt-6 flex justify-center">
+          <div className="mt-6 flex justify-center space-x-2">
             <Button 
               variant="outline" 
               size="sm"
@@ -412,7 +502,17 @@ const AdminLogin = () => {
               onClick={() => setShowCreateAdmin(true)}
             >
               <UserPlus className="h-3 w-3" />
-              Tạo tài khoản quản trị
+              Tạo tài khoản
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="flex items-center gap-1 text-xs"
+              onClick={() => setShowResetPassword(true)}
+            >
+              <RefreshCcw className="h-3 w-3" />
+              Đặt lại mật khẩu
             </Button>
           </div>
         </div>
@@ -464,6 +564,57 @@ const AdminLogin = () => {
               disabled={isCreatingAdmin || !createAdminEmail || !createAdminPassword || createAdminPassword.length < 6}
             >
               {isCreatingAdmin ? "Đang tạo..." : "Tạo tài khoản"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Dialog đặt lại mật khẩu */}
+      <Dialog open={showResetPassword} onOpenChange={setShowResetPassword}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Đặt lại mật khẩu quản trị</DialogTitle>
+          </DialogHeader>
+          
+          {resetPasswordError && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4 mr-2" />
+              <AlertDescription>{resetPasswordError}</AlertDescription>
+            </Alert>
+          )}
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Email admin</label>
+              <input 
+                type="email" 
+                className="w-full px-3 py-2 border rounded-md"
+                value={resetEmail}
+                onChange={(e) => setResetEmail(e.target.value)}
+                placeholder="admin@example.com"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Mật khẩu mới</label>
+              <input 
+                type="password" 
+                className="w-full px-3 py-2 border rounded-md"
+                value={resetPassword}
+                onChange={(e) => setResetPassword(e.target.value)}
+                placeholder="••••••••"
+              />
+              <p className="text-xs text-gray-500">Mật khẩu mới cần có ít nhất 6 ký tự</p>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowResetPassword(false)}>Hủy</Button>
+            <Button 
+              onClick={handleResetPassword} 
+              disabled={isResettingPassword || !resetEmail || !resetPassword || resetPassword.length < 6}
+            >
+              {isResettingPassword ? "Đang xử lý..." : "Đặt lại mật khẩu"}
             </Button>
           </DialogFooter>
         </DialogContent>
