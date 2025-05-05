@@ -123,22 +123,25 @@ export const resetAdminPassword = async (email: string, newPassword: string) => 
   if (!newPassword || newPassword.length < 6) return { success: false, error: "Mật khẩu phải có ít nhất 6 ký tự" };
   
   try {
-    // Kiểm tra xem tài khoản có tồn tại trong auth.users không
-    const { data: authUserData, error: authUserError } = await supabase
-      .auth.admin.getUserByEmail(email);
-    
-    if (authUserError) {
-      console.error("Lỗi khi kiểm tra tài khoản trong auth.users:", authUserError);
-      return { success: false, error: "Không thể kiểm tra tài khoản admin" };
+    // Tìm người dùng theo email trong bảng seo_project.users
+    const { data: userData, error: userError } = await supabase
+      .from('seo_project.users')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle();
+      
+    if (userError) {
+      console.error("Lỗi khi tìm người dùng trong seo_project.users:", userError);
+      return { success: false, error: "Không thể tìm thấy tài khoản admin" };
     }
     
-    if (!authUserData?.user) {
+    if (!userData) {
       return { success: false, error: "Không tìm thấy tài khoản admin với email này" };
     }
     
     // Đặt lại mật khẩu
     const { error: resetError } = await supabase.auth.admin.updateUserById(
-      authUserData.user.id,
+      userData.id,
       { password: newPassword }
     );
     
