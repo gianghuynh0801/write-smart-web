@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import LoginForm, { defaultAdmin } from "@/components/admin/LoginForm";
@@ -24,7 +25,6 @@ const AdminLogin = () => {
   const isMounted = useRef(true);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const auth = useAuth(); // Sử dụng hook useAuth để truy cập AuthContext
   
   // Hàm xử lý đăng nhập quản trị viên
   const handleAdminLogin = async (email: string, password: string) => {
@@ -52,37 +52,56 @@ const AdminLogin = () => {
       
       console.log("Đăng nhập thành công, kiểm tra quyền admin cho user ID:", data.user.id);
 
-      // Kiểm tra quyền admin trực tiếp từ bảng seo_project.users
-      const { data: adminData, error: adminError } = await supabase
-        .from('seo_project.users')
-        .select('role')
-        .eq('id', data.user.id)
-        .maybeSingle();
+      // Kiểm tra quyền admin trong cả hai bảng
+      let isAdmin = false;
       
-      if (adminError) {
-        console.error("Lỗi khi kiểm tra quyền admin:", adminError);
-      }
-      
-      const isAdmin = adminData?.role === 'admin';
-      
-      if (!isAdmin) {
-        // Thử kiểm tra trong bảng seo_project.user_roles
-        const { data: roleData, error: roleError } = await supabase
-          .from('seo_project.user_roles')
-          .select('*')
-          .eq('user_id', data.user.id)
-          .eq('role', 'admin')
+      // Kiểm tra trong bảng seo_project.users
+      try {
+        const { data: userData, error: userError } = await supabase
+          .from('seo_project.users')
+          .select('role')
+          .eq('id', data.user.id)
           .maybeSingle();
         
-        if (!roleError && roleData) {
-          console.log("Tìm thấy quyền admin trong bảng seo_project.user_roles");
-        } else {
-          // Không có quyền admin, đăng xuất
-          await supabase.auth.signOut();
-          throw new Error("Tài khoản của bạn không có quyền quản trị");
+        if (userError) {
+          console.log("Lỗi khi kiểm tra seo_project.users:", userError);
+        } else if (userData?.role === 'admin') {
+          console.log("Tìm thấy quyền admin trong bảng seo_project.users");
+          isAdmin = true;
         }
-      } else {
-        console.log("Tìm thấy quyền admin trong bảng seo_project.users");
+      } catch (error) {
+        console.error("Lỗi khi kiểm tra seo_project.users:", error);
+      }
+      
+      // Kiểm tra trong bảng seo_project.user_roles nếu chưa tìm thấy
+      if (!isAdmin) {
+        try {
+          const { data: roleData, error: roleError } = await supabase
+            .from('seo_project.user_roles')
+            .select('*')
+            .eq('user_id', data.user.id)
+            .eq('role', 'admin')
+            .maybeSingle();
+          
+          if (roleError) {
+            console.log("Lỗi khi kiểm tra seo_project.user_roles:", roleError);
+          } else if (roleData) {
+            console.log("Tìm thấy quyền admin trong bảng seo_project.user_roles");
+            isAdmin = true;
+          }
+        } catch (error) {
+          console.error("Lỗi khi kiểm tra seo_project.user_roles:", error);
+        }
+      }
+      
+      // Nếu không có quyền admin
+      if (!isAdmin) {
+        console.log("Người dùng không có quyền admin");
+        
+        // Đăng xuất
+        await supabase.auth.signOut();
+        
+        throw new Error("Tài khoản của bạn không có quyền quản trị");
       }
       
       // Thông báo thành công và chuyển hướng
@@ -140,6 +159,8 @@ const AdminLogin = () => {
         throw new Error("Không thể tạo tài khoản mới");
       }
       
+      console.log("Đã tạo tài khoản auth.users với ID:", authData.user.id);
+      
       // Thêm người dùng vào bảng seo_project.users
       const { error: insertError } = await supabase
         .from('seo_project.users')
@@ -152,6 +173,23 @@ const AdminLogin = () => {
         
       if (insertError) {
         console.error("Lỗi khi thêm vào seo_project.users:", insertError);
+        
+        // Nếu lỗi là do xung đột (tài khoản đã tồn tại), thử cập nhật
+        if (insertError.code === '23505') { // mã lỗi unique_violation
+          console.log("Tài khoản đã tồn tại trong seo_project.users, thử cập nhật");
+          
+          const { error: updateError } = await supabase
+            .from('seo_project.users')
+            .update({
+              role: 'admin',
+              name: "Quản trị viên"
+            })
+            .eq('email', createAdminEmail);
+            
+          if (updateError) {
+            console.error("Lỗi khi cập nhật seo_project.users:", updateError);
+          }
+        }
       }
       
       // Thêm vào bảng seo_project.user_roles
@@ -164,6 +202,11 @@ const AdminLogin = () => {
         
       if (roleError) {
         console.error("Lỗi khi thêm vào seo_project.user_roles:", roleError);
+        
+        // Nếu lỗi là do xung đột, đó là điều bình thường
+        if (roleError.code !== '23505') {
+          console.warn("Lỗi thêm vào seo_project.user_roles không phải do trùng lặp");
+        }
       }
 
       toast({
@@ -203,33 +246,50 @@ const AdminLogin = () => {
         if (sessionData.session && sessionData.session.user) {
           console.log("Đã tìm thấy session, user ID:", sessionData.session.user.id);
           
-          // Kiểm tra quyền admin trong bảng seo_project.users
-          const { data: adminData, error: adminError } = await supabase
-            .from('seo_project.users')
-            .select('role')
-            .eq('id', sessionData.session.user.id)
-            .maybeSingle();
+          // Kiểm tra quyền admin trong cả hai bảng
+          let isAdmin = false;
           
-          const isAdmin = !adminError && adminData?.role === 'admin';
-          
-          if (!isAdmin) {
-            // Thử kiểm tra trong bảng seo_project.user_roles
-            const { data: roleData, error: roleError } = await supabase
-              .from('seo_project.user_roles')
-              .select('*')
-              .eq('user_id', sessionData.session.user.id)
-              .eq('role', 'admin')
+          // Kiểm tra trong bảng seo_project.users
+          try {
+            const { data: userData, error: userError } = await supabase
+              .from('seo_project.users')
+              .select('role')
+              .eq('id', sessionData.session.user.id)
               .maybeSingle();
-              
-            if (!roleError && roleData) {
-              // Có quyền admin, chuyển hướng đến trang quản trị
-              console.log("Đã phát hiện phiên admin từ user_roles, chuyển hướng đến trang admin");
-              if (isMounted.current) navigate("/admin");
-              return;
+            
+            if (userError) {
+              console.log("Lỗi khi kiểm tra seo_project.users:", userError);
+            } else if (userData?.role === 'admin') {
+              console.log("Tìm thấy quyền admin trong bảng seo_project.users");
+              isAdmin = true;
             }
-          } else {
-            // Có quyền admin, chuyển hướng đến trang quản trị
-            console.log("Đã phát hiện phiên admin từ users.role, chuyển hướng đến trang admin");
+          } catch (error) {
+            console.error("Lỗi khi kiểm tra seo_project.users:", error);
+          }
+          
+          // Kiểm tra trong bảng seo_project.user_roles nếu chưa tìm thấy
+          if (!isAdmin) {
+            try {
+              const { data: roleData, error: roleError } = await supabase
+                .from('seo_project.user_roles')
+                .select('*')
+                .eq('user_id', sessionData.session.user.id)
+                .eq('role', 'admin')
+                .maybeSingle();
+              
+              if (roleError) {
+                console.log("Lỗi khi kiểm tra seo_project.user_roles:", roleError);
+              } else if (roleData) {
+                console.log("Tìm thấy quyền admin trong bảng seo_project.user_roles");
+                isAdmin = true;
+              }
+            } catch (error) {
+              console.error("Lỗi khi kiểm tra seo_project.user_roles:", error);
+            }
+          }
+          
+          if (isAdmin) {
+            console.log("Đã phát hiện phiên admin, chuyển hướng đến trang admin");
             if (isMounted.current) navigate("/admin");
             return;
           }

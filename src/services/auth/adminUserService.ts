@@ -24,6 +24,8 @@ export const adminUserService = {
           console.error("[adminUserService] Lỗi khi kiểm tra auth.users:", authError);
           return { success: false, error: `Không thể xác minh ID người dùng: ${authError?.message || "Lỗi không xác định"}` };
         }
+        
+        console.log("[adminUserService] Đã xác nhận user tồn tại trong auth.users");
       } catch (error) {
         console.warn("[adminUserService] Không thể truy cập auth.users, có thể do quyền hạn bị giới hạn");
         // Tiếp tục mà không cần kiểm tra auth.users
@@ -41,6 +43,7 @@ export const adminUserService = {
         return { success: false, error: `Không thể kiểm tra thông tin user: ${userError.message}` };
       }
       
+      // 3. Thiết lập vai trò admin trong seo_project.users
       if (!userData) {
         // Người dùng không tồn tại trong bảng seo_project.users, lấy thông tin từ auth.users và tạo mới
         try {

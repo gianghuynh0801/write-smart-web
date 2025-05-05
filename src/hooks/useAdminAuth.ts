@@ -4,13 +4,6 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
-// Thông tin đăng nhập mặc định cho quản trị viên
-export const defaultAdmin = {
-  username: "admin",
-  email: "admin@example.com",
-  password: "Admin123!"
-};
-
 export const useAdminAuth = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -35,29 +28,37 @@ export const useAdminAuth = () => {
       const userId = sessionData.session.user.id;
       console.log("Kiểm tra quyền admin cho user:", userId);
       
-      // Kiểm tra quyền admin trong bảng seo_project.users trước
-      const { data: seoProjectUser, error: seoProjectError } = await supabase
+      // Kiểm tra quyền admin trong bảng seo_project.users
+      const { data: userData, error: userError } = await supabase
         .from('seo_project.users')
         .select('role')
         .eq('id', userId)
         .maybeSingle();
-        
-      if (!seoProjectError && seoProjectUser?.role === 'admin') {
+      
+      if (!userError && userData?.role === 'admin') {
         console.log("Đã tìm thấy quyền admin trong seo_project.users");
         return true;
       }
       
+      if (userError) {
+        console.error("Lỗi khi kiểm tra seo_project.users:", userError);
+      }
+      
       // Kiểm tra quyền admin trong bảng seo_project.user_roles
-      const { data: seoProjectRole, error: seoProjectRoleError } = await supabase
+      const { data: roleData, error: roleError } = await supabase
         .from('seo_project.user_roles')
         .select('*')
         .eq('user_id', userId)
         .eq('role', 'admin')
         .maybeSingle();
         
-      if (!seoProjectRoleError && seoProjectRole) {
+      if (!roleError && roleData) {
         console.log("Đã tìm thấy quyền admin trong seo_project.user_roles");
         return true;
+      }
+      
+      if (roleError) {
+        console.error("Lỗi khi kiểm tra seo_project.user_roles:", roleError);
       }
       
       console.log("User không có quyền admin");

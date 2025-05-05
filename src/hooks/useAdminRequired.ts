@@ -38,16 +38,19 @@ export const useAdminRequired = () => {
 
         console.log("User ID:", sessionData.session.user.id);
         
-        // Kiểm tra quyền admin trong bảng seo_project.users trước
+        let isAdminUser = false;
+        
+        // Kiểm tra quyền admin trong bảng seo_project.users
         const { data: userData, error: userError } = await supabase
           .from('seo_project.users')
           .select('role')
           .eq('id', sessionData.session.user.id)
           .maybeSingle();
           
-        const isUserAdmin = !userError && userData?.role === 'admin';
-        
-        if (!isUserAdmin) {
+        if (!userError && userData?.role === 'admin') {
+          console.log("Tìm thấy quyền admin trong bảng seo_project.users");
+          isAdminUser = true;
+        } else {
           // Kiểm tra trong bảng user_roles
           const { data: roleData, error: roleError } = await supabase
             .from('seo_project.user_roles')
@@ -56,7 +59,10 @@ export const useAdminRequired = () => {
             .eq('role', 'admin')
             .maybeSingle();
             
-          if (roleError || !roleData) {
+          if (!roleError && roleData) {
+            console.log("Tìm thấy quyền admin trong bảng seo_project.user_roles");
+            isAdminUser = true;
+          } else {
             console.log("Không có quyền admin");
             if (isMounted.current) {
               toast({
